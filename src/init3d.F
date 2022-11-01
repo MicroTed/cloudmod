@@ -455,10 +455,18 @@
         bvrad   =   1400.0  ! vertical radius of bubble (m)
         bptpert =      1.0  ! max potential temp perturbation (K)
 
+        IF ( var8 /= 0.0 ) ric     =     var8  ! center of bubble in x-direction (m)
+        IF ( var9 /= 0.0 ) rjc     =     var9  ! center of bubble in y-direction (m)
+        IF ( var3 /= 0.0 ) zc      =     var3  ! height of center of bubble above ground (m)
+        IF ( var7 /= 0.0 ) bhrad   =     var7  ! horizontal radius of bubble (m)
+        IF ( var4 /= 0.0 ) bvrad   =     var4  ! vertical radius of bubble (m)
+        IF ( var10 /= 0.0 ) bptpert =    var10  ! max potential temp perturbation (K)
+
         ! By default, CM1 sets qv=constant at a constant height level for 
         ! this value of iinit.  If you would rather have rh=constant at 
         ! a constant height level, then set this to .true.
         maintain_rh = .false.
+        IF ( var1 >= 0.1 ) maintain_rh = .true.
 
         do k=1,nk
         do j=1,nj
