@@ -3806,9 +3806,9 @@
 !          write(0,*) 'option 26 currently not available'
 !          call stopcm1
          IF ( nssl3moment ) THEN
-           CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=-1,eqtset_tmp=eqtset)
+           CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
          ELSE
-           CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=-1,eqtset_tmp=eqtset)
+           CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
          ENDIF
 !          call INDEX_MODULE_INIT(ptype)
 
@@ -4040,9 +4040,9 @@
 !          call INDEX_MODULE_INIT(ptype)
 
          IF ( nssl3moment ) THEN
-         CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=1,eqtset_tmp=eqtset)
+         CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
          ELSE
-         CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=1,eqtset_tmp=eqtset)
+         CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
          ENDIF
 
 !          if(dowr) write(outfile,*)
