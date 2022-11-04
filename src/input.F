@@ -46,7 +46,8 @@
 
 !-----------------------------------------------------------------------
 
-      integer nx,ny,nz,nodex,nodey,ppnode,timeformat,timestats,outunits,      &
+      integer :: nodex=0,nodey=0
+      integer nx,ny,nz,ppnode,timeformat,timestats,outunits,      &
               ni,nj,nk,nkp1,ngxy,ngz,                                         &
               ib,ie,jb,je,kb,ke,                                              &
               ibm,iem,jbm,jem,kbm,kem,                                        &
@@ -251,7 +252,7 @@
 
       namelist /param0/ nx,ny,nz,ppnode,                                &
                         timeformat,timestats,terrain_flag,procfiles,    &
-                        outunits
+                        outunits,nodex,nodey
       namelist /param1/ dx,dy,dz,dtl,timax,run_time,                    &
                         tapfrq,rstfrq,statfrq,prclfrq
       namelist /param2/                                                 &

@@ -513,7 +513,7 @@
     ELSEIF( ny.le.3 )THEN
       nodex = numprocs
       nodey = 1
-    ELSE
+    ELSEIF ( nodex == 0 .or. nodey == 0 ) THEN
       do n = numprocs , 1 , -1
         temy = float(n)
         temx = float(numprocs)/temy

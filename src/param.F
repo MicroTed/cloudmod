@@ -3633,7 +3633,7 @@
           nvl2 = 13+i ! the last particle volume var
           IF ( nssl3moment ) THEN
           nzl1 = 14+i   ! the first reflectivity var
-          nzl2 = nzl2+j-1 ! the last reflectivity var
+          nzl2 = nzl1+j-1 ! the last reflectivity var
           ENDIF
 
 
@@ -3860,7 +3860,7 @@
           nvl2 = 16+i ! the last particle volume var
           IF ( nssl3moment ) THEN
           nzl1 = 17+i   ! the first reflectivity var
-          nzl2 = nzl2+j-1 ! the last reflectivity var
+          nzl2 = nzl1+j-1 ! the last reflectivity var
           ENDIF
 
           cloudvar( 1) = .false.
