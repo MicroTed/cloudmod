@@ -1,6 +1,6 @@
 !COMMAS/1:MODEL_LAYER:PHYSICS
 
-! prepocessed on "Nov  4 2022" at "11:09:37"
+! prepocessed on "Nov  4 2022" at "12:00:27"
 
 
 
@@ -19143,6 +19143,55 @@ END SUBROUTINE nssl_2mom_driver
       
       ELSEIF ( ihlcnh == 2 ) THEN ! 10-ice type conversion 
 
+!
+! Staka and Mansell (2005) type conversion
+!
+!      hldia1 is set in micro_module and namelist
+!      IF ( .true. ) THEN
+      
+        ! convert number, mass, and reflectivity for d > hldia1,
+        ! regardless of wet growth status, but as long as riming > 0
+        DO mgs = 1,ngscnt
+        IF ( qhacw(mgs)*dtp > qxmin(lh) .and. temg(mgs) .lt. tfr-2. .and. qx(mgs,lh) > qxmin(lh) ) THEN
+           ratio = Min( maxratiolu, hldia1/xdia(mgs,lh,1) )
+
+           ! number
+            tmp = gaminterp(ratio,alpha(mgs,lh),1,1)
+            cxd1 = cx(mgs,lh)*( tmp)
+            chlcnh(mgs) = dtpinv*cxd1
+            chlcnhhl(mgs) = chlcnh(mgs)
+
+           ! mass
+            tmp2 = gaminterp(ratio,alpha(mgs,lh),4,1)
+            qxd1 = qx(mgs,lh)*(tmp2)
+            qhlcnh(mgs) = dtpinv*qxd1
+
+           ! reflectivity
+           IF ( lzh > 1 .and. lzhl > 1 ) THEN
+            tmp3 = gaminterp(ratio,alpha(mgs,lh),11,1)
+            zxd1 = zx(mgs,lh)*(tmp3)
+            zhlcnh(mgs) = dtpinv*zxd1
+           ELSE
+            zxd1 = 0
+           ENDIF
+!           IF ( cxd1 < 0.0 .or. qxd1 < 0.0 ) THEN
+!             write(0,*) 'cxd1,qxd1 = ',cxd1,qxd1
+!             write(0,*) 'dw,temcg = ',dw,temcg(mgs),ratio 
+!           ENDIF
+           
+!           write(0,*) 'dw,temcg = ',dw,temcg(mgs),ratio
+!           write(0,*) 'qhlcnh,qh = ',qhlcnh(mgs),qx(mgs,lh),qxd1
+!           write(0,*) 'chlcnh,ch = ',chlcnh(mgs),cx(mgs,lh),cxd1
+!           write(0,*) 'zhlcnh,zh = ',zhlcnh(mgs),zx(mgs,lh),zxd1
+!           write(0,*) 'tmp1,2,3 = ',tmp,tmp2,tmp3
+
+           vhlcnh(mgs) = rho0(mgs)*qhlcnh(mgs)/xdn(mgs,lh)
+           vhlcnhl(mgs) = rho0(mgs)*qhlcnh(mgs)/Max(xdnmn(lhl), xdn(mgs,lh))
+           
+         ENDIF
+         
+         ENDDO
+!        ENDIF
       ELSEIF ( ihlcnh == 0 ) THEN
 
       do mgs = 1,ngscnt
