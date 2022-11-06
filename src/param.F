@@ -9662,6 +9662,10 @@
       write(21,*) '  tconfig                   = ',tconfig
       write(21,*) '  bcturbs                   = ',bcturbs
       write(21,*) '  ptype                     = ',ptype
+      IF ( ptype.eq.26 .or. ptype.eq.27  ) THEN
+      write(21,*) '  nssl3moment               = ',nssl3moment
+      ENDIF
+
       write(21,*) '  wbc                       = ',wbc
       write(21,*) '  ebc                       = ',ebc
       write(21,*) '  sbc                       = ',sbc

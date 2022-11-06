@@ -1,6 +1,6 @@
 !COMMAS/1:MODEL_LAYER:PHYSICS
 
-! prepocessed on "Nov  4 2022" at "12:00:27"
+! prepocessed on "Nov  6 2022" at "13:47:56"
 
 
 
@@ -455,7 +455,7 @@ MODULE module_mp_nssl_2mom
                                    ! 0 = no condensation on rain; 1 = bulk condensation on rain
   integer, parameter, private :: icond = 1    ! (Z only) icond = 1 calculates ice deposition (crystals and snow) BEFORE droplet condensation
                           ! icond = 2 does not work (intended to calc. dep in loop with droplet cond.)
-  integer, public :: iqis0 = 1    ! = 1 for normal qis; = 2 to set qis to use T = 0C when T > 0C  
+  integer, public :: iqis0 = 2    ! = 1 for normal qis; = 2 to set qis to use T = 0C when T > 0C  
   
   real   , public :: dfrz = 0.15e-3 ! 0.25e-3  ! minimum diameter of frozen drops from Bigg freezing (used for vfrz) for iacr > 1
                             ! and for ciacrf for iacr=4
@@ -1003,6 +1003,7 @@ MODULE module_mp_nssl_2mom
                         naer,           &
                         icfn,           &
                         ibfc, iacr, icracr, &
+                        icracrthresh,   &
                         cwfrz2snowfrac, cwfrz2snowratio, &
                         ibfr,           &
                         ibiggopt,       &
@@ -11788,7 +11789,7 @@ END SUBROUTINE nssl_2mom_driver
 !  other arrays
 
       real fwet1(ngs),fwet2(ngs)   
-      real fmlt1(ngs),fmlt2(ngs)  
+      real fmlt1(ngs),fmlt2(ngs),fmlt1e(ngs)
       real fvds(ngs),fvce(ngs),fiinit(ngs) 
       real fvent(ngs),fraci(ngs),fracl(ngs)
 !
@@ -17575,6 +17576,8 @@ END SUBROUTINE nssl_2mom_driver
      &   -ftka(mgs)*temcg(mgs)/rho0(mgs) )    &
      &  / (felf(mgs))
       fmlt2(mgs) = -fcw(mgs)*temcg(mgs)/felf(mgs)
+      fmlt1e(mgs) = (2.0*pi)*   &
+     &  ( felv(mgs)*fwvdf(mgs)*(qss0(mgs)-qx(mgs,lv))  ) / (felf(mgs))
       end do
 !
 !  Vapor Deposition constants
@@ -18231,6 +18234,12 @@ END SUBROUTINE nssl_2mom_driver
 
 ! end of qlimit
 
+      qhcev(:) = 0.0
+      chcev(:) = 0.0
+      qhlcev(:) = 0.0
+      chlcev(:) = 0.0
+      qfcev(:) = 0.0
+
       do mgs = 1,ngscnt
       qisbv(mgs) = 0.0
       qssbv(mgs) = 0.0
@@ -18245,30 +18254,17 @@ END SUBROUTINE nssl_2mom_driver
 !        qssbv(mgs) = max( min(qsdsv(mgs), 0.0), -qsmxd(mgs) )
 ! erm 5/10/2007:
         qisbv(mgs) = max( min(qidsv(mgs), 0.0),  Min( -qimxd(mgs), -0.5*qx(mgs,li)*dtpinv ) )
+        IF ( temg(mgs) < tfr .or. .not. qsmlr(mgs) < 0.0 ) THEN
         qssbv(mgs) = max( min(qsdsv(mgs), 0.0),  Min( -qsmxd(mgs), -0.5*qx(mgs,ls)*dtpinv ) )
+        ENDIF
         qidpv(mgs) = Max(qidsv(mgs), 0.0)
         qsdpv(mgs) = Max(qsdsv(mgs), 0.0)
         
-        IF ( temcg(mgs) > 0.5 ) THEN ! For T > 0, sublimation would be overestimated since ice stays at 0C, so use evap rate
-          qssbv(mgs) = Min(0.0, evapfac*   &
-     &  4.0*pi*(qx(mgs,lv)-qss0(mgs))*cx(mgs,ls)*swcap(mgs)*swvent(mgs)/(qss0(mgs)*(fav(mgs)+fbv(mgs))))
-        qssbv(mgs) = max( qssbv(mgs),  Min( -qsmxd(mgs), -0.5*qx(mgs,ls)*dtpinv ) )
-        ENDIF
-
         IF ( qsmlr(mgs) < 0.0 .and. .not. mixedphase ) THEN ! switch snow sublimation to evaporation if there is melting
-!        qsdsv(mgs) =   &
-!     &    fvds(mgs)*cx(mgs,ls)*swvent(mgs)*swcap(mgs)*depfac
 
-          tmp = 4.0*pi*(qx(mgs,lv)-qss0(mgs))/(qss0(mgs)*(fav(mgs)+fbv(mgs)))
           qscev(mgs) = evapfac*   &
      &  4.0*pi*(qx(mgs,lv)-qss0(mgs))*cx(mgs,ls)*swcap(mgs)*swvent(mgs)/(qss0(mgs)*(fav(mgs)+fbv(mgs)))
           qscev(mgs) = Max( Min(0.0,qscev(mgs)),  Min( -qsmxd(mgs), -0.5*qx(mgs,ls)*dtpinv ) )
-!          IF ( igs(mgs) == 12 .and. ny <= 2 ) THEN
-!            write(0,*) 'k, qssbv,qscev,qsdsv,qsmlr = ', kgs(mgs),qssbv(mgs),qscev(mgs),qsdsv(mgs),qsmlr(mgs)
-!            write(0,*) 'fvds,fvce,tmp,cx*sw = ',fvds(mgs),fvce(mgs),tmp,cx(mgs,ls)*swvent(mgs)*swcap(mgs)
-!            write(0,*) 'qv,qss0,ssw,ssi = ',qx(mgs,lv),qss0(mgs),ssw(mgs),ssi(mgs)
-!          ENDIF
-          qssbv(mgs) = 0.0
         ELSE
 
         ENDIF
@@ -18282,16 +18278,36 @@ END SUBROUTINE nssl_2mom_driver
         qsdpv(mgs) = 0.0
       ENDIF
 
+      IF ( temg(mgs) < tfr .or. .not. qhmlr(mgs) < 0.0 ) THEN
+      ! no liquid from melting, so evaporation is greater. Thus can calculate sublimation rate
       qhsbv(mgs) = max( min(qhdsv(mgs), 0.0), -qhmxd(mgs) )
-
       qhdpv(mgs) = Max(qhdsv(mgs), 0.0)
+      ENDIF
+      
+      IF ( qhmlr(mgs) < 0.0 .and. .not. mixedphase ) THEN
+        ! Liquid is forming, so find the evaporation that was subtracted from melting (if it is not condensing)
+       qhcev(mgs) =   &
+     &   evapfac*min(   &
+     &  fmlt1e(mgs)*cx(mgs,lh)*hwvent(mgs)*xdia(mgs,lh,1), 0.0 )
+        
+      ENDIF
 
 
       qhlsbv(mgs) = 0.0
       qhldpv(mgs) = 0.0
       IF ( lhl .gt. 1 ) THEN
+      IF ( qx(mgs,lhl) > qxmin(lhl) ) THEN
+        IF ( temg(mgs) < tfr .or. .not. qhlmlr(mgs) < 0.0 ) THEN
         qhlsbv(mgs) = max( min(qhldsv(mgs), 0.0), -qxmxd(mgs,lhl) )
         qhldpv(mgs) = Max(qhldsv(mgs), 0.0)
+        ENDIF
+        IF ( qhlmlr(mgs) < 0.0 .and. .not. mixedphase ) THEN
+        ! Liquid is forming, so find the evaporation that was subtracted from melting (if it is not condensing)
+         qhlcev(mgs) =  evapfac*min(   &
+     &    fmlt1e(mgs)*cx(mgs,lhl)*hlvent(mgs)*xdia(mgs,lhl,1), 0.0 )
+        
+      ENDIF
+      ENDIF
       ENDIF
       
       temp1 = qidpv(mgs) + qsdpv(mgs) + qhdpv(mgs) + qhldpv(mgs)
@@ -19488,11 +19504,6 @@ END SUBROUTINE nssl_2mom_driver
 !
 ! evaporation/condensation of wet graupel and snow
 !
-      qhcev(:) = 0.0
-      chcev(:) = 0.0
-      qhlcev(:) = 0.0
-      chlcev(:) = 0.0
-      qfcev(:) = 0.0
       IF ( lhwlg > 1 ) THEN
       qhcevlg(:) = 0.0
       chcevlg(:) = 0.0
