@@ -95,6 +95,7 @@
       real, dimension(:,:), allocatable :: rho0s,pi0s,prs0s,rth0s
       real, dimension(:,:,:), allocatable :: pi0,rho0,prs0,thv0,th0,rth0,qv0
       real, dimension(:,:,:), allocatable :: qc0,qi0,rr0,rf0,rrf0,u0,v0,thrd
+      real, dimension(:), allocatable :: u01d,v01d !,zh1d
       real, dimension(:,:,:), allocatable :: dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9
       real, dimension(:,:), allocatable :: zs,gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy
       real, dimension(:,:,:), allocatable :: gx,gxu,gy,gyv
@@ -513,7 +514,7 @@
     ELSEIF( ny.le.3 )THEN
       nodex = numprocs
       nodey = 1
-    ELSE
+    ELSEIF ( nodex == 0 .or. nodey == 0 ) THEN
       do n = numprocs , 1 , -1
         temy = float(n)
         temx = float(numprocs)/temy
@@ -1403,6 +1404,12 @@
       u0 = 0.0
       allocate(   v0(ib:ie,jb:je+1,kb:ke) )
       v0 = 0.0
+      allocate(   u01d(kb:ke) )
+      u01d = 0.0
+      allocate(   v01d(kb:ke) )
+      v01d = 0.0
+!      allocate(   zh1d(kb:ke) )
+!      zh1d = 0.0
 
 #ifdef MPI
           call MPI_BARRIER (MPI_COMM_WORLD,ierr)
@@ -1450,8 +1457,8 @@
 
       call       base(zh,mh,rmh,c1,c2,zf,mf,rho0s,pi0s,prs0s,rth0s,         &
                       wprof,ufrc,vfrc,thfrc,qvfrc,ug,vg,dvdr,               &
-                      uavg,vavg,thavg,pavg,qavg,ulspg,vlspg,                &
-                      pi0,prs0,rho0,thv0,th0,rth0,qv0,u0,v0,thrd,           &
+                      uavg,vavg,thavg,pavg,qavg,ulspg,vlspg,sigma,          &
+                      pi0,prs0,rho0,thv0,th0,rth0,qv0,u0,v0,u01d,v01d,thrd, &
                       qc0,qi0,rr0,rf0,rrf0,dum1,dum2,                       &
                       reqs_u,reqs_v,reqs_s,nw1,nw2,ne1,ne2,sw1,sw2,se1,se2, &
                       n3w1,n3w2,n3e1,n3e2,s3w1,s3w2,s3e1,s3e2,              &
@@ -3297,6 +3304,7 @@
                    xh,rxh,arh1,arh2,uh,ruh,xf,rxf,arf1,arf2,uf,ruf,  &
                    yh,vh,rvh,yf,vf,rvf,                              &
                    dumk1,dumk2,dumk3,dumk4,rds,sigma,rdsf,sigmaf,    &
+                   u01d,v01d,                                        &
                    zh,mh,rmh,c1,c2,zf,mf,rmf,wprof,                  &
                    pi0,rho0,prs0,thv0,th0,rth0,qv0,qc0,              &
                    qi0,rr0,rf0,rrf0,thrd,                            &

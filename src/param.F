@@ -24,6 +24,8 @@
                        ww31,ww32,we31,we32,ws31,ws32,wn31,wn32)
       use input
       use constants
+      use force_module
+      use index_module
       use init_terrain_module
       use bc_module
       use comm_module
@@ -37,28 +39,10 @@
       use module_mp_graupel
       use module_mp_p3, only : p3_init
       use module_mp_jensen_ishmael, only : jensen_ishmael_init
-      use module_mp_nssl_2mom, only:    &
-                        nssl_2mom_init, &
-                        rho_qr,         &
-                        cnor,           &
-                        rho_qs,         &
-                        cnos,           &
-                        rho_qh,         &
-                        cnoh,           &
-                        ccn,            &
-                        infall,         &
-                        alphah,         &
-                        alphahl,        &
-                        imurain,        &
-                        icdx,           &
-                        icdxhl,         &
-                        dfrz,           &
-                        hldnmn,         &
-                        iferwisventr,   &
-                        iehw,iehlw,     &
-                        ehw0,ehlw0,     &
-                        dmrauto,        &
-                        ioldlimiter
+      use module_mp_nssl_2mom, only: nssl_2mom_init, rho_qr, cnor, rho_qs,     &
+                        cnos, rho_qh, cnoh, ccn, infall, alphah, alphahl,      &
+                        imurain, icdx, icdxhl, dfrz, hldnmn, iferwisventr,     &
+                        iehw, iehlw,ehw0, ehlw0, dmrauto, inucopt, ioldlimiter
       use goddard_module, only : consat,consat2
       use lfoice_module, only : lfoice_init
       implicit none
@@ -156,9 +140,34 @@
                         iferwisventr,   &
                         iehw,iehlw,     &
                         ehw0,ehlw0,     &
+                        inucopt,        &
                         dmrauto,        &
                         ioldlimiter
 
+   NAMELIST /forcing/                   &
+                        iforce,         &
+                        twstrt,twstop,  &
+!                        iforcetyp,      &
+                        nwfor,          &
+                        iwforce,        &
+                        iwshap,         &
+!                        ivshap,         &
+!                        iushap,         &
+!                        iqshap,         &
+!                        itshap,         &
+!                        isshap,isslcl,  &
+                        wfmeso,         &
+!                        ufmeso,umaxmeso,&
+                        xwfcen,         &
+                        ywfcen,         &
+                        zwfcen,         &
+                        xwfrad,         &
+                        ywfrad,         &
+                        zwfrad,         &
+                        xwfmov,         &
+                        ywfmov,         &
+                        zwfmov         
+ 
 !--------------------------------------------------------------
 
 #ifdef MPI
@@ -284,6 +293,7 @@
       read(20,nml=param21,end=721)
 721   continue
       rewind(20)
+
 
       close(unit=20)
 
@@ -663,10 +673,23 @@
       call MPI_BCAST(iehlw     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(ehw0      ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(ehlw0     ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(inucopt   ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(dmrauto   ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(ioldlimiter,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(nssl3moment,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
       ENDIF
 #endif
+
+      open(unit=20,file='namelist.input',form='formatted',status='old',    &
+           access='sequential',err=8000)
+      read(20,nml=forcing,end=722)
+722   continue
+      rewind(20)
+      read(20,nml=bubble,end=723)
+723   continue
+      rewind(20)
+
+      close(unit=20)
 
 !-----------------------------------------------------------------------
 !  Set constants:
@@ -3592,7 +3615,20 @@
           idm  = 1    ! this means that ptype=26 has at least one double moment
           idmplus = 1
 
-          numq = 13   ! number of variables
+          i = 0
+          IF ( inucopt == 1 .or. inucopt == 3 ) THEN
+           i = i + 1
+          ENDIF
+          IF ( inucopt == 2 .or. inucopt == 3 ) THEN
+           i = i + 1
+          ENDIF
+          
+          j = 0
+          IF ( nssl3moment ) THEN
+           j = 2 ! three extra variables for 3moment
+          ENDIF
+
+          numq = 13 + i + j   ! number of variables
 
           nqv  = 1    ! qv is the first array
           nql1 = 2    ! the first liquid variable
@@ -3604,19 +3640,29 @@
           nvl1 = 13   ! the first particle volume var
           nvl2 = 13   ! the last particle volume var
 
+          nqv  = 1    ! qv is the first array
+          nql1 = 2    ! the first liquid variable
+          nql2 = 3    ! the last liquid variable
+          nqs1 = 4    ! the first solid variable
+          nqs2 = 6    ! the last solid variable
+          nnc1 = 7    ! the first number concentration var
+          nnc2 = 12+i ! the last number concentration var
+          nvl1 = 13+i ! the first particle volume var
+          nvl2 = 13+i ! the last particle volume var
+          IF ( nssl3moment ) THEN
+          nzl1 = 14+i   ! the first reflectivity var
+          nzl2 = nzl1+j-1 ! the last reflectivity var
+          ENDIF
+
+
           cloudvar( 1) = .false.
           cloudvar( 2) = .true.
           cloudvar( 3) = .false.
           cloudvar( 4) = .true.
           cloudvar( 5) = .false.
           cloudvar( 6) = .false.
-          cloudvar( 7) = .false.
-          cloudvar( 8) = .false.
-          cloudvar( 9) = .false.
-          cloudvar(10) = .false.
-          cloudvar(11) = .false.
-          cloudvar(12) = .false.
-          cloudvar(13) = .false.
+          cloudvar( 7:numq) = .false.
+
 
           qname( 1) = 'qv '
           qname( 2) = 'qc '
@@ -3625,12 +3671,57 @@
           qname( 5) = 'qs '
           qname( 6) = 'qg '
           qname( 7) = 'ccn' ! CCN concentration
-          qname( 8) = 'ccw' ! droplet conc
-          qname( 9) = 'crw' ! rain conc
-          qname(10) = 'cci' ! ice crystal conc
-          qname(11) = 'csw' ! snow conc
-          qname(12) = 'chw' ! graupel conc
-          qname(13) = 'vhw' ! graupel volume
+!          qname( 8) = 'ccw' ! droplet conc
+!          qname( 9) = 'crw' ! rain conc
+!          qname(10) = 'cci' ! ice crystal conc
+!          qname(11) = 'csw' ! snow conc
+!          qname(12) = 'chw' ! graupel conc
+!          qname(13) = 'vhw' ! graupel volume
+
+          lv = 1
+          lc = 2
+          lr = 3
+          li = 4
+          ls = 5
+          lgh = 6
+          lhl = 0
+          lccn = 7
+
+          i = 0
+          lccna = 1
+          lcina = 1
+          IF ( inucopt == 1 .or. inucopt == 3 ) THEN
+           i = i + 1
+          qname( 7+i) = 'cna' ! activated CCN concentration
+          lccna = 7+i
+          f_ccna = .true.
+          ENDIF
+          IF ( inucopt == 2 .or. inucopt == 3 ) THEN
+           i = i + 1
+          qname(7+i) = 'cia' ! activated CIN concentration
+          lcina = 7+i
+          f_cina = .true.
+          ENDIF
+          
+          qname(8+i) = 'ccw' ! droplet conc
+          lnc = 8+i
+          qname(9+i) = 'crw' ! rain conc
+          lnr = 9+i
+          qname(10+i) = 'cci' ! ice crystal conc
+          lni = 10+i
+          qname(11+i) = 'csw' ! snow conc
+          lns = 11+i
+          qname(12+i) = 'chw' ! graupel conc
+          lnh = 12+i
+          qname(13+i) = 'vhw' ! graupel volume
+          lvh = 13+i
+          
+          IF ( nssl3moment ) THEN
+          qname(14+i) = 'zrw' ! rain reflectivity moment
+          lzr = 14+i
+          qname(15+i) = 'zhw' ! graupel reflectivity moment
+          lzh = 15+i
+          ENDIF
 
           qunit( 1) = 'kg/kg'
           qunit( 2) = 'kg/kg'
@@ -3645,6 +3736,11 @@
           qunit(11) = '#/kg'
           qunit(12) = '#/kg'
           qunit(13) = 'm^3/kg'
+          qunit(nnc1:nnc2) = '#/kg'
+          qunit(nvl1:nvl2) = 'm^3/kg'
+          IF ( nssl3moment ) THEN
+          qunit(nzl1:nzl2) = 'Z/m^3/kg'
+          ENDIF
 
           rhovar( 1) = .false.
           rhovar( 2) = .false.
@@ -3652,13 +3748,7 @@
           rhovar( 4) = .false.
           rhovar( 5) = .false.
           rhovar( 6) = .false.
-          rhovar( 7) = .true.
-          rhovar( 8) = .true.
-          rhovar( 9) = .true.
-          rhovar(10) = .true.
-          rhovar(11) = .true.
-          rhovar(12) = .true.
-          rhovar(13) = .true.
+          rhovar( 7:numq) = .true.
 
           ! likely maximum value (order-of-magnitude)
           ! (needed for monotonic advection schemes)
@@ -3668,13 +3758,12 @@
           qmag( 4) = 0.01
           qmag( 5) = 0.01
           qmag( 6) = 0.01
-          qmag( 7) = 1.0e5
-          qmag( 8) = 1.0e5
-          qmag( 9) = 1.0e5
-          qmag(10) = 1.0e5
-          qmag(11) = 1.0e5
-          qmag(12) = 1.0e5
-          qmag(13) = 1.0e-5
+          qmag(nnc1:nnc2) = 1.e8
+          qmag( lnc) = 1.0e10
+          qmag( lni) = 3.0e9
+          IF ( nssl3moment ) qmag(nzl1:nzl2) = 1.0e-12
+          qmag(nvl1:nvl2) = 1.0e-5
+          qmag(:) = 1.e-12
 
 !          ipconc = 5
 !          lr = 4
@@ -3734,7 +3823,11 @@
 
 !          write(0,*) 'option 26 currently not available'
 !          call stopcm1
-         CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=-1,eqtset_tmp=eqtset)
+         IF ( nssl3moment ) THEN
+           CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
+         ELSE
+           CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
+         ENDIF
 !          call INDEX_MODULE_INIT(ptype)
 
           if(dowr) write(outfile,*)
@@ -3758,7 +3851,21 @@
           idm  = 1    ! this means that ptype=27 has at least one double moment
           idmplus = 1
 
-          numq = 16   ! number of variables
+          i = 0
+          IF ( inucopt == 1 .or. inucopt == 3 ) THEN
+           i = i + 1
+          ENDIF
+          IF ( inucopt == 2 .or. inucopt == 3 ) THEN
+           i = i + 1
+          ENDIF
+          
+          j = 0
+          IF ( nssl3moment ) THEN
+           j = 3 ! three extra variables for 3moment
+          ENDIF
+          
+
+          numq = 16+i+j  ! number of variables
 
           nqv  = 1    ! qv is the first array
           nql1 = 2    ! the first liquid variable
@@ -3766,9 +3873,13 @@
           nqs1 = 4    ! the first solid variable
           nqs2 = 7    ! the last solid variable
           nnc1 = 8    ! the first number concentration var
-          nnc2 = 14   ! the last number concentration var
-          nvl1 = 15   ! the first particle volume var
-          nvl2 = 16   ! the last particle volume var
+          nnc2 = 14+i ! the last number concentration var
+          nvl1 = 15+i ! the first particle volume var
+          nvl2 = 16+i ! the last particle volume var
+          IF ( nssl3moment ) THEN
+          nzl1 = 17+i   ! the first reflectivity var
+          nzl2 = nzl1+j-1 ! the last reflectivity var
+          ENDIF
 
           cloudvar( 1) = .false.
           cloudvar( 2) = .true.
@@ -3777,15 +3888,7 @@
           cloudvar( 5) = .false.
           cloudvar( 6) = .false.
           cloudvar( 7) = .false.
-          cloudvar( 8) = .false.
-          cloudvar( 9) = .false.
-          cloudvar(10) = .false.
-          cloudvar(11) = .false.
-          cloudvar(12) = .false.
-          cloudvar(13) = .false.
-          cloudvar(14) = .false.
-          cloudvar(15) = .false.
-          cloudvar(16) = .false.
+          cloudvar( 8:numq) = .false.
 
           qname( 1) = 'qv '
           qname( 2) = 'qc '
@@ -3795,14 +3898,57 @@
           qname( 6) = 'qg '
           qname( 7) = 'qhl'
           qname( 8) = 'ccn' ! CCN concentration
-          qname( 9) = 'ccw' ! droplet conc
-          qname(10) = 'crw' ! rain conc
-          qname(11) = 'cci' ! ice crystal conc
-          qname(12) = 'csw' ! snow conc
-          qname(13) = 'chw' ! graupel conc
-          qname(14) = 'chl' ! hail conc
-          qname(15) = 'vhw' ! graupel volume
-          qname(16) = 'vhl' ! hail volume
+          
+          lv = 1
+          lc = 2
+          lr = 3
+          li = 4
+          ls = 5
+          lgh = 6
+          lhl = 7
+          lccn = 8
+          
+          i = 0
+          lccna = 1
+          lcina = 1
+          IF ( inucopt == 1 .or. inucopt == 3 ) THEN
+           i = i + 1
+          qname( 8+i) = 'cna' ! activated CCN concentration
+          lccna = 8+i
+          f_ccna = .true.
+          ENDIF
+          IF ( inucopt == 2 .or. inucopt == 3 ) THEN
+           i = i + 1
+          qname(8+i) = 'cia' ! activated CIN concentration
+          lcina = 8+i
+          f_cina = .true.
+          ENDIF
+          
+          qname( 9+i) = 'ccw' ! droplet conc
+          lnc = 9+i
+          qname(10+i) = 'crw' ! rain conc
+          lnr = 10+i
+          qname(11+i) = 'cci' ! ice crystal conc
+          lni = 11+i
+          qname(12+i) = 'csw' ! snow conc
+          lns = 12+i
+          qname(13+i) = 'chw' ! graupel conc
+          lnh = 13+i
+          qname(14+i) = 'chl' ! hail conc
+          lnhl = 14+i
+          qname(15+i) = 'vhw' ! graupel volume
+          lvh = 15+i
+          qname(16+i) = 'vhl' ! hail volume
+          lvhl = 16+i
+          
+          IF ( nssl3moment ) THEN
+          qname(17+i) = 'zrw' ! rain reflectivity moment
+          lzr = 17+i
+          qname(18+i) = 'zhw' ! graupel reflectivity moment
+          lzh = 18+i
+          qname(19+i) = 'zhl' ! hail reflectivity moment
+          lzhl = 19+i
+          ENDIF
 
           qunit( 1) = 'kg/kg'
           qunit( 2) = 'kg/kg'
@@ -3820,6 +3966,11 @@
           qunit(14) = '#/kg'
           qunit(15) = 'm^3/kg'
           qunit(16) = 'm^3/kg'
+          qunit(nnc1:nnc2) = '#/kg'
+          qunit(nvl1:nvl2) = 'm^3/kg'
+          IF ( nssl3moment ) THEN
+          qunit(nzl1:nzl2) = 'Z/m^3/kg'
+          ENDIF
 
           rhovar( 1) = .false.
           rhovar( 2) = .false.
@@ -3828,15 +3979,7 @@
           rhovar( 5) = .false.
           rhovar( 6) = .false.
           rhovar( 7) = .false.
-          rhovar( 8) = .true.
-          rhovar( 9) = .true.
-          rhovar(10) = .true.
-          rhovar(11) = .true.
-          rhovar(12) = .true.
-          rhovar(13) = .true.
-          rhovar(14) = .true.
-          rhovar(15) = .true.
-          rhovar(16) = .true.
+          rhovar( 8:numq) = .true.
 
           ! likely maximum value (order-of-magnitude)
           ! (needed for monotonic advection schemes)
@@ -3847,15 +3990,13 @@
           qmag( 5) = 0.01
           qmag( 6) = 0.01
           qmag( 7) = 0.01
-          qmag( 8) = 1.0e5
-          qmag( 9) = 1.0e5
-          qmag(10) = 1.0e5
-          qmag(11) = 1.0e5
-          qmag(12) = 1.0e5
-          qmag(13) = 1.0e5
-          qmag(14) = 1.0e5
-          qmag(15) = 1.0e-5
-          qmag(16) = 1.0e-5
+          
+          qmag(nnc1:nnc2) = 1.e8
+          qmag( lnc) = 1.0e10
+          qmag( lni) = 3.0e9
+          IF ( nssl3moment ) qmag(nzl1:nzl2) = 1.0e-12
+          qmag(nvl1:nvl2) = 1.0e-5
+          qmag(:) = 1.e-12
 
 !          ipconc = 5
 !          lr = 4
@@ -3915,7 +4056,12 @@
 !          if(dowr) write(outfile,*)
 
 !          call INDEX_MODULE_INIT(ptype)
-         CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=1,eqtset_tmp=eqtset)
+
+         IF ( nssl3moment ) THEN
+         CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
+         ELSE
+         CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
+         ENDIF
 
 !          if(dowr) write(outfile,*)
 !          if(dowr) write(outfile,*) 'Returned from graupel_init'
@@ -9534,6 +9680,10 @@
       write(21,*) '  tconfig                   = ',tconfig
       write(21,*) '  bcturbs                   = ',bcturbs
       write(21,*) '  ptype                     = ',ptype
+      IF ( ptype.eq.26 .or. ptype.eq.27  ) THEN
+      write(21,*) '  nssl3moment               = ',nssl3moment
+      ENDIF
+
       write(21,*) '  wbc                       = ',wbc
       write(21,*) '  ebc                       = ',ebc
       write(21,*) '  sbc                       = ',sbc

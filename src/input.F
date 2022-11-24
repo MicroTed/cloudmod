@@ -42,10 +42,12 @@
               do_recycle_w,do_recycle_s,do_recycle_e,do_recycle_n,            &
               do_lsnudge,do_lsnudge_u,do_lsnudge_v,do_lsnudge_th,do_lsnudge_qv, &
               do_ib
+      logical :: nssl3moment = .false.
 
 !-----------------------------------------------------------------------
 
-      integer nx,ny,nz,nodex,nodey,ppnode,timeformat,timestats,outunits,      &
+      integer :: nodex=0,nodey=0
+      integer nx,ny,nz,ppnode,timeformat,timestats,outunits,      &
               ni,nj,nk,nkp1,ngxy,ngz,                                         &
               ib,ie,jb,je,kb,ke,                                              &
               ibm,iem,jbm,jem,kbm,kem,                                        &
@@ -207,6 +209,14 @@
 
 !-----------------------------------------------------------------------
 
+      integer, parameter :: maxbubble = 10
+      integer :: numbub = 0
+      real    :: tbubrandpert = 0
+      real, dimension(maxbubble) :: tbub = 1.0, xcbub,ycbub,zcbub,            &
+                                    xradbub,yradbub,zradbub
+
+!-----------------------------------------------------------------------
+
       double precision ::                                                     &
            tapfrq,rstfrq,statfrq,prclfrq,diagfrq,azimavgfrq,hifrqfrq
 
@@ -250,7 +260,7 @@
 
       namelist /param0/ nx,ny,nz,ppnode,                                &
                         timeformat,timestats,terrain_flag,procfiles,    &
-                        outunits
+                        outunits,nodex,nodey
       namelist /param1/ dx,dy,dz,dtl,timax,run_time,                    &
                         tapfrq,rstfrq,statfrq,prclfrq
       namelist /param2/                                                 &
@@ -259,7 +269,7 @@
           advwenos,advwenov,weno_order,                                 &
           apmasscon,idiff,mdiff,difforder,imoist,                       &
           ipbl,sgsmodel,tconfig,bcturbs,horizturb,doimpl,               &
-          irdamp,hrdamp,psolver,ptype,ihail,iautoc,                     &
+          irdamp,hrdamp,psolver,ptype,nssl3moment,ihail,iautoc,         &
           icor,betaplane,lspgrad,eqtset,idiss,efall,rterm,              &
           wbc,ebc,sbc,nbc,bbc,tbc,irbc,roflux,nudgeobc,                 &
           isnd,iwnd,itern,iinit,                                        &
@@ -274,6 +284,8 @@
       namelist /param7/ bc_temp,ptc_top,ptc_bot,viscosity,pr_num
       namelist /param8/ var1,var2,var3,var4,var5,var6,var7,var8,var9,var10,   &
                         var11,var12,var13,var14,var15,var16,var17,var18,var19,var20
+      namelist /bubble/ numbub,tbub,tbubrandpert,xcbub,ycbub,zcbub,           &
+                         xradbub,yradbub,zradbub
       namelist /param9/                                                       &
               output_format,output_filetype,                                  &
               output_interp,                                                  &

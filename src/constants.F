@@ -170,3 +170,57 @@
     !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
   END MODULE constants
+  
+ ! ---------------------------------------------------------------------------  
+! ---------------------------------------------------------------------------  
+  
+  MODULE index_module
+  
+  implicit none
+
+! Mixing Ratio
+  integer :: lv = 2
+  integer :: lc = 3
+  integer :: lr = 4
+  integer :: li = 5
+  integer :: ls = 6
+  integer :: lgh = 7
+  integer :: lhl = 0
+  integer :: lhw = 0
+  integer :: lsw = 0
+  integer :: lhlw = 0
+  integer :: lhab = 7
+
+! Number concentration
+
+  integer :: lccna = 0 ! activated ccn
+  integer :: lcina = 0 ! activated ice nuclei
+  integer :: lccn = 8
+  integer :: lccnuf = 0
+
+  integer :: lnc = 1
+  integer :: lnr = 1
+  integer :: lni = 1
+  integer :: lns = 1
+  integer :: lnh = 1
+  integer :: lnhl = 1
+
+! Particle volume
+
+  integer :: lvh = 0
+  integer :: lvhl = 0
+
+! reflectivity (6th moment)
+
+  integer :: lzr = 0
+  integer :: lzh = 0
+  integer :: lzhl = 0
+  
+! flags
+  
+  logical :: f_ccna = .false.
+  logical :: f_cina = .false.
+  
+  
+  END MODULE index_module
+ 

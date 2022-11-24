@@ -125,7 +125,7 @@
       integer i,j,k,kk,l,n,nn,nbub,nloop
       integer ic,jc,ifoo,jfoo
       real ric,rjc
-      real xc,yc,zc,bhrad,bvrad,bptpert,beta,tmp,zdep
+      real xc,yc,zc,bhrad,byrad,bvrad,bptpert,beta,tmp,zdep
       real thvnew(nk),pinew(nk)
       real thl,ql,qt,th1,t1,ql2,rm,cpm,v1,v2,th2
 
@@ -191,12 +191,14 @@
         shs(i,j,n)=0.0
         ! for sps, we want to get a MINIMUM value at the surface, so...
         ! set sps to an absurdly large number:
-        sps(i,j,n)=200000.0
+        ! But it will be zero on the first time step, so set to zero
+        sps(i,j,n)=0.0
         ! svs and sus can be negative or positive, 
         ! but we want to get a MAXIMUM value, so...
         ! set svs and sus to an absurdly low (negative) number:
-        svs(i,j,n)=-1000.0
-        sus(i,j,n)=-1000.0
+        ! Set to zero because that is what they will become on the first time step....
+        svs(i,j,n)= 0.0
+        sus(i,j,n)= 0.0
       enddo
       enddo
       enddo
@@ -448,33 +450,108 @@
         if(dowr) write(outfile,*) '  Warm bubble'
         if(dowr) write(outfile,*)
 
-        ric     =  centerx  ! center of bubble in x-direction (m)
-        rjc     =  centery  ! center of bubble in y-direction (m)
-        zc      =   1400.0  ! height of center of bubble above ground (m)
-        bhrad   =  10000.0  ! horizontal radius of bubble (m)
-        bvrad   =   1400.0  ! vertical radius of bubble (m)
-        bptpert =      1.0  ! max potential temp perturbation (K)
+        IF ( numbub == 0 ) THEN
+          if(dowr) write(outfile,*) 'numbub = 0, so set defaults'
+          numbub = 1
+!          numbub,tbub,tbubrandpert,xcbub,ycbub,zcbub,           &
+!                         xradbub,yradbub,zradbub
+                         
+          tbub(1) = 1.0
+          xcbub(1) = centerx
+          ycbub(1) = centery
+          zcbub(1) = 1400.
+          xradbub(1) = 10000.0
+          yradbub(1) = 10000.0
+          zradbub(1) = 1400.0
+!        ric     =  centerx  ! center of bubble in x-direction (m)
+!        rjc     =  centery  ! center of bubble in y-direction (m)
+!        zc      =   1400.0  ! height of center of bubble above ground (m)
+!        bhrad   =  10000.0  ! horizontal radius of bubble (m)
+!        bvrad   =   1400.0  ! vertical radius of bubble (m)
+!        bptpert =      1.0  ! max potential temp perturbation (K)
+        ENDIF
+        IF ( numbub > maxbubble ) THEN
+          numbub = maxbubble
+          write(0,*) 'WARNING: numbub > maxbubble! numbub, maxbubble = ', &
+                      numbub, maxbubble 
+        ENDIF
+!        IF ( var8 /= 0.0 ) ric     =     var8  ! center of bubble in x-direction (m)
+!        IF ( var9 /= 0.0 ) rjc     =     var9  ! center of bubble in y-direction (m)
+!        IF ( var3 /= 0.0 ) zc      =     var3  ! height of center of bubble above ground (m)
+!        IF ( var7 /= 0.0 ) bhrad   =     var7  ! horizontal radius of bubble (m)
+!        IF ( var4 /= 0.0 ) bvrad   =     var4  ! vertical radius of bubble (m)
+!        IF ( var10 /= 0.0 ) bptpert =    var10  ! max potential temp perturbation (K)
+        
+        
 
         ! By default, CM1 sets qv=constant at a constant height level for 
         ! this value of iinit.  If you would rather have rh=constant at 
         ! a constant height level, then set this to .true.
         maintain_rh = .false.
+        IF ( var1 >= 0.1 ) maintain_rh = .true.
 
+        do k=kb,ke
+        do j=jb,je
+        do i=ib,ie
+          tha(i,j,k)=0.0
+        enddo
+        enddo
+        enddo
+
+        DO n = 1,numbub
+        
+        ric     =  xcbub(n)   ! center of bubble in x-direction (m)
+        rjc     =  ycbub(n)   ! center of bubble in y-direction (m)
+        zc      =  zcbub(n)   ! height of center of bubble above ground (m)
+        bhrad   =  xradbub(n)  ! horizontal radius of bubble (m)
+        byrad   =  yradbub(n)  ! horizontal radius of bubble (m)
+        bvrad   =  zradbub(n)  ! vertical radius of bubble (m)
+        bptpert =  tbub(n)     ! max potential temp perturbation (K)
+        
+        
         do k=1,nk
         do j=1,nj
         do i=1,ni
           beta=sqrt(                             &
                     ((xh(i)-ric)/bhrad)**2       &
-                   +((yh(j)-rjc)/bhrad)**2       &
+                   +((yh(j)-rjc)/byrad)**2       &
                    +((zh(i,j,k)-zc)/bvrad)**2)
           if(beta.lt.1.0)then
-            tha(i,j,k)=bptpert*(cos(0.5*pi*beta)**2)
-          else
-            tha(i,j,k)=0.0
+            tha(i,j,k) = tha(i,j,k) + bptpert*(cos(0.5*pi*beta)**2)
           endif
         enddo
         enddo
         enddo
+
+        IF ( tbubrandpert /= 0.0 ) THEN
+        ! random numbers added here within cylinder circumscribing the ellipsoid
+          ! cm1r17: loop over entire domain so that all threads have same sequence
+  !        write(6,*) 'add perts to bubble'
+          do jj = 0,ny+2
+          do ii = 0,nx+2
+            call random_number(rand)
+            call random_number(rand2)
+            i = ii - myi1 + 1
+            j = jj - myj1 + 1
+            ! check to see if this processor has this gridpoint:
+            IF( i.ge.ib .and. i.le.ie .and. j.ge.jb .and. j.le.je )THEN
+              beta=sqrt( ((xh(i)-ric)/bhrad)**2       &
+                        +((yh(j)-rjc)/byrad)**2 )
+  !            write(6,*) 'beta,i,j = ',beta,i,j,ric,rjc
+              IF ( beta <= 1.0  ) THEN
+  !             write(6,*) 'i,j,rand = ',i,j,var11*2.0*(rand-0.5)
+               do k=1,nk
+                 IF (  Abs( (zh(i,j,k)-zc)/bvrad )  <= 1.0 ) THEN
+                   tha(i,j,k) = tha(i,j,k)+tbubrandpert*2.0*(rand-0.5)
+                 ENDIF
+               enddo
+               ENDIF
+              ENDIF
+          enddo
+          enddo
+        ENDIF
+        
+        ENDDO
 
 !-----------------------------------------------------------------------
 !  iinit = 2

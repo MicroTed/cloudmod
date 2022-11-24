@@ -1178,27 +1178,94 @@
  compile the code.  Then, var1 can be changed in the namelist.input file
  and the initial wind profile will change without needing to re-compile.
 
- Example: A user wants to change the location, size, and amplitude of the 
- initial thermal bubble.  Using the flex vars, the code could be modified in 
- this manner:
-        ric     =    var1
-        rjc     =    var2
-        zc      =    var3
-        bhrad   =    var4
-        bvrad   =    var5
-        bptpert =    var6
-
- and then the values in namelist.input might be set as follows:
-        var1    =  50000.0,
-        var2    =  25000.0,
-        var3    =   2000.0,
-        var4    =  10000.0,
-        var5    =   1000.0,
-        var6    =      1.5,
-
+ Thermal bubble settings are in the 'bubble' namelist (for setting 1 or more bubbles)
+ 
  Notes: - the flex variables are all real (float) variables.
         - the flex variables are automatically passed into most subroutines
           in the model
+
+-------------------------------------------------------------------------
+  bubble section - thermal bubble options
+  
+  This is only used when iinit=1 (thermal bubble initiation)
+  If numbub = 0 (default value), then default settings are used,
+    such as xcbub = xcenter, ycbub = ycenter, tbub = 1.0
+  Must have numbub <= maxbubble (set as 10, but can be changed in input.F)
+  Random perturbations can be added to all bubbles by setting tbubrandpert > 0,
+    where tbubrandpert sets the +/- range of the perturbations. Perts are added
+    only in the bubble footprint. Even if tbub = 0, then the perturbations will still
+    be inserted, which can be used to insert perts when other forcing is used (such
+    as wforce) (based on Ovtchinnikov and Kogan 2000, JAS). A good starting value is 
+    0.1 K.
+    
+    xcbub,ycbub,zcbub : x, y, and z center locations (in meters) of each bubble
+    xradbub,yradbub,zradbub : x, y, and z radii of each bubble (in meters)
+    tbub : center temperature perturbation (Kelvin)
+    
+ Example:
+ 
+&bubble
+          numbub =            1,
+          tbubrandpert =     0.1, 
+          tbub =             1.0,   1.0, 3.0,  
+          xradbub =       10000.0, 1.0e4, 1.0e4, 
+          yradbub =       10000.0, 1.0e4, 1.0e4,
+          zradbub =        1400.0, 1500., 1500.,
+          xcbub =         17000.0, 17000, 5.0e4,
+          ycbub =         10000.0, 30000., 1.1e5,
+          zcbub =          1400.0, 1500., 1500.,
+/
+
+
+-------------------------------------------------------------------------
+  forcing section - Boundary layer updraft acceleration options (Mansell et al. 2010, JAS)
+
+ FORCING namelist
+  Here you can set up one or more ellipsoidal region of vertical forcing, which 
+  induces horizontal convergence.  At the moment, only forcing of W is 
+  available
+  
+  iforce :  0 = no forcing; 1 = forcing on
+  nwfor  : number of forcing regions (separate settings for each region; up to 10 of them)
+  iwforce : 0 = no W forcing;  = W forcing
+  iwshap  : -1 = no forcing in downdraft; 1 = forcing independent of W
+  wfmeso  : value of dW/dt (acceleration, usually on the order of 1e-2 to 6e-2 (6e-2 is pretty strong)
+  twstrt  : integer time (seconds) when forcing starts
+  twstop  : integer time (seconds) for forcing to stop
+  
+  xwfrad, ywfrad, zwfrad : radii (meters) of ellipsoidal vertical acceleration region
+  xwfcen, ywfcen, zwfcen : location (meters) of ellipsoidal vertical acceleration region
+  
+  xwfmov  : x-direction movement of forcing region,
+      -1000 moves region with mean wind in forcing depth (default)
+      -999 moves region with weighted wind in forcing depth
+      See wforce.F for other options or to create custom options
+  ywfmov  : y-direction movement of forcing region, (If xwfmov <= -999, then this is set automatically)
+
+  Of course xwfmov and ywfmov can be set manually, for example by using a trial run with
+    a thermal bubble and tracking the cell movement
+  
+  Random thermal perturbations can be added via the 'bubble' namelist and setting the 
+    same center location, similar (or larger) radii, and a small (or zero) tbub.
+
+Example:
+
+&forcing
+         iforce =           1,
+          nwfor =           1,
+        iwforce =           1, 
+         iwshap =          -1,     -1,   -1,
+         wfmeso =          3.0e-2, 2.0e-2, 4.0e-2
+         xwfrad =          6000.0, 6000., 2.5e3,
+         ywfrad =          6000.0, 6000., 2.5e3,
+         zwfrad =          1500.0, 1000., 1500.,
+         zwfcen =         1500.0,   0.0,    0.0,
+         xwfcen =         17000.0,16000., 8.5e3,
+         ywfcen =         20000.0,20000., 6.0e3,
+         twstrt =          0,      3600,     0,
+         twstop =          1200,   5400,  3600,
+         xwfmov =          -1000., -1000.,-1000.
+/
 
 
 -------------------------------------------------------------------------
