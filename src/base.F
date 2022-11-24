@@ -24,8 +24,8 @@
 
       subroutine base(zh,mh,rmh,c1,c2,zf,mf,rho0s,pi0s,prs0s,rth0s,         &
                       wprof,ufrc,vfrc,thfrc,qvfrc,ug,vg,dvdr,               &
-                      uavg,vavg,thavg,pavg,qavg,ulspg,vlspg,                &
-                      pi0,prs0,rho0,thv0,th0,rth0,qv0,u0,v0,thrd,           &
+                      uavg,vavg,thavg,pavg,qavg,ulspg,vlspg,sigma,          &
+                      pi0,prs0,rho0,thv0,th0,rth0,qv0,u0,v0,u01d,v01d,thrd, &
                       qc0,qi0,rr0,rf0,rrf0,t0  ,rh0 ,                       &
                       reqs_u,reqs_v,reqs_s,nw1,nw2,ne1,ne2,sw1,sw2,se1,se2, &
                       n3w1,n3w2,n3e1,n3e2,s3w1,s3w2,s3e1,s3e2,              &
@@ -57,6 +57,8 @@
       real, dimension(ib:ie,jb:je,kb:ke) :: t0,rh0
       real, dimension(ib:ie+1,jb:je,kb:ke) :: u0
       real, dimension(ib:ie,jb:je+1,kb:ke) :: v0
+      real, intent(inout), dimension(kb:ke) :: u01d,v01d
+      real, intent(in), dimension(kb:ke) :: sigma
       real, intent(inout), dimension(ibb2:ibe2,jbb2:jbe2,kbb2:kbe2) :: thrd
       integer, intent(inout), dimension(rmp) :: reqs_u,reqs_v,reqs_s
       real, intent(inout), dimension(kmt) :: nw1,nw2,ne1,ne2,sw1,sw2,se1,se2
@@ -672,6 +674,31 @@
         if(dowr) write(outfile,*) 'interpolating sounding to grid: '
         if(dowr) write(outfile,*)
 
+        DO k=1,nk
+
+            kk = 1
+            do while( zsnd(kk) .lt. sigma(k) )
+              kk = kk+1
+            enddo
+            kdn = kk-1
+            kup = kk
+
+            zu = sigma(k)
+            interp_frac = (   zu        - zsnd(kdn) )   &
+                        / ( zsnd( kup ) - zsnd(kdn) )
+            uinterp(k) =  usnd(kdn) + ( usnd(kup)- usnd(kdn))*interp_frac
+
+            zv = sigma(k)
+            interp_frac = (   zv        - zsnd(kdn) )   &
+                        / ( zsnd( kup ) - zsnd(kdn) )
+            vinterp(k) =  vsnd(kdn) + ( vsnd(kup)- vsnd(kdn))*interp_frac
+
+            u01d(k) =  uinterp(k)
+            v01d(k) =  vinterp(k)
+
+        ENDDO
+
+
       DO j=jb,je
       DO i=ib,ie
 
@@ -726,6 +753,7 @@
            t0(i,j,k) =  tinterp(k)
           rh0(i,j,k) = rhinterp(k)
         enddo
+
 
         ! get pi0 and prs0 from thv0, using hydrostatic equation
 
@@ -2314,6 +2342,17 @@
         enddo
         enddo
 
+        do k=1,nk
+          zu = sigma(k)
+          if(zu.lt.udep1)then
+            u01d(k)=uconst1
+          elseif(zu.gt.udep1 .and. zu.lt.udep2)then
+            u01d(k)=(uconst2-uconst1)*(zu-udep1)/(udep2-udep1)+uconst1
+          else
+            u01d(k)=uconst2
+          endif
+        enddo
+
 !-----------------------------------------------------------------------
 !  iwnd = 2
 !  Weisman-Klemp type supercell profile
@@ -2341,6 +2380,18 @@
         enddo
         enddo
 
+        do k=1,nk
+          zu = sigma(k)
+          if(zu.le.udep1)THEN
+            ANGLE=90.0*(zu/udep1)*(pi/180.0)
+            u01d(k)=umax1-umax1*cos(ANGLE)
+          elseif(zu.gt.udep1 .and. zu.le.udep2)THEN
+            u01d(k)=umax1+(zu-udep1)*(umax2-umax1)/(udep2-udep1)
+          ELSE
+            u01d(k)=umax2
+          ENDIF
+        enddo
+
         vmax1=umax1
 
         do k=1,nk
@@ -2357,6 +2408,18 @@
           ENDIF
         enddo
         enddo
+        enddo
+
+        do k=1,nk
+          zv=sigma(k)
+          if(zv.le.udep1)THEN
+            ANGLE=90.0*(zv/udep1)*(pi/180.0)
+            v01d(k)=vmax1*SIN(ANGLE)
+          elseif(zv.gt.udep1 .and. zv.le.udep2)THEN
+            v01d(k)=vmax1
+          ELSE
+            v01d(k)=vmax1
+          ENDIF
         enddo
 
 !-----------------------------------------------------------------------
@@ -2669,6 +2732,12 @@
         enddo
         enddo
         enddo
+
+        do k=1,nk
+          u01d(k)=u01d(k)-umove
+          v01d(k)=v01d(k)-vmove
+        enddo
+        
       else
         umove=0.0
         vmove=0.0

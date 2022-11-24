@@ -209,6 +209,14 @@
 
 !-----------------------------------------------------------------------
 
+      integer, parameter :: maxbubble = 10
+      integer :: numbub = 0
+      real    :: tbubrandpert = 0
+      real, dimension(maxbubble) :: tbub = 1.0, xcbub,ycbub,zcbub,            &
+                                    xradbub,yradbub,zradbub
+
+!-----------------------------------------------------------------------
+
       double precision ::                                                     &
            tapfrq,rstfrq,statfrq,prclfrq,diagfrq,azimavgfrq,hifrqfrq
 
@@ -276,6 +284,8 @@
       namelist /param7/ bc_temp,ptc_top,ptc_bot,viscosity,pr_num
       namelist /param8/ var1,var2,var3,var4,var5,var6,var7,var8,var9,var10,   &
                         var11,var12,var13,var14,var15,var16,var17,var18,var19,var20
+      namelist /bubble/ numbub,tbub,tbubrandpert,xcbub,ycbub,zcbub,           &
+                         xradbub,yradbub,zradbub
       namelist /param9/                                                       &
               output_format,output_filetype,                                  &
               output_interp,                                                  &

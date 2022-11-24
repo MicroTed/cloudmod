@@ -121,41 +121,44 @@
 !     general forcing functions
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
-   SUBROUTINE WFORCE(xh,rxh,uh,ruh,xf,rxf,uf,ruf,yh,vh,rvh,yf,vf,rvf,  &
-                     nx,ny,nz,dt,w,wt,fw,u,ut,fu,t0,             &
-                     gxt,gyt,gzt,loop,time,time_real,    &
-                     uinit,vinit,ugrid,vgrid)
+   SUBROUTINE WFORCE(xh,rxh,uh,ruh,xf,rxf,uf,ruf,yh,vh,rvh,yf,vf,rvf,zf,  &
+                     dt,wa,wndgten,fw,u,ut,fu,t0,             &
+                     time_real,    &
+                     u01d,v01d,sigma,sigmaf)
 
 !   USE PARAM_MODULE, only: RKSCHEME,ng,pii,luno,bcy
 #ifdef MPI
 !   USE COMMASMPI_MODULE
 #endif
-      use input ! ib,ie, etc.
-      use constants
+      use input, only: ib,ie,jb,je,kb,ke, ni, nj, nk, ng => ngxy ! ib,ie, etc.
+      use constants, only: pi
 
 !-----------------------------------------------------------------------------
    implicit none
 
-   real, dimension(ib:ie)   :: xh,rxh,uh,ruh
-   real, dimension(ib:ie+1) :: xf,rxf,uf,ruf
-   real, dimension(jb:je)   :: yh,vh,rvh
-   real, dimension(jb:je+1) :: yf,vf,rvf
+   real, intent(in), dimension(ib:ie)   :: xh,rxh,uh,ruh
+   real, intent(in), dimension(ib:ie+1) :: xf,rxf,uf,ruf
+   real, intent(in), dimension(jb:je)   :: yh,vh,rvh
+   real, intent(in), dimension(jb:je+1) :: yf,vf,rvf
+   real, intent(in), dimension(kb:ke)   :: sigma,sigmaf
+      real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: wa
+      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: wndgten
 
    integer :: nx,ny,nz
    real    :: dt
-   real    :: w (-ng+1:nx+ng,-ng+1:ny+ng,-ng+1:nz+ng) ! for Naylor forcing
-   real    :: wt(-ng+1:nx+ng,-ng+1:ny+ng,-ng+1:nz+ng) ! for Naylor forcing
-   real    :: fw(-ng+1:nx+ng,-ng+1:ny+ng,-ng+1:nz+ng) ! w tendency (for updraft acceleration term)
-   real    :: u (-ng+1:nx+ng,-ng+1:ny+ng,-ng+1:nz+ng) ! for u forcing
-   real    :: ut(-ng+1:nx+ng,-ng+1:ny+ng,-ng+1:nz+ng)
-   real    :: fu(-ng+1:nx+ng,-ng+1:ny+ng,-ng+1:nz+ng) ! U tendency
-   real    :: t0(-ng+1:nx+ng,-ng+1:ny+ng,-ng+1:nz+ng) ! work array
-   real    :: gxt(-ng+1:nx+ng,4), gyt(-ng+1:ny+ng,4), gzt(-ng+1:nz+ng,4) ! axis grid lengths
-   real    :: uinit(-ng+1:nz+ng), vinit(-ng+1:nz+ng) ! base state u and v 
-   real    :: ugrid, vgrid ! grid motion vector
-   integer :: loop
-   integer :: time
-   real    :: time_real
+   real    :: w (ib:ie,jb:je,kb:ke) ! for Naylor forcing
+   real    :: wt(ib:ie,jb:je,kb:ke) ! for Naylor forcing
+   real    :: fw(ib:ie,jb:je,kb:ke) ! w tendency (for updraft acceleration term)
+   real    :: u (ib:ie,jb:je,kb:ke) ! for u forcing
+   real    :: ut(ib:ie,jb:je,kb:ke)
+   real    :: fu(ib:ie,jb:je,kb:ke) ! U tendency
+   real    :: t0(ib:ie,jb:je,kb:ke) ! work array
+   real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: zf
+!   real    :: gxt(-ng+1:nx+ng,4), gyt(-ng+1:ny+ng,4), gzt(-ng+1:nz+ng,4) ! axis grid lengths
+   real, intent(in)    :: u01d(kb:ke), v01d(kb:ke) ! base state u and v 
+!   integer :: loop
+!   integer :: time
+   double precision    :: time_real
    
    integer :: n
    integer :: i,j,k
@@ -167,10 +170,8 @@
 
 !-----------------------------------------------------------------------------
 ! MPI LOCAL VARIABLES
-#ifdef MPI
    integer :: ixb, jyb, kzb
    integer :: ixe, jye, kze
-#endif
 
 !-----------------------------------------------------------------------------
 
@@ -192,47 +193,44 @@
        u1 = 0.0
        v1 = 0.0
 
-#ifdef MPI
-       kzb = -ng+1
-       kze = ktile+ng
-       if (kzbeg .eq. nzbeg) kzb = 1
-       if (kzend .eq. nzend) kze = kzend-kzbeg
+!       kzb = -ng+1
+!       kze = ktile+ng
+!       if (kzbeg .eq. nzbeg) kzb = 1
+!       if (kzend .eq. nzend) kze = kzend-kzbeg
     
-       do k = kzb,kze
-#else
-       DO k = 1,nz-1
-#endif
-        z = gzt(k,1)
+       do k = 1,nk-1
+
+        z = sigma(k) 
 
          radius = sqrt(((z-zwfcen(n))/zwfrad(n))**2)
       
        IF ( radius .lt. 1.0 ) THEN
        
         IF ( xwfmov(n) .eq. -999. ) THEN       ! weighted mean wind in forcing depth
-         u1 = u1 + (uinit(k) - ugrid)*(cos(pii*radius)+1.)/2./gzt(k,3)
-         v1 = v1 + (vinit(k) - vgrid)*(cos(pii*radius)+1.)/2./gzt(k,3)
-         wtot = wtot + (cos(pii*radius)+1.)/2./gzt(k,3)
+         u1 = u1 + u01d(k)*(cos(pi*radius)+1.)/2.*(sigmaf(k)-sigmaf(k-1))
+         v1 = v1 + v01d(k)*(cos(pi*radius)+1.)/2.*(sigmaf(k)-sigmaf(k-1))
+         wtot = wtot + (cos(pi*radius)+1.)/2.*(sigmaf(k)-sigmaf(k-1))
         ELSEIF ( xwfmov(n) .eq. -1000. ) THEN  ! mean wind in forcing depth
-         u1 = u1 + (uinit(k) - ugrid)/gzt(k,3)
-         v1 = v1 + (vinit(k) - vgrid)/gzt(k,3)
-         wtot = wtot + 1./gzt(k,3)
+         u1 = u1 + u01d(k)*(sigmaf(k)-sigmaf(k-1))
+         v1 = v1 + v01d(k)*(sigmaf(k)-sigmaf(k-1))
+         wtot = wtot + 1.*(sigmaf(k)-sigmaf(k-1))
         ENDIF
        ELSEIF ( xwfmov(n) .eq. -1001. ) THEN ! mean wind through depth of domain
-         u1 = u1 + (uinit(k) - ugrid)/gzt(k,3)
-         v1 = v1 + (vinit(k) - vgrid)/gzt(k,3)
-         wtot = wtot + 1./gzt(k,3)
+         u1 = u1 + u01d(k)*(sigmaf(k)-sigmaf(k-1))
+         v1 = v1 + v01d(k)*(sigmaf(k)-sigmaf(k-1))
+         wtot = wtot + 1.*(sigmaf(k)-sigmaf(k-1))
        ELSEIF ( xwfmov(n) .eq. -1002. .and. z .lt. 10.e3 ) THEN ! mean wind through 10 km
-         u1 = u1 + (uinit(k) - ugrid)/gzt(k,3)
-         v1 = v1 + (vinit(k) - vgrid)/gzt(k,3)
-         wtot = wtot + 1./gzt(k,3)
+         u1 = u1 + u01d(k)*(sigmaf(k)-sigmaf(k-1))
+         v1 = v1 + v01d(k)*(sigmaf(k)-sigmaf(k-1))
+         wtot = wtot + 1.*(sigmaf(k)-sigmaf(k-1))
        ELSEIF ( xwfmov(n) .eq. -1002. .and. z .lt. 6.e3 ) THEN ! mean wind through 6 km
-         u1 = u1 + (uinit(k) - ugrid)/gzt(k,3)
-         v1 = v1 + (vinit(k) - vgrid)/gzt(k,3)
-         wtot = wtot + 1./gzt(k,3)
+         u1 = u1 + u01d(k)*(sigmaf(k)-sigmaf(k-1))
+         v1 = v1 + v01d(k)*(sigmaf(k)-sigmaf(k-1))
+         wtot = wtot + 1.*(sigmaf(k)-sigmaf(k-1))
        ELSEIF ( xwfmov(n) .eq. -1003. .and. z .gt. 5.e3 .and. z .lt. 10.e3 ) THEN ! mean wind 5-10 km
-         u1 = u1 + (uinit(k) - ugrid)/gzt(k,3)
-         v1 = v1 + (vinit(k) - vgrid)/gzt(k,3)
-         wtot = wtot + 1./gzt(k,3)
+         u1 = u1 + u01d(k)*(sigmaf(k)-sigmaf(k-1))
+         v1 = v1 + v01d(k)*(sigmaf(k)-sigmaf(k-1))
+         wtot = wtot + 1.*(sigmaf(k)-sigmaf(k-1))
        ENDIF
        
       ENDDO
@@ -240,7 +238,7 @@
        xwfmov(n) = u1/wtot
        ywfmov(n) = v1/wtot
        
-       write(luno,*) 'wforce: n, xwfmov, ywfmov = ',n,xwfmov(n),ywfmov(n)
+       write(6,*) 'wforce: n, xwfmov, ywfmov = ',n,xwfmov(n),ywfmov(n),ib,ie,jb,je
       
       ENDIF
 
@@ -277,39 +275,14 @@
 !     IF ( time .ge. twstrt(n) .and. time .le. twstop(n) ) THEN
       IF ( idofor(n) .eq. 1 ) THEN
 
-#ifdef MPI
-       kzb = -ng+1
-       kze = ktile+ng
-       if (kzbeg .eq. nzbeg) kzb = 1
-       if (kzend .eq. nzend) kze = kzend-kzbeg
+       DO k = 1,nk-1
+        z = sigma(k)
+        DO j = jb,je
+         y = yh(j)
+         DO i = ib,ie
+          x = xh(i)
 
-       jyb = -ng+1
-       jye = jtile+ng
-       if (jybeg .eq. nybeg) jyb = 1
-       if (jyend .eq. nyend) jye = jyend-jybeg
-
-       ixb = -ng+1
-       ixe = itile+ng
-       if (ixbeg .eq. nxbeg) ixb = 1
-       if (ixend .eq. nxend) ixe = ixend-ixbeg
-
-       do k = kzb,kze
-        z = gzt(k,1)
-        
-        do j = jyb,jye
-        y = gyt(j,1)
-         
-         do i = ixb,ixe
-         x = gxt(i,1)
-#else
-       DO k = 1,nz-1
-        z = gzt(k,1)
-        DO j = 1,ny-1
-         y = gyt(j,1)
-         DO i = 1,nx-1
-          x = gxt(i,1)
-#endif
-         IF ( ny .gt. 2 ) THEN
+         IF ( nj .gt. 2 ) THEN
          radius = sqrt(((x-xwfcennew(n))/xwfrad(n))**2  &
                       +((y-ywfcennew(n))/ywfrad(n))**2  &
                       +((z-zwfcen(n))/zwfrad(n))**2)
@@ -321,15 +294,15 @@
        IF ( radius .lt. 1.0 ) THEN
 !       IF ( iwshap(n) .lt. 0 .and. dist .le. 1.0 ) THEN
         IF ( iwshap(n) .eq. 1 ) THEN
-!         fw(i,j,k) = fw(i,j,k) + wfmeso(n)*(cos(pii*radius)+1.)/2.
+!         fw(i,j,k) = fw(i,j,k) + wfmeso(n)*(cos(pi*radius)+1.)/2.
          IF ( wfmeso(n) .gt. 0.0 ) THEN
-           t0(i,j,k) = Max(t0(i,j,k), wfmeso(n)*(cos(pii*radius)+1.)/2.)
+           t0(i,j,k) = Max(t0(i,j,k), wfmeso(n)*(cos(pi*radius)+1.)/2.)
          ELSE
-           t0(i,j,k) = wfmeso(n)*(cos(pii*radius)+1.)/2.
+           t0(i,j,k) = wfmeso(n)*(cos(pi*radius)+1.)/2.
          ENDIF
         ELSEIF ( iwshap(n) .eq. -1 .and. w(i,j,k) .ge. -0.1 ) THEN
-!         fw(i,j,k) = fw(i,j,k) + wfmeso(n)*(cos(pii*radius)+1.)/2.
-          t0(i,j,k) = Max(t0(i,j,k), wfmeso(n)*(cos(pii*radius)+1.)/2.)
+!         fw(i,j,k) = fw(i,j,k) + wfmeso(n)*(cos(pi*radius)+1.)/2.
+          t0(i,j,k) = Max(t0(i,j,k), wfmeso(n)*(cos(pi*radius)+1.)/2.)
         ENDIF
 !       ENDIF
        ENDIF
@@ -344,69 +317,12 @@
       
 !     IF ( time .ge. twstrt(n) .and. time .le. twstop(n) ) THEN
       IF ( idofor(n) .eq. 1 ) THEN
-
-#ifdef MPI
-       kzb = -ng+1
-       kze = ktile+ng
-       if (kzbeg .eq. nzbeg) kzb = 1
-       if (kzend .eq. nzend) kze = kzend-kzbeg
-
-       jyb = -ng+1
-       jye = jtile+ng
-       if (jybeg .eq. nybeg) jyb = 1
-       if (jyend .eq. nyend) jye = jyend-jybeg
-
-       ixb = -ng+1
-       ixe = itile+ng
-       if (ixbeg .eq. nxbeg) ixb = 1
-       if (ixend .eq. nxend) ixe = ixend-ixbeg
-
-       do k = kzb,kze
-        z = gzt(k,1)
-        
-        do j = jyb,jye
-        y = gyt(j,1)
-         
-         do i = ixb,ixe
-         x = gxt(i,1)
-#else
-       DO k = 1,nz-1
-        z = gzt(k,1)
-        DO j = 1,ny-1
-         y = gyt(j,1)
-         DO i = 1,nx-1
-          x = gxt(i,1)
-#endif
-         IF ( ny .gt. 2 ) THEN
-         radius = sqrt(((x-xwfcennew(n))/xwfrad(n))**2  &
-                      +((y-ywfcennew(n))/ywfrad(n))**2  &
-                      +((z-zwfcen(n))/zwfrad(n))**2)
-         ELSE
-         radius = sqrt(((x-xwfcennew(n))/xwfrad(n))**2  &
-                      +((z-zwfcen(n))/zwfrad(n))**2)
-         ENDIF
-
-       IF ( radius .lt. 1.0 ) THEN
-!       IF ( iwshap(n) .lt. 0 .and. dist .le. 1.0 ) THEN
-        IF ( iwshap(n) .eq. 2 ) THEN
-!         fw(i,j,k) = fw(i,j,k) + wfmeso(n)*(cos(pii*radius)+1.)/2.
-           t0(i,j,k) = wfmeso(n)*Max(0.0, 10.0*(cos(pii*radius)+1.)/2. - wt(i,j,k) )
-        ELSEIF ( iwshap(n) .eq. -2  ) THEN
-           t0(i,j,k) =(wfmeso(n))*Max(0.0, 10.0*(cos(pii*radius)+1.)/2. - w(i,j,k) )
-!         fw(i,j,k) = fw(i,j,k) + wfmeso(n)*(cos(pii*radius)+1.)/2.
-!          t0(i,j,k) = Max(t0(i,j,k), wfmeso(n)*(cos(pii*radius)+1.)/2.)
-        ENDIF
-!       ENDIF
-       ENDIF
-
-         ENDDO
-        ENDDO
-       ENDDO
       
       ENDIF
  
       ELSEIF ( abs(iwshap(n)) .eq. 3 ) THEN ! nudge U (for workshop squall line case)
       
+#if 0
 !     IF ( time .ge. twstrt(n) .and. time .le. twstop(n) ) THEN
       IF ( idofor(n) .eq. 1 ) THEN
 
@@ -415,38 +331,13 @@
         gamma = 1.0+(0.0-1.0)*( time_real - (twstop(n)-300.) )/(300.)
       ENDIF
 
-#ifdef MPI
-       kzb = -ng+1
-       kze = ktile+ng
-       if (kzbeg .eq. nzbeg) kzb = 1
-       if (kzend .eq. nzend) kze = kzend-kzbeg
+       DO k = 1,nk-1
+        z = sigma(k)
+        DO j = jb,je
+         y = yh(j)
+         DO i = ib,ie
+          x = xh(i)
 
-       jyb = -ng+1
-       jye = jtile+ng
-       if (jybeg .eq. nybeg) jyb = 1
-       if (jyend .eq. nyend) jye = jyend-jybeg
-
-       ixb = -ng+1
-       ixe = itile+ng
-       if (ixbeg .eq. nxbeg) ixb = 1
-       if (ixend .eq. nxend) ixe = ixend-ixbeg
-
-       do k = kzb,kze
-        z = gzt(k,1)
-        
-        do j = jyb,jye
-        y = gyt(j,1)
-         
-         do i = ixb,ixe
-         x = gxt(i,1)
-#else
-       DO k = 1,nz-1
-        z = gzt(k,1)
-        DO j = 1,ny-1
-         y = gyt(j,1)
-         DO i = 1,nx-1
-          x = gxt(i,1)
-#endif
 !         IF ( ny .gt. 2 ) THEN
 !         radius = sqrt(((x-xwfcen(n))/xwfrad(n))**2  &
 !                      +((y-ywfcen(n))/ywfrad(n))**2  &
@@ -457,76 +348,39 @@
                       +((z-zwfcen(n))/zwfrad(n))**2)
 !         ENDIF
 
-!        IF ( Abs(x-xwfcennew(n)) < xwfrad(n) .and. Abs(z - zwfcen(n)) < zwfrad(n) ) THEN
         IF ( ( bcy == 2 .and. Abs(x-xwfcennew(n)) < xwfrad(n) .and.  z < zwfrad(n) ) .or. &
      &       ( Abs(y-ywfcennew(n))/ywfrad(n) <= 1. .and. Abs(x-xwfcennew(n)) < xwfrad(n) .and.  z < zwfrad(n) )   ) THEN
-!        IF ( radius < 1. ) THEN
-!          uten1(i,j,k)=uten1(i,j,k)+0.10*gamma           &
-!                       *cos(0.5*pi*(xh(i)-0.0)/10000.0)  &
-!                       *((cosh(2.5*(zh(i,j,k)-0.0)/10000.0))**(-2))
 
          IF ( abs( u(i,j,k) ) <= umaxmeso(n) ) THEN
          fu(i,j,k) = fu(i,j,k) + ufmeso(n)*gamma           &
-                       *cos(0.5*pii*(x-xwfcennew(n))/xwfrad(n))  &
+                       *cos(0.5*pi*(x-xwfcennew(n))/xwfrad(n))  &
                        *((cosh(2.5*z/zwfrad(n)))**(-2))
 !                       *((cosh(2.5*(z-zwfcen(n))/zwfrad(n)))**(-2))
          ENDIF
         ENDIF
+
 
          ENDDO
         ENDDO
        ENDDO
       
       ENDIF
+#endif
 
      ENDIF ! iwshap
    
    ENDDO
 
-#ifdef MPI
-    kzb = -ng+1
-    kze = ktile+ng
-    if (kzbeg .eq. nzbeg) kzb = 1
-    if (kzend .eq. nzend) kze = kzend-kzbeg
-
-    jyb = -ng+1
-    jye = jtile+ng
-    if (jybeg .eq. nybeg) jyb = 1
-    if (jyend .eq. nyend) jye = jyend-jybeg
-
-    ixb = -ng+1
-    ixe = itile+ng
-    if (ixbeg .eq. nxbeg) ixb = 1
-    if (ixend .eq. nxend) ixe = ixend-ixbeg
-
-    do k = kzb,kze ; do j = jyb,jye ; do i = ixb,ixe
-#else
-    DO k = 1,nz-1
-     DO j = 1,ny-1
-      DO i = 1,nx-1
-#endif
-        fw(i,j,k) = fw(i,j,k) + t0(i,j,k)
-        
+    DO k = 1,nk-1
+      DO j = jb,je
+        DO i = ib,ie
+         fw(i,j,k) = fw(i,j,k) + t0(i,j,k)
+        ENDDO
       ENDDO
-     ENDDO
     ENDDO
     
     ENDIF ! work_to_do
 
-!   DO n = 1,nwfor
-!    IF ( loop .eq. RKSCHEME ) THEN
-!       IF ( Abs(xwfmov(n)) .lt. 900. ) THEN
-!        xwfcen(n) = xwfcen(n) + dt*xwfmov(n)
-!!        print*, 'Update xwfcen(',n,') = ',xwfcen(n),dt,xwfmov(n)
-!       ENDIF
-!       IF ( Abs(ywfmov(n)) .lt. 900. ) THEN
-!        ywfcen(n) = ywfcen(n) + dt*ywfmov(n)
-!       ENDIF
-!       IF ( Abs(zwfmov(n)) .lt. 900. ) THEN
-!        zwfcen(n) = zwfcen(n) + dt*zwfmov(n)
-!       ENDIF
-!     ENDIF
-!   ENDDO
    
    RETURN
    

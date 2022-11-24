@@ -24,6 +24,7 @@
                        ww31,ww32,we31,we32,ws31,ws32,wn31,wn32)
       use input
       use constants
+      use force_module
       use index_module
       use init_terrain_module
       use bc_module
@@ -38,29 +39,10 @@
       use module_mp_graupel
       use module_mp_p3, only : p3_init
       use module_mp_jensen_ishmael, only : jensen_ishmael_init
-      use module_mp_nssl_2mom, only:    &
-                        nssl_2mom_init, &
-                        rho_qr,         &
-                        cnor,           &
-                        rho_qs,         &
-                        cnos,           &
-                        rho_qh,         &
-                        cnoh,           &
-                        ccn,            &
-                        infall,         &
-                        alphah,         &
-                        alphahl,        &
-                        imurain,        &
-                        icdx,           &
-                        icdxhl,         &
-                        dfrz,           &
-                        hldnmn,         &
-                        iferwisventr,   &
-                        iehw,iehlw,     &
-                        ehw0,ehlw0,     &
-                        dmrauto,        &
-                        inucopt,        &
-                        ioldlimiter
+      use module_mp_nssl_2mom, only: nssl_2mom_init, rho_qr, cnor, rho_qs,     &
+                        cnos, rho_qh, cnoh, ccn, infall, alphah, alphahl,      &
+                        imurain, icdx, icdxhl, dfrz, hldnmn, iferwisventr,     &
+                        iehw, iehlw,ehw0, ehlw0, dmrauto, inucopt, ioldlimiter
       use goddard_module, only : consat,consat2
       use lfoice_module, only : lfoice_init
       implicit none
@@ -162,6 +144,30 @@
                         dmrauto,        &
                         ioldlimiter
 
+   NAMELIST /forcing/                   &
+                        iforce,         &
+                        twstrt,twstop,  &
+!                        iforcetyp,      &
+                        nwfor,          &
+                        iwforce,        &
+                        iwshap,         &
+!                        ivshap,         &
+!                        iushap,         &
+!                        iqshap,         &
+!                        itshap,         &
+!                        isshap,isslcl,  &
+                        wfmeso,         &
+!                        ufmeso,umaxmeso,&
+                        xwfcen,         &
+                        ywfcen,         &
+                        zwfcen,         &
+                        xwfrad,         &
+                        ywfrad,         &
+                        zwfrad,         &
+                        xwfmov,         &
+                        ywfmov,         &
+                        zwfmov         
+ 
 !--------------------------------------------------------------
 
 #ifdef MPI
@@ -287,6 +293,7 @@
       read(20,nml=param21,end=721)
 721   continue
       rewind(20)
+
 
       close(unit=20)
 
@@ -672,6 +679,17 @@
       call MPI_BCAST(nssl3moment,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
       ENDIF
 #endif
+
+      open(unit=20,file='namelist.input',form='formatted',status='old',    &
+           access='sequential',err=8000)
+      read(20,nml=forcing,end=722)
+722   continue
+      rewind(20)
+      read(20,nml=bubble,end=723)
+723   continue
+      rewind(20)
+
+      close(unit=20)
 
 !-----------------------------------------------------------------------
 !  Set constants:
