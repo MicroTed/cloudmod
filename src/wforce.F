@@ -322,7 +322,7 @@
  
       ELSEIF ( abs(iwshap(n)) .eq. 3 ) THEN ! nudge U (for workshop squall line case)
       
-#if 0
+! #if 0
 !     IF ( time .ge. twstrt(n) .and. time .le. twstop(n) ) THEN
       IF ( idofor(n) .eq. 1 ) THEN
 
@@ -348,7 +348,7 @@
                       +((z-zwfcen(n))/zwfrad(n))**2)
 !         ENDIF
 
-        IF ( ( bcy == 2 .and. Abs(x-xwfcennew(n)) < xwfrad(n) .and.  z < zwfrad(n) ) .or. &
+        IF (  &
      &       ( Abs(y-ywfcennew(n))/ywfrad(n) <= 1. .and. Abs(x-xwfcennew(n)) < xwfrad(n) .and.  z < zwfrad(n) )   ) THEN
 
          IF ( abs( u(i,j,k) ) <= umaxmeso(n) ) THEN
@@ -365,7 +365,7 @@
        ENDDO
       
       ENDIF
-#endif
+! #endif
 
      ENDIF ! iwshap
    

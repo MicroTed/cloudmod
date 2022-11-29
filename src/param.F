@@ -24,7 +24,29 @@
                        ww31,ww32,we31,we32,ws31,ws32,wn31,wn32)
       use input
       use constants
-      use force_module
+      use force_module, only :                  &
+                        iforce,         &
+                        twstrt,twstop,  &
+!                        iforcetyp,      &
+                        nwfor,          &
+                        iwforce,        &
+                        iwshap,         &
+!                        ivshap,         &
+!                        iushap,         &
+!                        iqshap,         &
+!                        itshap,         &
+!                        isshap,isslcl,  &
+                        wfmeso,         &
+                        ufmeso,umaxmeso,&
+                        xwfcen,         &
+                        ywfcen,         &
+                        zwfcen,         &
+                        xwfrad,         &
+                        ywfrad,         &
+                        zwfrad,         &
+                        xwfmov,         &
+                        ywfmov,         &
+                        zwfmov 
       use index_module
       use init_terrain_module
       use bc_module
@@ -157,7 +179,7 @@
 !                        itshap,         &
 !                        isshap,isslcl,  &
                         wfmeso,         &
-!                        ufmeso,umaxmeso,&
+                        ufmeso,umaxmeso,&
                         xwfcen,         &
                         ywfcen,         &
                         zwfcen,         &
