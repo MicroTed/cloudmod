@@ -62,7 +62,7 @@
                         zh,mh,rmh,zf,mf,rmf,rho0s,pi0s,prs0s,             &
                         pi0,prs0,rho0,thv0,th0,rth0,qv0,                  &
                         u0,v0,qc0,qi0,rr0,rf0,rrf0,                       &
-                        rain,sws,svs,sps,srs,sgs,sus,shs,                 &
+                        rain,hail,sws,svs,sps,srs,sgs,sus,shs,            &
                         thflux,qvflux,cd,ch,cq,f2d,                       &
                         dum1,dum2,dum3,dum4,divx,rho,prs,                 &
                         rru,ua,u3d,uten,uten1,rrv,va,v3d,vten,vten1,      &
@@ -101,7 +101,7 @@
       real, dimension(ib:ie,jb:je) :: rho0s,pi0s,prs0s
       real, dimension(ib:ie,jb:je,kb:ke) :: pi0,prs0,rho0,thv0,th0,rth0,qv0
       real, dimension(ib:ie,jb:je,kb:ke) :: qc0,qi0,rr0,rf0,rrf0
-      real, dimension(ib:ie,jb:je,nrain) :: rain,sws,svs,sps,srs,sgs,sus,shs
+      real, dimension(ib:ie,jb:je,nrain) :: rain,hail,sws,svs,sps,srs,sgs,sus,shs
       real, dimension(ib:ie,jb:je) :: thflux,qvflux,cd,ch,cq,f2d
       real, dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2,dum3,dum4
       real, dimension(ib:ie,jb:je,kb:ke) :: divx,rho,prs
@@ -185,6 +185,7 @@
       do i=ib,ie
         ! these are all positive-definite, so set initial value to zero:
         rain(i,j,n)=0.0
+        hail(i,j,n)=0.0
         sws(i,j,n)=0.0
         srs(i,j,n)=0.0
         sgs(i,j,n)=0.0
@@ -516,17 +517,30 @@
                     ((xh(i)-ric)/bhrad)**2       &
                    +((yh(j)-rjc)/byrad)**2       &
                    +((zh(i,j,k)-zc)/bvrad)**2)
-          if(beta.lt.1.0)then
-            tha(i,j,k) = tha(i,j,k) + bptpert*(cos(0.5*pi*beta)**2)
+          if (beta.lt.1.0) then
+            ! use largest perturbation rather than adding if there are overlaps
+            tha(i,j,k) = Max( tha(i,j,k), tha(i,j,k) + bptpert*(cos(0.5*pi*beta)**2) )
           endif
         enddo
         enddo
         enddo
+        
+        ENDDO
+
 
         IF ( tbubrandpert /= 0.0 ) THEN
-        ! random numbers added here within cylinder circumscribing the ellipsoid
+        ! random numbers added here within cylinder circumscribing each ellipsoid
           ! cm1r17: loop over entire domain so that all threads have same sequence
   !        write(6,*) 'add perts to bubble'
+        DO n = 1,numbub
+        
+        ric     =  xcbub(n)   ! center of bubble in x-direction (m)
+        rjc     =  ycbub(n)   ! center of bubble in y-direction (m)
+        zc      =  zcbub(n)   ! height of center of bubble above ground (m)
+        bhrad   =  xradbub(n)  ! horizontal radius of bubble (m)
+        byrad   =  yradbub(n)  ! horizontal radius of bubble (m)
+        bvrad   =  zradbub(n)  ! vertical radius of bubble (m)
+
           do jj = 0,ny+2
           do ii = 0,nx+2
             call random_number(rand)
@@ -549,9 +563,10 @@
               ENDIF
           enddo
           enddo
-        ENDIF
         
         ENDDO
+
+        ENDIF
 
 !-----------------------------------------------------------------------
 !  iinit = 2
