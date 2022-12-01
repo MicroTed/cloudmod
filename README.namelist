@@ -470,7 +470,9 @@
 
              6 = Rotunno-Emanuel (1987) simple water-only scheme
 
-            (Note: options 26,27,28 use namelist nssl2mom_params, see below)
+            (Note: options 26,27,28 use namelist nssl2mom_params, see below and 
+                   README.NSSLmp
+                   3-moment option can be activated with nssl3moment = .true.)
              26 = NSSL 2-moment scheme (graupel-only, no hail); 
                   graupel density predicted
              27 = NSSL 2-moment scheme (graupel and hail); 
@@ -486,6 +488,11 @@
 
              55 = Jensen's ISHMAEL (Ice-Spheroids Habit Model with Aspect-ratio Evolution)
 
+ nssl3moment - logical (default = .false.) Works with ptype 26 and 27 to turn on 
+              the reflectivity moments for rain and graupel (ptype=26/27) and for 
+              hail (ptype=27) Includes option for bin-emulating melting 
+              (Mansell et al. 2020; see README.NSSLmp)
+ 
  ihail - Use hail or graupel for large ice category when ptype=2,5.
           (Goddard-LFO and Morrison schemes only)
              1 = hail
@@ -1201,6 +1208,63 @@
           in the model
 
 
+
+-------------------------------------------------------------------------
+  forcing section - Boundary layer updraft acceleration options (Mansell et al. 2010, JAS)
+
+ FORCING namelist
+  Here you can set up one or more ellipsoidal region of vertical forcing, which 
+  induces horizontal convergence.  At the moment, only forcing of W is 
+  available
+  
+  iforce :  0 = no forcing; 1 = forcing on
+  nwfor  : number of forcing regions (separate settings for each region; up to 10 of them)
+  iwforce : 0 = no W forcing;  = W forcing
+  iwshap  : -1 = no forcing in downdraft; 1 = forcing independent of W
+  wfmeso  : value of dW/dt (acceleration, usually on the order of 1e-2 to 6e-2 (6e-2 is pretty strong)
+  twstrt  : integer time (seconds) when forcing starts
+  twstop  : integer time (seconds) for forcing to stop
+  
+  xwfrad, ywfrad, zwfrad : radii (meters) of ellipsoidal vertical acceleration region
+  xwfcen, ywfcen, zwfcen : location (meters) of ellipsoidal vertical acceleration region
+  
+  xwfmov  : x-direction movement of forcing region,
+      -1000 moves region with mean wind in forcing depth (default)
+      -999 moves region with weighted wind in forcing depth
+      See wforce.F for other options or to create custom options
+  ywfmov  : y-direction movement of forcing region, (If xwfmov <= -999, then this is set automatically)
+
+  Of course xwfmov and ywfmov can be set manually, for example by using a trial run with
+    a thermal bubble and tracking the cell movement
+
+  Some soundings may require extended forcing (30-40 min or more) until the storm produces
+    sufficient cold pool to sustain itself. Some may also need higher values of wfmeso (10e-2).
+    
+  
+  Random thermal perturbations can be added via the 'bubble' namelist and setting the 
+    same center location, similar (or larger) radii, and a small (or zero) tbub.
+
+Example:
+
+&forcing
+         iforce =           1,
+          nwfor =           1,
+        iwforce =           1, 
+         iwshap =          -1,     -1,   -1,
+         wfmeso =          3.0e-2, 2.0e-2, 4.0e-2
+         xwfrad =          6000.0, 6000., 2.5e3,
+         ywfrad =          6000.0, 6000., 2.5e3,
+         zwfrad =          1500.0, 1000., 1500.,
+         zwfcen =         1500.0,   0.0,    0.0,
+         xwfcen =         17000.0,16000., 8.5e3,
+         ywfcen =         20000.0,20000., 6.0e3,
+         twstrt =          0,      3600,     0,
+         twstop =          1200,   5400,  3600,
+         xwfmov =          -1000., -1000.,-1000.
+/
+
+>>>>>>> 7e8db7e ( Updates to readme files and example namelist.)
+
 -------------------------------------------------------------------------
   param9 section - output options
 
@@ -1645,7 +1709,8 @@
 -------------------------------------------------------------------------
   nssl2mom_params section - parameters/options for NSSL microphysics scheme
     (used only if ptype=26,27,28)
-    Default values are noted. 
+    Default values are noted. There is an additional internal namelist that
+    can be accessed for more options. See README.NSSLmp
   
   rho_qr       - Rain density (1000 kg m**-3)
   rho_qs       - Snow density (100 kg m**-3)

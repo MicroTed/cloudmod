@@ -98,7 +98,7 @@
       real, dimension(:,:,:), allocatable :: dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9
       real, dimension(:,:), allocatable :: zs,gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy
       real, dimension(:,:,:), allocatable :: gx,gxu,gy,gyv
-      real, dimension(:,:,:), allocatable :: rain,sws,svs,sps,srs,sgs,sus,shs
+      real, dimension(:,:,:), allocatable :: rain,hail,sws,svs,sps,srs,sgs,sus,shs
       real, dimension(:,:), allocatable :: tsk,znt,rznt,zntmp,ust,stau,tst,qst,z0t,z0q,thflux,qvflux,  &
                                            cd,ch,cq,u1,v1,s1,t1,xland,psfc,tlh,f2d,psmth,prate,ustt,ut,vt,st,cm0
       real, dimension(:,:), allocatable :: radbcw,radbce
@@ -1473,6 +1473,8 @@
 #endif
       allocate(   rain(ib:ie,jb:je,nrain) )
       rain = 0.0
+      allocate(   hail(ib:ie,jb:je,nrain) )
+      hail = 0.0
       allocate(    sws(ib:ie,jb:je,nrain) )
       sws = 0.0
       allocate(    svs(ib:ie,jb:je,nrain) )
@@ -2355,7 +2357,7 @@
                         zh,mh,rmh,zf,mf,rmf,rho0s,pi0s,prs0s,             &
                         pi0,prs0,rho0,thv0,th0,rth0,qv0,                  &
                         u0,v0,qc0,qi0,rr0,rf0,rrf0,                       &
-                        rain,sws,svs,sps,srs,sgs,sus,shs,                 &
+                        rain,hail,sws,svs,sps,srs,sgs,sus,shs,            &
                         thflux,qvflux,cd,ch,cq,f2d,                       &
                         dum1,dum2,dum3,dum4,divx,rho,prs,                 &
                         rru,ua,u3d,uten,uten1,rrv,va,v3d,vten,vten1,      &
