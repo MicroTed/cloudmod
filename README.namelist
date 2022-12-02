@@ -663,7 +663,7 @@
                     4 = specified in external GrADS file
 
  iinit - 3D initialization option:  0 = no perturbation
-                                    1 = warm bubble
+                                    1 = warm bubble (see 'bubble' namelist for settings)
                                     2 = cold pool
     [additional variables           3 = line of warm bubbles
      need to be set in              4 = initialization for moist benchmark
