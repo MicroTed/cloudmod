@@ -167,6 +167,7 @@
               ntim,ntavr,utav,vtav,wtav,ttav,qtav,etav,uutav,vvtav,           &
               nsfctavr,les_subdomain_shape,ib_init
 
+      integer :: output_n_as_m3 = 0
 !-----------------------------------------------------------------------
 
       real dx,dy,dz,dtl,timax,run_time,                                       &
@@ -304,7 +305,7 @@
               output_radten,output_cape,output_cin,output_lcl,output_lfc,     &
               output_pwat,output_lwp,                                         &
               output_thbudget,output_qvbudget,                                &
-              output_ubudget,output_vbudget,output_wbudget,output_pdcomp
+              output_ubudget,output_vbudget,output_wbudget,output_pdcomp, output_n_as_m3
       namelist /param16/                                                      &
               restart_format,restart_filetype,restart_reset_frqtim,           &
               restart_file_theta,restart_file_dbz,restart_file_th0,           &
