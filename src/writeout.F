@@ -3571,6 +3571,22 @@
                 enddo
                 enddo
                 enddo
+                
+                ! hack to output number per m^3
+                IF ( output_n_as_m3 > 0 ) THEN
+                IF ( trim(qunit(n)) == '#/kg' ) THEN
+                  unit_output(n_out) = '#/m-3'
+                
+! nnc1, nnc2
+                do k=1,maxk
+                do j=1,nj
+                do i=1,ni
+                  dum1(i,j,k) = qa(i,j,k,n)*rho(i,j,k)
+                enddo
+                enddo
+                enddo
+                ENDIF
+                ENDIF
 
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
 
