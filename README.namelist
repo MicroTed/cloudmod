@@ -1226,8 +1226,8 @@
   
   iforce :  0 = no forcing; 1 = forcing on
   nwfor  : number of forcing regions (separate settings for each region; up to 10 of them)
-  iwforce : 0 = no W forcing;  = W forcing
-  iwshap  : -1 = no forcing in downdraft; 1 = forcing independent of W
+  iwforce : 0 = no W forcing; 1 = W forcing
+  iwshap  : -1 = no forcing in downdraft (default) ; 1 = forcing independent of W
   wfmeso  : value of dW/dt (acceleration, usually on the order of 1e-2 to 6e-2 (6e-2 is pretty strong)
   twstrt  : integer time (seconds) when forcing starts
   twstop  : integer time (seconds) for forcing to stop
@@ -1251,7 +1251,7 @@
   Random thermal perturbations can be added via the 'bubble' namelist and setting the 
     same center location, similar (or larger) radii, and a small (or zero) tbub.
 
-Example:
+Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
 &forcing
          iforce =           1,
