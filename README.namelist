@@ -1124,7 +1124,12 @@
  stretch_z - Use vertically stretched grid spacing?  
                0 = no
                1 = Wilhelmson and Chen
-               2 = Smooth geometric
+               2 = Smooth geometric (L. Wicker) Stretch factor, 
+                          dz(k+1) = stretch*dz(k)
+                   is determined iteratively. Max stretch factor 
+                   of 1.1 to limit finite difference errors. If an error
+                   is issued, either increase nz or adjust other parameters
+                   and try again.
                3 = Arbitrary, specified by user in input_grid_z file.
                    Note: this option specifies the heights of scalar
                    levels (also known as "half levels").
@@ -1143,13 +1148,15 @@
  ztop - Total depth of the domain (i.e., the height of the top of the
         domain) (m).
 
- str_bot - Level where stretching begins (m).
+ str_bot - Level where stretching begins (m). For stretch_z=2, this sets the
+           value of nbndlyr = Max(0,Int( str_bot/dz_bot + 0.01) - 1)
 
- str_top - Level where stretching ends (m).  (not used for stretch_z = 2)
+ str_top - Level where stretching ends (m).  (diagnosed iteratively for stretch_z = 2)
 
  dz_bot - Grid spacing at (and below) str_bot (m).
 
- dz_top - Grid spacing at (and above) str_top (m).
+ dz_top - Grid spacing at (and above) str_top (m). For stretch_z=2, this sets
+          the maximum dz (which might not be reached, depending on parameters)
 
 -------------------------------------------------------------------------
   param7 section -- Options relating to Direct Numerical Simulation (DNS)

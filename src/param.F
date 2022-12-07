@@ -8093,8 +8093,8 @@
 ! so ng = 1 and zfw1d(-ng+1:nz+ng)
 ! SUBROUTINE ZGRID(dz, dz_stretch, nz, nbndlyr, gzc, gze, ng, dzmax,ztopstr,rtop,dzmaxtop)
        
-       nbndlyr = Int( str_bot/dz_bot + 0.01) - 1
-       CALL ZGRID(dz, dz_bot, ke, nbndlyr, gzc, gze, 1, dz_top,ztopstr,rtop,dzmaxtop)
+       nbndlyr = Max(0,Int( str_bot/dz_bot + 0.01) - 1)
+       CALL ZGRID(dz, dz_bot, ke, nbndlyr, gzc, gze, 1, dz_top,ztopstr,rtop,dzmaxtop,myid)
        
          IF ( myid == 0 ) THEN
            DO k = 1,ke
@@ -9977,15 +9977,15 @@
 !
 !-------------------------------------------------------------------------------
 
- SUBROUTINE ZGRID(dz, dz_stretch, nz, nbndlyr, gzc, gze, ng, dzmax,ztopstr,rtop,dzmaxtop)
+ SUBROUTINE ZGRID(dz, dz_stretch, nz, nbndlyr, gzc, gze, ng, dzmax,ztopstr,rtop,dzmaxtop,myid)
 
    implicit none
 
 
    real dz, dz_stretch
    real  dzmax,ztopstr,rtop,dzmaxtop
-   integer, intent(in) :: nbndlyr, nz, ng
-   double precision gzc(-ng+1:nz+ng), gze(-ng+1:nz+ng)  ! stay   real gzc(nz), gze(nz)  ??
+   integer, intent(in) :: nbndlyr, nz, ng, myid
+   double precision gzc(-ng+1:nz+ng), gze(-ng+1:nz+ng)
 
 !   real dzmax
 !   parameter( dzmax = 700. )
@@ -10020,13 +10020,17 @@
 
    write(6,*)
    IF( stretch .gt. 1.1 ) THEN
+    IF ( myid == 0 ) THEN
     write(6,*) 'STRETCH FAC TOO BIG! - NUMERICAL ERRORS WILL BE LARGE'
     write(6,*) 'STRETCH FAC  = ',stretch
     write(6,*) 'INCREASE NZ in namelist or increase dz_bot'
+    ENDIF
     call stopcm1
    ELSE
+    IF ( myid == 0 ) THEN
     write(6,*) 'ZGRID:  STRETCH FAC  = ',stretch
     write(6,*) 'ZGRID:  DOMAIN  HGT  = ',ZHEIGHT(dz_stretch,stretch,nz-1,dzmax,nbndlyr,ztopstr,rtop,dzmaxtop)
+    ENDIF
    ENDIF
 
    gze(1) = 0.0

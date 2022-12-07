@@ -3575,7 +3575,7 @@
                 ! hack to output number per m^3
                 IF ( output_n_as_m3 > 0 ) THEN
                 IF ( trim(qunit(n)) == '#/kg' ) THEN
-                  unit_output(n_out) = '#/m-3'
+                  unit_output(n_out) = '#/m3'
                 
 ! nnc1, nnc2
                 do k=1,maxk
