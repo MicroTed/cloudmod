@@ -1,0 +1,62 @@
+Some background information and usage tips for the NSSL microphysics scheme. (work in progress!)
+
+  icdx/icdxhl
+  ehw0,ehlw0
+  ihlcnh -- recommend using 1 for 2-moment (3 makes hail too "hot" in 2-moment), can use 3 for 3-moment (a little more robust)
+  esstem
+
+&nssl_mp_params
+/
+
+
+  rho_qr       - Rain density (1000 kg m**-3)
+  rho_qs       - Snow density (100 kg m**-3)
+  rho_qh       - Graupel/hail density (500 kg m**-3) 
+                 [Only for ptype=28 (single moment)]
+  cnor         - Rain intercept (8.e5 m**-4) 
+                 [Only for ptype=28 (single moment)]
+  cnos         - Snow intercept (3.e6 m**-4) 
+                 [Only for ptype=28 (single moment)]
+  cnoh         - Graupel/hail intercept (4.e5 m**-4) 
+                 [Only for ptype=28 (single moment)]
+
+  ccn          - Initial concentration of cloud condensation nuclei
+                   0.25e+9 maritime
+                   0.6e+9 "low" continental (default)
+                   1.0e+9 "med-high" continental
+                   1.5e+09 - high-extreme continental CCN)
+                 Value sets the concentration at MSL, and an initially
+                 homogeneous number mixing ratio (ccn/1.225) is assumed throughout the depth of
+                 the domain.
+
+  infall       - Two-moment sedimation options (default infall=4 recommended)
+                          ! 0 -> uses number-wgt for N; NO correction applied 
+                                 (results in excessive size sorting)
+                          ! 1 -> uses mass-weighted fallspeed for N ALWAYS 
+                                 (prevents size sorting)
+                          ! 2 -> uses number-wgt for N and mass-weighted 
+                                 correction for N 
+                                 (Method II in Mansell, 2010 JAS)
+                          ! 3 -> uses number-wgt for N and Z-weighted 
+                                 correction for N 
+                                 (Method I in Mansell, 2010 JAS)
+                          ! 4 -> Hybrid of 2 and 3: Uses minimum N from each 
+                                 method (z-wgt and m-wgt corrections) 
+                                 (Method I+II in Mansell, 2010 JAS)
+  alphah       - Shape parameter for graupel (0.0)
+  alphahl      - Shape parameter for hail (1.0)
+  
+  Less-used parameters (see code)
+  icdx         - fall speed option for graupel (3)
+  icdxhl       - fall speed option for hail (3)
+
+  dfrz         - Minimum diameter of new frozen drops (graupel);
+                 default 0.15e-3, but can be set larger (up to 0.5e-5) to produce
+                 larger graupel
+  hldnmn       - Minimum hail particle density (500 kg m**-3) (changed from 750 in r17)
+  iehw,iehlw   - Graupel (iehw) and Hail (iehlw) droplet collection efficiency
+                 options
+  ehw0,ehlw0   - Maximim droplet collection efficiencies for graupel (ehw0=0.75)
+                 and hail (ehlw0=0.75) (changed from 1.0 and 1.0 in r17)
+  dmrauto      - Options for limiting rain autoconversion
+
