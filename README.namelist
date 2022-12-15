@@ -470,7 +470,9 @@
 
              6 = Rotunno-Emanuel (1987) simple water-only scheme
 
-            (Note: options 26,27,28 use namelist nssl2mom_params, see below)
+            (Note: options 26,27,28 use namelist nssl2mom_params, see below and 
+                   README.NSSLmp
+                   3-moment option can be activated with nssl3moment = .true.)
              26 = NSSL 2-moment scheme (graupel-only, no hail); 
                   graupel density predicted
              27 = NSSL 2-moment scheme (graupel and hail); 
@@ -486,6 +488,11 @@
 
              55 = Jensen's ISHMAEL (Ice-Spheroids Habit Model with Aspect-ratio Evolution)
 
+ nssl3moment - logical (default = .false.) Works with ptype 26 and 27 to turn on 
+              the reflectivity moments for rain and graupel (ptype=26/27) and for 
+              hail (ptype=27) Includes option for bin-emulating melting 
+              (Mansell et al. 2020; see README.NSSLmp)
+ 
  ihail - Use hail or graupel for large ice category when ptype=2,5.
           (Goddard-LFO and Morrison schemes only)
              1 = hail
@@ -656,7 +663,7 @@
                     4 = specified in external GrADS file
 
  iinit - 3D initialization option:  0 = no perturbation
-                                    1 = warm bubble
+                                    1 = warm bubble (see 'bubble' namelist for settings)
                                     2 = cold pool
     [additional variables           3 = line of warm bubbles
      need to be set in              4 = initialization for moist benchmark
@@ -1117,7 +1124,12 @@
  stretch_z - Use vertically stretched grid spacing?  
                0 = no
                1 = Wilhelmson and Chen
-               2 = Smooth geometric
+               2 = Smooth geometric (L. Wicker) Stretch factor, 
+                          dz(k+1) = stretch*dz(k)
+                   is determined iteratively. Max stretch factor 
+                   of 1.1 to limit finite difference errors. If an error
+                   is issued, either increase nz or adjust other parameters
+                   and try again.
                3 = Arbitrary, specified by user in input_grid_z file.
                    Note: this option specifies the heights of scalar
                    levels (also known as "half levels").
@@ -1136,13 +1148,15 @@
  ztop - Total depth of the domain (i.e., the height of the top of the
         domain) (m).
 
- str_bot - Level where stretching begins (m).
+ str_bot - Level where stretching begins (m). For stretch_z=2, this sets the
+           value of nbndlyr = Max(0,Int( str_bot/dz_bot + 0.01) - 1)
 
- str_top - Level where stretching ends (m).  (not used for stretch_z = 2)
+ str_top - Level where stretching ends (m).  (diagnosed iteratively for stretch_z = 2)
 
  dz_bot - Grid spacing at (and below) str_bot (m).
 
- dz_top - Grid spacing at (and above) str_top (m).
+ dz_top - Grid spacing at (and above) str_top (m). For stretch_z=2, this sets
+          the maximum dz (which might not be reached, depending on parameters)
 
 -------------------------------------------------------------------------
   param7 section -- Options relating to Direct Numerical Simulation (DNS)
@@ -1227,8 +1241,8 @@
   
   iforce :  0 = no forcing; 1 = forcing on
   nwfor  : number of forcing regions (separate settings for each region; up to 10 of them)
-  iwforce : 0 = no W forcing;  = W forcing
-  iwshap  : -1 = no forcing in downdraft; 1 = forcing independent of W
+  iwforce : 0 = no W forcing; 1 = W forcing
+  iwshap  : -1 = no forcing in downdraft (default) ; 1 = forcing independent of W
   wfmeso  : value of dW/dt (acceleration, usually on the order of 1e-2 to 6e-2 (6e-2 is pretty strong)
   twstrt  : integer time (seconds) when forcing starts
   twstop  : integer time (seconds) for forcing to stop
@@ -1244,11 +1258,15 @@
 
   Of course xwfmov and ywfmov can be set manually, for example by using a trial run with
     a thermal bubble and tracking the cell movement
+
+  Some soundings may require extended forcing (30-40 min or more) until the storm produces
+    sufficient cold pool to sustain itself. Some may also need higher values of wfmeso (10e-2).
+    
   
   Random thermal perturbations can be added via the 'bubble' namelist and setting the 
     same center location, similar (or larger) radii, and a small (or zero) tbub.
 
-Example:
+Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
 &forcing
          iforce =           1,
@@ -1712,7 +1730,8 @@ Example:
 -------------------------------------------------------------------------
   nssl2mom_params section - parameters/options for NSSL microphysics scheme
     (used only if ptype=26,27,28)
-    Default values are noted. 
+    Default values are noted. There is an additional internal namelist that
+    can be accessed for more options. See README.NSSLmp
   
   rho_qr       - Rain density (1000 kg m**-3)
   rho_qs       - Snow density (100 kg m**-3)

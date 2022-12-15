@@ -3571,6 +3571,22 @@
                 enddo
                 enddo
                 enddo
+                
+                ! hack to output number per m^3
+                IF ( output_n_as_m3 > 0 ) THEN
+                IF ( trim(qunit(n)) == '#/kg' ) THEN
+                  unit_output(n_out) = '#/m3'
+                
+! nnc1, nnc2
+                do k=1,maxk
+                do j=1,nj
+                do i=1,ni
+                  dum1(i,j,k) = qa(i,j,k,n)*rho(i,j,k)
+                enddo
+                enddo
+                enddo
+                ENDIF
+                ENDIF
 
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
 
@@ -6680,7 +6696,23 @@
       unit_output(n_out) = 'm/s'
       grid_output(n_out) = 'u'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
 
+        IF ( output_uv_ground == 0 ) THEN
+        
         call   writeu( ua ,unum,urec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out))
+        
+        ELSE
+        
+          do k=1,maxk
+          do j=1,nj
+          do i=1,ni+1
+            dumu(i,j,k) = ua(i,j,k) + umove
+          enddo
+          enddo
+          enddo
+          
+        call   writeu(dumu,unum,urec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out))
+        
+        ENDIF
     endif
 
   !.............................................
@@ -7140,7 +7172,23 @@
       unit_output(n_out) = 'm/s'
       grid_output(n_out) = 'v'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
 
+        IF ( output_uv_ground == 0 ) THEN
+        
         call   writev( va ,vnum,vrec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out))
+        
+        ELSE
+        
+          do k=1,maxk
+          do j=1,nj+1
+          do i=1,ni
+            dumv(i,j,k) = va(i,j,k) + vmove
+          enddo
+          enddo
+          enddo
+        
+        call   writev(dumv,vnum,vrec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out))
+        
+        ENDIF
     endif
 
   !.............................................

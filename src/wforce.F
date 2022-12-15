@@ -149,9 +149,10 @@
    real    :: w (ib:ie,jb:je,kb:ke) ! for Naylor forcing
    real    :: wt(ib:ie,jb:je,kb:ke) ! for Naylor forcing
    real    :: fw(ib:ie,jb:je,kb:ke) ! w tendency (for updraft acceleration term)
-   real    :: u (ib:ie,jb:je,kb:ke) ! for u forcing
-   real    :: ut(ib:ie,jb:je,kb:ke)
-   real    :: fu(ib:ie,jb:je,kb:ke) ! U tendency
+   real    :: u (ib:ie+1,jb:je,kb:ke) ! ua for u forcing
+   real    :: ut(ib:ie+1,jb:je,kb:ke) ! u3d
+!      real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: rru,ua,u3d,uten,uten1
+   real    :: fu(ib:ie+1,jb:je,kb:ke) ! uten U tendency
    real    :: t0(ib:ie,jb:je,kb:ke) ! work array
    real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: zf
 !   real    :: gxt(-ng+1:nx+ng,4), gyt(-ng+1:ny+ng,4), gzt(-ng+1:nz+ng,4) ! axis grid lengths
@@ -322,7 +323,7 @@
  
       ELSEIF ( abs(iwshap(n)) .eq. 3 ) THEN ! nudge U (for workshop squall line case)
       
-#if 0
+! #if 0
 !     IF ( time .ge. twstrt(n) .and. time .le. twstop(n) ) THEN
       IF ( idofor(n) .eq. 1 ) THEN
 
@@ -348,7 +349,7 @@
                       +((z-zwfcen(n))/zwfrad(n))**2)
 !         ENDIF
 
-        IF ( ( bcy == 2 .and. Abs(x-xwfcennew(n)) < xwfrad(n) .and.  z < zwfrad(n) ) .or. &
+        IF (  &
      &       ( Abs(y-ywfcennew(n))/ywfrad(n) <= 1. .and. Abs(x-xwfcennew(n)) < xwfrad(n) .and.  z < zwfrad(n) )   ) THEN
 
          IF ( abs( u(i,j,k) ) <= umaxmeso(n) ) THEN
@@ -365,7 +366,7 @@
        ENDDO
       
       ENDIF
-#endif
+! #endif
 
      ENDIF ! iwshap
    
