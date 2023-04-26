@@ -1883,11 +1883,23 @@
       rad2d = 0.0
 
       allocate(  effc(ibr:ier,jbr:jer,kbr:ker) )
-      effc = 25.0
+      if (radopt.eq.1) then
+       effc = 25.0
+      else
+       effc = 25.0e-6
+      endif
       allocate(  effi(ibr:ier,jbr:jer,kbr:ker) )
-      effi = 25.0
+      if (radopt.eq.1) then
+       effi = 25.0
+      else
+       effi = 25.0e-6
+      endif
       allocate(  effs(ibr:ier,jbr:jer,kbr:ker) )
-      effs = 25.0
+      if (radopt.eq.1) then
+       effs = 25.0
+      else
+       effs = 25.0e-6
+      endif
       allocate(  effr(ibr:ier,jbr:jer,kbr:ker) )
       effr = 25.0
       allocate(  effg(ibr:ier,jbr:jer,kbr:ker) )
