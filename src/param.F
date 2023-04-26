@@ -3727,38 +3727,6 @@
           qmag(nvl1:nvl2) = 1.0e-5
           qmag(:) = 1.e-12
 
-!          ipconc = 5
-!          lr = 4
-!          li = 5
-!          ls = 6
-!          lh = 7
-!          lg = lh
-!          lhab = lh
-!          lhl = 0
-!          lqe  = lhab
-!
-!          lccn = 8
-!          lnc  = 9
-!          lnr  = 10
-!          lni  = 11
-!          lns  = 12
-!          lnh  = 13
-!          lnhl = 0
-!          lss  = 14
-!          lvh  = 15
-!
-!          lsch = 0
-!          lschab = 0
-!          lscw = 0
-!          lscb = lscw
-!          lscni = 0
-!          lscpi = 0
-!          lsce = lscni
-!          lsceq= lschab
-!
-!          lsw  = 0
-!          lhw  = 0
-!          lhlw = 0
 
           !----- budget stuff below here -----
 
@@ -3783,14 +3751,13 @@
           if(dowr) write(outfile,*) 'Calling index_module_init'
           if(dowr) write(outfile,*)
 
-!          write(0,*) 'option 26 currently not available'
-!          call stopcm1
+
+         ! setting ihvol=-1 turns off hail
          IF ( nssl_3moment ) THEN
            CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
          ELSE
            CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
          ENDIF
-!          call INDEX_MODULE_INIT(ptype)
 
           if(dowr) write(outfile,*)
           if(dowr) write(outfile,*) 'Returned from index_module_init'
@@ -3798,7 +3765,11 @@
 
           if(dowr) write(outfile,*)
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
+          IF ( nssl_3moment ) THEN
+          if(dowr) write(outfile,*) '  using NSSL 3-moment scheme  '
+          ELSE
           if(dowr) write(outfile,*) '  using NSSL 2-moment scheme  '
+          ENDIF
           if(dowr) write(outfile,*) '  (graupel-only, no hail; graupel density predicted ) '
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
           if(dowr) write(outfile,*)
@@ -3960,39 +3931,6 @@
           qmag(nvl1:nvl2) = 1.0e-5
           qmag(:) = 1.e-12
 
-!          ipconc = 5
-!          lr = 4
-!          li = 5
-!          ls = 6
-!          lh = 7
-!          lhl = 8
-!          lg = lh
-!          lhab = lhl
-!          lqe  = lhab
-!
-!          lccn = 9
-!          lnc  = 10
-!          lnr  = 11
-!          lni  = 12
-!          lns  = 13
-!          lnh  = 14
-!          lnhl = 15
-!          lss  = 16
-!          lvh  = 17
-!          lvhl = 18
-!
-!          lsch = 0
-!          lschab = 0
-!          lscw = 0
-!          lscb = lscw
-!          lscni = 0
-!          lscpi = 0
-!          lsce = lscni
-!          lsceq= lschab
-!
-!          lsw  = 0
-!          lhw  = 0
-!          lhlw = 0
 
           !----- budget stuff below here -----
 
@@ -4031,7 +3969,11 @@
 
           if(dowr) write(outfile,*)
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
+          IF ( nssl_3moment ) THEN
+          if(dowr) write(outfile,*) '  using NSSL 3-moment scheme  '
+          ELSE
           if(dowr) write(outfile,*) '  using NSSL 2-moment scheme  '
+          ENDIF
           if(dowr) write(outfile,*) '  (graupel and hail; graupel and hail density predicted ) '
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
           if(dowr) write(outfile,*)
@@ -4091,38 +4033,12 @@
           qmag(5) = 0.01
           qmag(6) = 0.01
 
-!          ipconc = 0
-!          lr = 4
-!          li = 5
-!          ls = 6
-!          lh = 7
-!          lg = lh
-!          lhab = lh
-!          lhl = 0
-!          lqe  = lhab
-!
-!          lccn = 0
-!          lnc  = 0
-!          lnr  = 0
-!          lni  = 0
-!          lns  = 0
-!          lnh  = 0
-!          lnhl = 0
-!          lss  = 0
-!          lvh  = 0
-!
-!          lsch = 0
-!          lschab = 0
-!          lscw = 0
-!          lscb = lscw
-!          lscni = 0
-!          lscpi = 0
-!          lsce = lscni
-!          lsceq= lschab
-!
-!          lsw  = 0
-!          lhw  = 0
-!          lhlw = 0
+          lv = 1
+          lc = 2
+          lr = 3
+          li = 4
+          ls = 5
+          lgh = 6
 
           !----- budget stuff below here -----
 
