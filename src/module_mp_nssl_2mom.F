@@ -1,6 +1,6 @@
 !COMMAS/1:MODEL_LAYER:PHYSICS
 
-! prepocessed on "Apr 24 2023" at "13:00:51"
+! prepocessed on "Apr 27 2023" at "15:16:23"
 
 
 
@@ -541,6 +541,7 @@ MODULE module_mp_nssl_2mom
   real, public :: hlcnhdia = 1.e-3 ! threshold diameter for graupel -> hail conversion for ihlcnh = 1 option.
   real, public :: hlcnhqmin = 0.1e-3 ! minimum graupel mass content for graupel -> hail conversion (ihlcnh = 1)
   real   , private :: hldia1 = 20.0e-3  ! threshold diameter for graupel -> hail conversion for ihlcnh = 2 option.
+  real   , private :: hail_d_dt = 6.0 ! for ihlcnh=3, dt to use for finding wet growth diameter
   integer :: incwet = 0    ! flag to do wet growth only on D > D_wet
   integer, public  :: iusedw = 0    ! flag to use experimental wet growth ice diameter for gr -> hl conversion (=1 turns on)
   real   , private  :: dwmin   = 5.0e-3  ! Minimum diameter with iusedw (can stay at 0 or be set to something larger)
@@ -1101,7 +1102,7 @@ MODULE module_mp_nssl_2mom
                         rescale_low_alphah, &
                         rescale_low_alphahl, &
                         rescale_high_alpha, &
-                        ihlcnh, hldia1,iusedw, dwehwmin, dwmin, dwtempmin, &
+                        ihlcnh, hldia1,iusedw, dwehwmin, dwmin, dwtempmin, hail_d_dt, &
                         icvhl2h, hldnmn,hdnmn,    &
                         hlcnhdia, hlcnhqmin, &
                         isedonly,           &
@@ -1518,15 +1519,6 @@ MODULE module_mp_nssl_2mom
       
 !      lccn = 9
 
-    ipconc = ipctmp
-    
-    IF ( ihlcnh <= 0 ) THEN
-      IF ( ipconc <= 5 ) THEN
-       ihlcnh = 1
-      ELSEIF ( ipconc >= 6 ) THEN
-       ihlcnh = 3
-      ENDIF
-    ENDIF
 
     IF ( ipconc == 0 ) THEN
        IF ( ihvol >= 0 ) THEN
@@ -2128,13 +2120,12 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
                               dx, dy,                                                   &
                               ib3d,ie3d,jb3d,je3d,kb3d,ke3d,                            &
                               nout3d,out3d,                                             &
-                              axtra,                                                    &
+                              axtra, dorad                                              &
                               SNOWNC, SNOWNCV, GRPLNC, GRPLNCV,                         &
                               SR,HAILNC, HAILNCV,                                       &
                               tkediss,                                                  &
                               re_cloud, re_ice, re_snow, re_rain,                       &
                               has_reqc, has_reqi, has_reqs, has_reqr,                   &
-                              dorad, &
                               rainncw2, rainnci2,                                       &
                               dbz, vzf,compdbz,                                         &
                               rscghis_2d,rscghis_2dp,rscghis_2dn,                       &
@@ -2238,12 +2229,12 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
       
 ! extra vars for cm1
       real*8, intent(inout) :: tcond,tevac,tevar,train
-      logical, intent(in)   :: dorad
       REAL, DIMENSION(ims:ime, jms:jme, kms:kme), INTENT(IN)::  rmh, rr
       real, intent(in), dimension(ims:ime) :: ruh
       real, intent(in), dimension(jms:jme) :: rvh
+      logical, intent(in) :: dorad
       real*8, dimension(jte) :: bud1,bud2
-!     for 1, set nproc=39 (or as needed) to get domain total rates
+!     for cm1, set nproctot=44 (or as needed) to get domain total rates
       integer, parameter :: nproc = 1
       double precision :: proctot(nproc),proctotmpi(nproc)
       REAL, DIMENSION(ims:ime, jms:jme, kms:kme), optional, INTENT(INOUT)::  re_cloud, re_ice, re_snow, re_rain
@@ -3039,8 +3030,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
        
          ENDIF
         ENDIF
-        
-      ENDIF ! dorad
+      ENDIF ! dorad 
 
 
 
@@ -3166,15 +3156,19 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
        ENDDO
      
 
+     
+
+
+
+
+ 11   format('processes: ',100(1x,1pe12.5))
+      IF ( nproc > 1 ) THEN
 #ifdef MPI
       CALL MPI_Reduce(proctot, proctotmpi, nproc, MPI_DOUBLE_PRECISION, MPI_SUM, 0, MPI_COMM_WORLD, mpi_error_code)
        IF ( myrankcm1 == 0 ) THEN
         proctot(1:nproc) = proctotmpi(1:nproc)
        ENDIF
 #endif
-
- 11   format('processes: ',100(1x,1pe12.5))
-      IF ( nproc > 1 ) THEN
        IF ( myrankcm1 == 0 ) THEN
          write(6,11) (proctot(i), i=1,nproc)
        ENDIF
@@ -20640,6 +20634,7 @@ END SUBROUTINE nssl_2mom_driver
                       h4 = ehr(mgs)* qx(mgs,lr)
                       ! iterate to find minimum diameter for wet growth. Start with value of dwr
                       DO n = 1,10
+                        d = Max(d, 1.e-4)
                         dold = d
                         vth = axx(mgs,lh)*d**bxx(mgs,lh) 
                         x2 = fventh*sqrtrhovt*Sqrt(d*vth)
@@ -20706,6 +20701,7 @@ END SUBROUTINE nssl_2mom_driver
                       h4 = ehlr(mgs)* qx(mgs,lr)
                       ! iterate to find minimum diameter for wet growth. Start with value of dwr
                       DO n = 1,10
+                        d = Max(d, 1.e-4)
                         dold = d
                         vth = axx(mgs,lhl)*d**bxx(mgs,lhl) 
                         x2 = fventh*sqrtrhovt*Sqrt(d*vth)
@@ -20752,7 +20748,7 @@ END SUBROUTINE nssl_2mom_driver
             
           ENDDO
           
-          ENDIF
+          ENDIF ! incwet
 !       write(0,*) 'notwet growth graupel,hail,Dw,Dwr = ',wetgrowth(mgs) , wetgrowthhl(mgs), dh0 ,tmp,tmp1
 !       write(0,*) 'temc,Dh, Dhl = ',temcg(mgs),xdia(mgs,lh,3),xdia(mgs,lhl,3)
 !       write(0,*) 'qc,qi = ', qx(mgs,lc) , qx(mgs,li) 
@@ -21426,7 +21422,7 @@ END SUBROUTINE nssl_2mom_driver
                        
                         ELSE
 
-                        d = 8.*ah*h1*dtpinv/ &
+                        d = 8.*ah*h1*(1./hail_d_dt)/ &
                             ( ( Max(0.001,vth - vtxbar(mgs,lc,1))*h3 +                              &
                             Max(0.001,vth - vtxbar(mgs,lr,1))*h4) *rho0(mgs)*denomdp +               &
                             Max(0.001,vth - vtxbar(mgs,li,1))*h2)
