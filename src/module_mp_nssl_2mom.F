@@ -1,6 +1,6 @@
 !COMMAS/1:MODEL_LAYER:PHYSICS
 
-! prepocessed on "Apr 27 2023" at "15:16:23"
+! prepocessed on "May  2 2023" at "08:00:35"
 
 
 
@@ -541,7 +541,6 @@ MODULE module_mp_nssl_2mom
   real, public :: hlcnhdia = 1.e-3 ! threshold diameter for graupel -> hail conversion for ihlcnh = 1 option.
   real, public :: hlcnhqmin = 0.1e-3 ! minimum graupel mass content for graupel -> hail conversion (ihlcnh = 1)
   real   , private :: hldia1 = 20.0e-3  ! threshold diameter for graupel -> hail conversion for ihlcnh = 2 option.
-  real   , private :: hail_d_dt = 6.0 ! for ihlcnh=3, dt to use for finding wet growth diameter
   integer :: incwet = 0    ! flag to do wet growth only on D > D_wet
   integer, public  :: iusedw = 0    ! flag to use experimental wet growth ice diameter for gr -> hl conversion (=1 turns on)
   real   , private  :: dwmin   = 5.0e-3  ! Minimum diameter with iusedw (can stay at 0 or be set to something larger)
@@ -1102,7 +1101,7 @@ MODULE module_mp_nssl_2mom
                         rescale_low_alphah, &
                         rescale_low_alphahl, &
                         rescale_high_alpha, &
-                        ihlcnh, hldia1,iusedw, dwehwmin, dwmin, dwtempmin, hail_d_dt, &
+                        ihlcnh, hldia1,iusedw, dwehwmin, dwmin, dwtempmin, &
                         icvhl2h, hldnmn,hdnmn,    &
                         hlcnhdia, hlcnhqmin, &
                         isedonly,           &
@@ -20645,7 +20644,7 @@ END SUBROUTINE nssl_2mom_driver
                        ENDIF
 
 
-                        d = 8.*ah*h1*dtpinv/ &
+                        d = 8.*ah*h1/ &
                             ( ( Max(0.001,vth - vtxbar(mgs,lc,1))*h3 +                              &
                             Max(0.001,vth - vtxbar(mgs,lr,1))*h4) *rho0(mgs)*denomdp +               &
                             Max(0.001,vth - vtxbar(mgs,li,1))*h2)
@@ -20712,7 +20711,7 @@ END SUBROUTINE nssl_2mom_driver
                        ENDIF
 
 
-                        d = 8.*ah*h1*dtpinv/ &
+                        d = 8.*ah*h1/ &
                             ( ( Max(0.001,vth - vtxbar(mgs,lc,1))*h3 +                              &
                             Max(0.001,vth - vtxbar(mgs,lr,1))*h4) *rho0(mgs)*denomdp +               &
                             Max(0.001,vth - vtxbar(mgs,li,1))*h2)
@@ -21381,7 +21380,7 @@ END SUBROUTINE nssl_2mom_driver
               dwr = 1.e30
             ENDIF
           d = dwr
-           IF ( dwr < 0.2 .and. dwr > 0.0 ) THEN
+           IF ( dwr < 0.2 .and. dwr > 0.0 .and. rho0(mgs)*(qx(mgs,lc)+qx(mgs,lr)) > 1.e-4 ) THEN
                       sqrtrhovt = Sqrt( rhovt(mgs) )
                       fventh = sqrtrhovt*(fpndl(mgs)**(1./3.)) * (fakvisc(mgs))**(-0.5) 
                       fventm = sqrtrhovt*(fschm(mgs)**(1./3.)) * (fakvisc(mgs))**(-0.5)
@@ -21422,17 +21421,25 @@ END SUBROUTINE nssl_2mom_driver
                        
                         ELSE
 
-                        d = 8.*ah*h1*(1./hail_d_dt)/ &
+                        ! Based on Farley and Orville (1986), eq. 5-9 but neglecting the Ci*(T0-Ts) term in (8) since we want Ts=T0
+                        ! Simplified mass rates as dm_w/dt = pi/4*d**2*(Vh - Vc)*rhoair*qc*ehw, etc.
+                        d = 8.*ah*h1/ &
                             ( ( Max(0.001,vth - vtxbar(mgs,lc,1))*h3 +                              &
                             Max(0.001,vth - vtxbar(mgs,lr,1))*h4) *rho0(mgs)*denomdp +               &
                             Max(0.001,vth - vtxbar(mgs,li,1))*h2)
+                            
                         ENDIF
-!                        write(0,*) 'iter,d,dwr = ',n,d,dwr
-!                        write(91,*) 'parts = ',( -ah*ftka*temcg - ah*felv*fwvdf*dn(i,j,k)*(qvamb - qvs0) ),( Max(0.001,vth - 0.01*vwmw)*ehw* qcmks*dn(i,j,k)/denominv + Max(0.001,vth - 0.01*vimw)*ehi*qimks*dn(i,j,k)*fci*temcg)
-!!                        write(91,*) 'partsr = ',( -ah*ftka*temcg - ah*felv*fwvdf*dn(i,j,k)*(qvamb - qvs0) ),( ( Max(0.001,vth - 0.01*vwmw)*ehw* qcmks + Max(0.001,vth - 0.01*vrmw)*ehr* qrmks) *dn(i,j,k)/denominv + &
-!!                            Max(0.001,vth - 0.01*vimw)*ehi*qimks*dn(i,j,k)*fci*temcg)
+!                  IF ( .true. .and. ny == 2  ) THEN
+!             IF ( n == 1 ) THEN
+!             write(0,*) 'temc,Dh, Dhl = ',temcg(mgs),xdia(mgs,lh,3),xdia(mgs,lhl,3)
+!             write(0,*) 'qc,qr,qi = ', qx(mgs,lc) , qx(mgs,lr), qx(mgs,li) 
+!             ENDIF
+!                        write(0,*) 'iter,d,dwr = ',n,d,dold,dwr
+! !                       write(91,*) 'parts = ',( -ah*ftka*temcg - ah*felv*fwvdf*dn(i,j,k)*(qvamb - qvs0) ),( Max(0.001,vth - 0.01*vwmw)*ehw* qcmks*dn(i,j,k)/denominv + Max(0.001,vth - 0.01*vimw)*ehi*qimks*dn(i,j,k)*fci*temcg)
+! !                        write(91,*) 'partsr = ',( -ah*ftka*temcg - ah*felv*fwvdf*dn(i,j,k)*(qvamb - qvs0) ),( ( Max(0.001,vth - 0.01*vwmw)*ehw* qcmks + Max(0.001,vth - 0.01*vrmw)*ehr* qrmks) *dn(i,j,k)/denominv + &
+! !                            Max(0.001,vth - 0.01*vimw)*ehi*qimks*dn(i,j,k)*fci*temcg)
 !                        write(91,*) 'parts2 = ',vth
-                        
+!                   ENDIF
                         IF ( Abs(dold - d)/dold < 0.05 .or. ( n > 3 .and. d > dg0thresh ) ) EXIT
                         
                       ENDDO
