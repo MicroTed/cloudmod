@@ -1577,7 +1577,7 @@
         print *,'  ptype      = ',ptype
         print *,'  output_dbz = ',output_dbz
         print *
-        print *,'  output_dbz is only available for ptype=2,3,5,26,27,28'
+        print *,'  output_dbz is only available for ptype=2,3,5,26,27,28,50-55'
         print *
         endif
         IF(ptype.eq.4)THEN
@@ -2275,7 +2275,7 @@
         print *,'  radopt   = ',radopt
         print *,'  ptype    = ',ptype
         print *
-        print *,'  radopt=2 requires ptype=3,5,50,51,52,53,55 (for now) '
+        print *,'  radopt=2 requires ptype=3,5,26,27,50,51,52,53,55 (for now) '
         print *
         print *,'   stopping model .... '
         print *

@@ -856,8 +856,8 @@
 
         -----
         Note:  for the RRTMG code, only the Thompson (ptype=3), Morrison 
-        (ptype=5), and NSSL (ptype=26/27) schemes are accurately coupled 
-        with the radiation calculations.
+        (ptype=5), NSSL (ptype=26/27), P3 (50-53), and Jensen ISHMAEL (55) schemes are 
+        accurately coupled with the radiation calculations.
         -----
 
  If radopt >= 1, set the following parameters:
@@ -1341,9 +1341,9 @@
  output_q        - liquid and solid water mixing ratios?
                    (and number concentrations for double-moment schemes)
 
- output_dbz      - reflectivity (dBZ)?  Only available for ptype=2,3,5
-                   (Goddard-LFO, Thompson, Morrison schemes, respectively)
-                                also outputs composite reflectivity (cref)
+ output_dbz      - reflectivity (dBZ)?  Only available for ptype=2,3,5,26-28,50-53,55
+                   (Goddard-LFO, Thompson, Morrison, NSSL, P3, Jensen ISHMAEL schemes,
+                       respectively) also outputs composite reflectivity (cref)
                                 (i.e., max reflectivity in the column)
 
  output_buoyancy - buoyancy (relative to model's base state)?
