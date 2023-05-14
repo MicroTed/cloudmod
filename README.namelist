@@ -479,6 +479,9 @@
                   graupel and hail densities predicted
              28 = NSSL single-moment scheme (graupel-only, similar to ptype=4);
                   fixed graupel density (rho_qh)
+             Ice density prediction can be turned off with nssl_density_on  (logical flag, default .true.) 
+                 (ptype 26 or 27)
+
 
             (Note: P3 = Predicted Particle Property bulk microphysics scheme)
              50 = P3 1-ice category, 1-moment cloud water
@@ -492,7 +495,10 @@
               the reflectivity moments for rain and graupel (ptype=26/27) and for 
               hail (ptype=27) Includes option for bin-emulating melting 
               (Mansell et al. 2020; see README.NSSLmp)
- 
+
+ nssl_density_on  - logical flag (default .true.) to toggle graupel/hail density 
+                 prediction (ptype 26 or 27)
+
  ihail - Use hail or graupel for large ice category when ptype=2,5.
           (Goddard-LFO and Morrison schemes only)
              1 = hail
@@ -1734,10 +1740,13 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
     Default values are noted. There is an additional internal namelist that
     can be accessed for more options. See README.NSSLmp
   
+  ihlcnh       - Graupel -> hail conversion option (old default was 1, new default is 3)
   rho_qr       - Rain density (1000 kg m**-3)
   rho_qs       - Snow density (100 kg m**-3)
-  rho_qh       - Graupel/hail density (500 kg m**-3) 
-                 [Only for ptype=28 (single moment)]
+  rho_qh       - Graupel density (500 kg m**-3) 
+                 [Only for ptype=28 (single moment) or with nssl_density_on=.false.]
+  rho_qhl      - Hail density (800 kg m**-3) 
+                 [Only for ptype=28 (single moment) or with nssl_density_on=.false.]
   cnor         - Rain intercept (8.e5 m**-4) 
                  [Only for ptype=28 (single moment)]
   cnos         - Snow intercept (3.e6 m**-4) 
