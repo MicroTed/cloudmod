@@ -1,6 +1,6 @@
 !COMMAS/1:MODEL_LAYER:PHYSICS
 
-! prepocessed on "May  2 2023" at "08:07:22"
+! prepocessed on "May  8 2023" at "13:09:13"
 
 
 
@@ -222,7 +222,7 @@ MODULE module_mp_nssl_2mom
   real, public :: rho_qr = 1000., cnor = 8.0e5  ! cnor is set in namelist!!  rain params
   real, public :: rho_qs =  100., cnos = 3.0e6  ! set in namelist!!  snow params
   real, public :: rho_qh =  500., cnoh = 4.0e5  ! set in namelist!!  graupel params
-  real, public :: rho_qhl=  900., cnohl = 4.0e4 ! set in namelist!!  hail params
+  real, public :: rho_qhl=  800., cnohl = 4.0e4 ! set in namelist!!  hail params
 
   real, public :: hdnmn  = 170.0  ! minimum graupel density (for variable density graupel)
   real, public :: hldnmn = 500.0  ! minimum hail density (for variable density hail)
@@ -1163,7 +1163,6 @@ MODULE module_mp_nssl_2mom
 ! #####################################################################
        SUBROUTINE nssl_2mom_init(  &
      & ipctmp, mixphase,ihvol,idoniconlytmp,eqtset_tmp, index_ccna, index_cina, outfile, &
-     & igvol, &
      & nssl_graupelfallfac, &
      & nssl_hailfallfac, &
      & nssl_ehw0, &
@@ -1177,6 +1176,7 @@ MODULE module_mp_nssl_2mom
      & nssl_alphah, &
      & nssl_alphahl, &
      & nssl_alphar, &
+     & nssl_density_on, nssl_hail_on, &
      & infileunit, &
      & myrank, mpiroot &
      )
@@ -1195,9 +1195,10 @@ MODULE module_mp_nssl_2mom
      & nssl_alphahl, &
      & nssl_alphar
    integer, intent(in), optional ::  &
-     & nssl_icdx, igvol, &
+     & nssl_icdx, &
      & nssl_icdxhl, myrank, mpiroot, &
      & nssl_ufccn
+   logical, intent(in), optional :: nssl_density_on, nssl_hail_on
 
   integer, intent(in),optional      :: infileunit
 
@@ -1205,12 +1206,14 @@ MODULE module_mp_nssl_2mom
    integer, optional, intent(in) :: index_ccna, index_cina, outfile
 
 
-   integer, intent(in) :: ipctmp,mixphase,ihvol
+   integer, intent(in) :: ipctmp,mixphase
+   integer, optional, intent(in) :: ihvol
    logical, optional, intent(in) :: idoniconlytmp
 
     integer :: igvol_local = 1
     logical :: wrote_namelist = .false.
     logical :: wrf_dm_on_monitor
+    integer :: hail_on = -1, density_on = -1
 
      double precision :: arg
      real    :: temq
@@ -1233,9 +1236,27 @@ MODULE module_mp_nssl_2mom
      turn_on_ccna = .false.
      turn_on_cina = .false.
 
-      IF ( present( igvol ) ) THEN
-        igvol_local = igvol
+!      IF ( present( igvol ) ) THEN
+!        igvol_local = igvol
+!      ENDIF
+      
+      IF ( present( nssl_hail_on ) ) THEN
+        IF ( nssl_hail_on ) THEN
+          hail_on = 1
+        ELSE
+          hail_on = 0
+        ENDIF
       ENDIF
+
+      IF ( present( nssl_density_on ) ) THEN
+        IF ( nssl_density_on ) THEN
+          density_on = 1
+        ELSE
+          density_on = 0
+        ENDIF
+      ENDIF
+
+
 !
 ! set some global values from namelist input
 !
@@ -1252,6 +1273,33 @@ MODULE module_mp_nssl_2mom
         IF ( index_cina > 1 ) turn_on_cina = .true.
       ENDIF
 
+
+
+      IF ( present(nssl_graupelfallfac) ) graupelfallfac = nssl_graupelfallfac
+      IF ( present(nssl_hailfallfac) ) hailfallfac = nssl_hailfallfac
+      IF ( present(nssl_ehw0) ) ehw0 = nssl_ehw0
+      IF ( present(nssl_ehlw0) ) ehlw0 = nssl_ehlw0
+      IF ( present(nssl_icdx) ) icdx = nssl_icdx
+      IF ( present(nssl_icdxhl) ) icdxhl = nssl_icdxhl
+      IF ( present(nssl_icefallfac) ) icefallfac = nssl_icefallfac
+      IF ( present(nssl_snowfallfac) ) snowfallfac = nssl_snowfallfac
+      IF ( present(nssl_cccn) )    ccn = nssl_cccn
+      IF ( present(nssl_alphah) )  alphah = nssl_alphah
+      IF ( present(nssl_alphahl) ) alphahl = nssl_alphahl
+      IF ( present(nssl_alphar) )  alphar = nssl_alphar
+
+
+    ipconc = ipctmp
+    
+    IF ( ihlcnh <= 0 ) THEN
+      IF ( ipconc <= 5 ) THEN
+       ihlcnh = 3
+      ELSEIF ( ipconc >= 6 ) THEN
+       ihlcnh = 3
+      ENDIF
+    ENDIF
+
+      
 
 
 
@@ -1317,24 +1365,41 @@ MODULE module_mp_nssl_2mom
         lh = lh + 1
         lhl = lhl + 1
       ENDIF
-      IF ( ihvol <= -1 .or. ihvol == 2 ) THEN
-        IF ( ihvol == -1 .or. ihvol == -2 ) THEN
-        lhab = lhab - 1  ! turns off hail 
-        lhl = 0
-        ! past me thought it would be a good idea to change graupel factors when hail is off....
-        ! ehw0 = 0.75
-        ! iehw = 2
-        ! dfrz = Max( dfrz, 0.5e-3 )
+      IF ( hail_on == -1 ) THEN ! hail_on is not set
+        hail_on = 1
+        IF ( ihvol <= -1 .or. ihvol == 2 ) THEN
+          IF ( ihvol == -1 .or. ihvol == -2 ) THEN
+          lhab = lhab - 1  ! turns off hail 
+          lhl = 0
+          hail_on = 0
+          ! past me thought it would be a good idea to change graupel factors when hail is off....
+          ! ehw0 = 0.75
+          ! iehw = 2
+          ! dfrz = Max( dfrz, 0.5e-3 )
+          ENDIF
+          IF ( ihvol == -2 .or. ihvol == 2 ) THEN ! ice crystals are turned off
+           ! a value of 2? means to turn off ice crystals but turn on hail
+            renucfrac = 1.0
+            ffrzs = 1.0
+           ! idoci = 0 ! try this later
+          ENDIF
         ENDIF
-        IF ( ihvol == -2 .or. ihvol == 2 ) THEN ! ice crystals are turned off
-         ! a value of 2? means to turn off ice crystals but turn on hail
-          renucfrac = 1.0
-          ffrzs = 1.0
-          ! idoci = 0 ! try this later
+      
+      ELSE ! hail_on is set
+        IF ( hail_on == 0 ) THEN
+          lhab = lhab - 1  ! turns off hail 
+          lhl = 0
+        ELSE
+          ! assume default that hail is on
         ENDIF
       ENDIF
+      
+      IF ( density_on == -1 ) THEN ! density flag not set, so default is to predict it
+        density_on = 1
+      ENDIF
+      
 
-!      write(0,*) 'wrf_init: lhab,lhl = ',lhab,lhl
+!      write(0,*) 'wrf_init: lhab,lhl,hail_on,density_on = ',lhab,lhl,hail_on,density_on
 
 !      IF ( ipelec > 0 ) idonic = .true.
 
@@ -1493,8 +1558,6 @@ MODULE module_mp_nssl_2mom
       qiacrratio(0,:) = 1.0
 
 
-      isub = Min( 0, Max(-1,ihvol) ) ! is -1 or 0
-
       lccn = 0
       lccnuf = 0
       lccna = 0
@@ -1542,17 +1605,17 @@ MODULE module_mp_nssl_2mom
       lns = ltmp+5 !13
       lnh = ltmp+6 !14
       ltmp = lnh
-      IF ( ihvol >= 0 ) THEN
+      IF ( hail_on == 1 ) THEN
       ltmp = ltmp + 1
       lnhl = ltmp ! lhab+7 ! 15
       ENDIF
-      IF ( igvol_local >= 1 ) THEN
+      IF ( density_on >= 1 ) THEN
       ltmp = ltmp + 1
       lvh = ltmp ! lhab+8 + isub ! 16 + isub ! isub adjusts to 15 if hail is off
 !      ltmp = lvh
       ENDIF
       denscale(lccn:ltmp) = 1
-      IF ( ihvol >= 1 ) THEN
+      IF ( density_on == 1 .and. hail_on == 1 ) THEN
        ltmp = ltmp + 1
        lvhl = ltmp
 !       ltmp = lvhl
@@ -1588,13 +1651,13 @@ MODULE module_mp_nssl_2mom
       ltmp = ltmp + 1
       lnhl = ltmp ! lhab+7 ! 15
       ENDIF
-      IF ( igvol_local >= 1 ) THEN
+      IF ( density_on == 1 ) THEN
       ltmp = ltmp + 1
       lvh = ltmp ! lhab+8 + isub ! 16 + isub ! isub adjusts to 15 if hail is off
       ENDIF
 !      ltmp = lvh
       denscale(lccn:ltmp) = 1
-      IF ( ihvol >= 1 ) THEN
+      IF ( density_on == 1 .and. hail_on == 1 ) THEN
        ltmp = ltmp + 1
        lvhl = ltmp
 !       ltmp = lvhl
@@ -1618,14 +1681,10 @@ MODULE module_mp_nssl_2mom
          ltmp = ltmp + 1
          lzhl = ltmp
        ENDIF
+      ! write(0,*) 'ipcon,lzr = ',ipconc,lzr,lzh,lzhl
       ENDIF
 !      ltmp = lvh
  !     denscale(lccn:lvh) = 1
-      IF ( ihvol >= 1 ) THEN
-       lvhl = ltmp+1
-       ltmp = lvhl
-       denscale(lvhl) = 1
-      ENDIF
       IF ( mixedphase ) THEN
       ltmp = ltmp + 1
       lsw  = ltmp
@@ -1644,7 +1703,8 @@ MODULE module_mp_nssl_2mom
 
 
 
-    
+      ! write(0,*) 'wrf_init: lh,lhl,lzh,lzhl = ',lh,lhl,lzh,lzhl 
+      ! write(0,*) 'wrf_init: ipconc = ',ipconc
       ! write(0,*) 'wrf_init: irenuc, turn_on_ccna = ',irenuc, turn_on_ccna 
       IF ( turn_on_ccna ) THEN
         ltmp = ltmp + 1
@@ -20624,7 +20684,8 @@ END SUBROUTINE nssl_2mom_driver
               dwr = 1.e30
             ENDIF
           d = dwr
-           IF ( dwr < 0.2 .and. dwr > 0.0 ) THEN
+
+           IF ( dwr < 0.2 .and. dwr > 0.0 .and. rho0(mgs)*(qx(mgs,lc)+qx(mgs,lr)) > 1.e-4 ) THEN
 
 !                      write(91,*) 'dw,dwr,temcg = ',100.*dw,100.*dwr,temcg(mgs)
                       h1 = ( -ftka(mgs)*temcg(mgs) - felv(mgs)*fwvdf(mgs)*rho0(mgs)*(qx(mgs,lv) - qvs0) )
@@ -20691,7 +20752,7 @@ END SUBROUTINE nssl_2mom_driver
               dwr = 1.e30
             ENDIF
           d = dwr
-           IF ( dwr < 0.2 .and. dwr > 0.0 ) THEN
+           IF ( dwr < 0.2 .and. dwr > 0.0 .and. rho0(mgs)*(qx(mgs,lc)+qx(mgs,lr)) > 1.e-4 ) THEN
 
 !                      write(91,*) 'dw,dwr,temcg = ',100.*dw,100.*dwr,temcg(mgs)
                       h1 = ( -ftka(mgs)*temcg(mgs) - felv(mgs)*fwvdf(mgs)*rho0(mgs)*(qx(mgs,lv) - qvs0) )

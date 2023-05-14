@@ -43,6 +43,7 @@
               do_lsnudge,do_lsnudge_u,do_lsnudge_v,do_lsnudge_th,do_lsnudge_qv, &
               do_ib
       logical :: nssl_3moment = .false.
+      logical :: nssl_density_on = .true.
 
 !-----------------------------------------------------------------------
 
@@ -263,7 +264,8 @@
           advwenos,advwenov,weno_order,                                 &
           apmasscon,idiff,mdiff,difforder,imoist,                       &
           ipbl,sgsmodel,tconfig,bcturbs,horizturb,doimpl,               &
-          irdamp,hrdamp,psolver,ptype,nssl_3moment,ihail,iautoc,         &
+          irdamp,hrdamp,psolver,ptype,nssl_3moment,nssl_density_on,     &
+          ihail,iautoc,         &
           icor,betaplane,lspgrad,eqtset,idiss,efall,rterm,              &
           wbc,ebc,sbc,nbc,bbc,tbc,irbc,roflux,nudgeobc,                 &
           isnd,iwnd,itern,iinit,                                        &
