@@ -3842,11 +3842,9 @@
           !----- initialize the NSSL scheme -----
 
           if(dowr) write(outfile,*)
-          if(dowr) write(outfile,*) 'Calling index_module_init'
+          if(dowr) write(outfile,*) 'Calling nssl_2mom_init'
           if(dowr) write(outfile,*)
 
-!          write(0,*) 'option 26 currently not available'
-!          call stopcm1
          IF ( nssl_3moment ) THEN
 !           CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
            CALL nssl_2mom_init(ipctmp=8,mixphase=0,nssl_hail_on=nssl_hail_on,nssl_density_on=nssl_density_on, &
@@ -3856,15 +3854,19 @@
            CALL nssl_2mom_init(ipctmp=5,mixphase=0,nssl_hail_on=nssl_hail_on,nssl_density_on=nssl_density_on, &
                      eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
          ENDIF
-!          call INDEX_MODULE_INIT(ptype)
 
           if(dowr) write(outfile,*)
-          if(dowr) write(outfile,*) 'Returned from index_module_init'
+          if(dowr) write(outfile,*) 'Returned from nssl_2mom_init'
           if(dowr) write(outfile,*)
 
           if(dowr) write(outfile,*)
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
+          IF ( nssl_3moment ) THEN
+          if(dowr) write(outfile,*) '  using NSSL 3-moment scheme  '
+          ELSE
           if(dowr) write(outfile,*) '  using NSSL 2-moment scheme  '
+          ENDIF
+
           IF ( nssl_hail_on ) THEN
           if(dowr) write(outfile,*) '  (with hail ) '
           ELSE
