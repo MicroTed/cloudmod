@@ -5,6 +5,8 @@ Some background information and usage tips for the NSSL microphysics scheme.
  advwenos = 2
  weno_order = 5 or higher
 
+NOTE TO OpenMP USERS: If a segmentation fault occurs, try setting the environment variable OMP_STACKSIZE to 8M or 16M (default is 4M, where M=MB). Note that this does not increase the shell stacksize limit [use 'ulimit -a unlimited' (bash) or 'unlimit stacksize' (tcsh)]
+
 CHANGES:
 May 2023: Main default option change is for graupel/hail fall speed options (icdx, icdxhl; changed from 3 to 6, see below), and default maximum gr/hail droplet collection efficiencies (ehw0/ehlw0 changed from 0.5/0.75 to 0.9/0.9, see below)
 
