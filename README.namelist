@@ -1292,7 +1292,6 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
          xwfmov =          -1000., -1000.,-1000.
 /
 
-
 -------------------------------------------------------------------------
   param9 section - output options
 
