@@ -115,7 +115,7 @@
       real :: qv1,qv2,qv3,qv4,qv5,qv6,qv7,qv8,qv9
       real :: pilast,thvlast,zlast,qt,thl,z_inv,th0last,lwp
       real :: qsfc,zq1,zq2,tv0,tsfc,tvsfc,psfc,lr,tvtrop,ptrop
-      real :: rhval
+      real :: rhval,qvfac
 
 !------------------------------------------------------------------
 
@@ -546,6 +546,13 @@
 
         ! read surface parameters:
         read(40,*,err=9008) p_sfc, th_sfc, qv_sfc
+        IF( p_sfc > 1.0e4 ) p_sfc = p_sfc/100.
+        IF ( qv_sfc < 0.03 ) THEN
+            qvfac = 1.
+            qv_sfc = 1000.*qv_sfc
+        ELSE
+            qvfac = 1000.0
+        ENDIF
         if(dowr) write(outfile,*) ' p_sfc, th_sfc, qv_sfc = ',p_sfc, th_sfc, qv_sfc
 
         ! now, read entire sounding until end of file is discovered
@@ -560,7 +567,7 @@
             call stopcm1
           endif
           ! put qv in g/g
-          qvsnd(k+1) = qvsnd(k+1)/1000.0
+          qvsnd(k+1) = qvsnd(k+1)/qvfac
           nsnd=nsnd+1
         enddo
 445     continue
