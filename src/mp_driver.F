@@ -755,14 +755,7 @@
 
         ELSEIF( ptype.ge.26 .and. ptype.le.28 )THEN
 
-          IF ( ptype .eq. 26 ) THEN
-            j = 13
-          ELSEIF ( ptype .eq. 27 ) THEN
-            j = 16
-          ELSEIF ( ptype .eq. 28) THEN ! single moment
-            j = 6
-          ENDIF
-          DO i = 1,numq ! j
+          DO i = 1,numq
             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
@@ -779,6 +772,16 @@
           enddo
           enddo
           enddo
+
+          if( radopt.eq.2 )then
+            has_reqc = 1
+            has_reqi = 1
+            has_reqs = 1
+          else
+            has_reqc = 0
+            has_reqi = 0
+            has_reqs = 0
+          endif
           
           IF ( ptype .eq. 26 ) THEN  ! graupel only
              call nssl_2mom_driver(                          &
@@ -818,7 +821,10 @@
                               tevar = qbudget(5),            &
                               train = qbudget(6),            &
                               rr    = dum3,                  &
-                              diagflag = getdbz,                  &
+                  re_cloud=effc, re_ice=effi, re_snow=effs,                  &
+                  has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,   &
+                              dorad = dorad,                 &
+                              diagflag = getdbz,             &
                   ib3d=ib3d,ie3d=ie3d,jb3d=jb3d,je3d=je3d,kb3d=kb3d,ke3d=ke3d, &
                   nout3d=nout3d,out3d=out3d,                                 &
                               ims = ib ,ime = ie , jms = jb ,jme = je, kms = kb,kme = ke,  &  
@@ -865,6 +871,9 @@
                               tevar = qbudget(5),            &
                               train = qbudget(6),            &
                               rr    = dum3,                  &
+                  re_cloud=effc, re_ice=effi, re_snow=effs,                  &
+                  has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,   &
+                              dorad = dorad,                 &
                               diagflag = getdbz,             &
                   ib3d=ib3d,ie3d=ie3d,jb3d=jb3d,je3d=je3d,kb3d=kb3d,ke3d=ke3d, &
                   nout3d=nout3d,out3d=out3d,                                 &
@@ -897,6 +906,7 @@
                               tevar = qbudget(5),            &
                               train = qbudget(6),            &
                               rr    = dum3,                  &
+                              dorad = .false.,                 &
                               diagflag = getdbz,                  &
                   ib3d=ib3d,ie3d=ie3d,jb3d=jb3d,je3d=je3d,kb3d=kb3d,ke3d=ke3d, &
                   nout3d=nout3d,out3d=out3d,                                 &

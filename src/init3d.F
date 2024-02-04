@@ -62,7 +62,7 @@
                         zh,mh,rmh,zf,mf,rmf,rho0s,pi0s,prs0s,             &
                         pi0,prs0,rho0,thv0,th0,rth0,qv0,                  &
                         u0,v0,qc0,qi0,rr0,rf0,rrf0,                       &
-                        rain,hail,sws,svs,sps,srs,sgs,sus,shs,            &
+                        rain,sws,svs,sps,srs,sgs,sus,shs,                 &
                         thflux,qvflux,cd,ch,cq,f2d,                       &
                         dum1,dum2,dum3,dum4,divx,rho,prs,                 &
                         rru,ua,u3d,uten,uten1,rrv,va,v3d,vten,vten1,      &
@@ -101,7 +101,7 @@
       real, dimension(ib:ie,jb:je) :: rho0s,pi0s,prs0s
       real, dimension(ib:ie,jb:je,kb:ke) :: pi0,prs0,rho0,thv0,th0,rth0,qv0
       real, dimension(ib:ie,jb:je,kb:ke) :: qc0,qi0,rr0,rf0,rrf0
-      real, dimension(ib:ie,jb:je,nrain) :: rain,hail,sws,svs,sps,srs,sgs,sus,shs
+      real, dimension(ib:ie,jb:je,nrain) :: rain,sws,svs,sps,srs,sgs,sus,shs
       real, dimension(ib:ie,jb:je) :: thflux,qvflux,cd,ch,cq,f2d
       real, dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2,dum3,dum4
       real, dimension(ib:ie,jb:je,kb:ke) :: divx,rho,prs
@@ -185,7 +185,6 @@
       do i=ib,ie
         ! these are all positive-definite, so set initial value to zero:
         rain(i,j,n)=0.0
-        hail(i,j,n)=0.0
         sws(i,j,n)=0.0
         srs(i,j,n)=0.0
         sgs(i,j,n)=0.0
@@ -573,7 +572,7 @@
 
         ENDIF
 
-!-----------------------------------------------------------------------
+!-------------------------------------------------------------------
 !  iinit = 2
 !  Cold pool (dam break style)
 !  reference:  

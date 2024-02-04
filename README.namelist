@@ -472,13 +472,16 @@
 
             (Note: options 26,27,28 use namelist nssl2mom_params, see below and 
                    README.NSSLmp
-                   3-moment option can be activated with nssl3moment = .true.)
+                   3-moment option can be activated with nssl_3moment = .true.)
              26 = NSSL 2-moment scheme (graupel-only, no hail); 
                   graupel density predicted
              27 = NSSL 2-moment scheme (graupel and hail); 
                   graupel and hail densities predicted
              28 = NSSL single-moment scheme (graupel-only, similar to ptype=4);
                   fixed graupel density (rho_qh)
+             Ice density prediction can be turned off with nssl_density_on  (logical flag, default .true.) 
+                 (ptype 26 or 27)
+
 
             (Note: P3 = Predicted Particle Property bulk microphysics scheme)
              50 = P3 1-ice category, 1-moment cloud water
@@ -488,11 +491,14 @@
 
              55 = Jensen's ISHMAEL (Ice-Spheroids Habit Model with Aspect-ratio Evolution)
 
- nssl3moment - logical (default = .false.) Works with ptype 26 and 27 to turn on 
+ nssl_3moment - logical (default = .false.) Works with ptype 26 and 27 to turn on 
               the reflectivity moments for rain and graupel (ptype=26/27) and for 
               hail (ptype=27) Includes option for bin-emulating melting 
               (Mansell et al. 2020; see README.NSSLmp)
- 
+
+ nssl_density_on  - logical flag (default .true.) to toggle graupel/hail density 
+                 prediction (ptype 26 or 27)
+
  ihail - Use hail or graupel for large ice category when ptype=2,5.
           (Goddard-LFO and Morrison schemes only)
              1 = hail
@@ -849,8 +855,9 @@
         -----
 
         -----
-        Note:  for the RRTMG code, only the Thompson (ptype=3) and Morrison 
-        (ptype=5) schemes are accurately coupled with the radiation calculations.
+        Note:  for the RRTMG code, only the Thompson (ptype=3), Morrison 
+        (ptype=5), NSSL (ptype=26/27), P3 (50-53), and Jensen ISHMAEL (55) schemes are 
+        accurately coupled with the radiation calculations.
         -----
 
  If radopt >= 1, set the following parameters:
@@ -1205,7 +1212,7 @@
   If numbub = 0 (default value), then default settings are used,
     such as xcbub = xcenter, ycbub = ycenter, tbub = 1.0
   Must have numbub <= maxbubble (set as 10, but can be changed in input.F)
-  Random perturbations can be added to all bubbles by setting tbubrandpert > 0,
+  Random perturbations (2D horizontal) can be added to all bubbles by setting tbubrandpert > 0,
     where tbubrandpert sets the +/- range of the perturbations. Perts are added
     only in the bubble footprint. Even if tbub = 0, then the perturbations will still
     be inserted, which can be used to insert perts when other forcing is used (such
@@ -1216,18 +1223,18 @@
     xradbub,yradbub,zradbub : x, y, and z radii of each bubble (in meters)
     tbub : center temperature perturbation (Kelvin)
     
- Example:
+ Example (1 bubble, but values given for two):
  
 &bubble
           numbub =            1,
           tbubrandpert =     0.1, 
-          tbub =             1.0,   1.0, 3.0,  
-          xradbub =       10000.0, 1.0e4, 1.0e4, 
-          yradbub =       10000.0, 1.0e4, 1.0e4,
-          zradbub =        1400.0, 1500., 1500.,
-          xcbub =         17000.0, 17000, 5.0e4,
-          ycbub =         10000.0, 30000., 1.1e5,
-          zcbub =          1400.0, 1500., 1500.,
+          tbub =             1.0,   1.5, 
+          xradbub =       10000.0, 1.0e4,
+          yradbub =       10000.0, 1.0e4,
+          zradbub =        1400.0, 1400.,
+          xcbub =         17000.0, 17000,
+          ycbub =         10000.0, 30000.,
+          zcbub =          1400.0, 1400.,
 /
 
 
@@ -1284,7 +1291,6 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
          twstop =          1200,   5400,  3600,
          xwfmov =          -1000., -1000.,-1000.
 /
-
 
 -------------------------------------------------------------------------
   param9 section - output options
@@ -1406,9 +1412,9 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
  output_q        - liquid and solid water mixing ratios?
                    (and number concentrations for double-moment schemes)
 
- output_dbz      - reflectivity (dBZ)?  Only available for ptype=2,3,5
-                   (Goddard-LFO, Thompson, Morrison schemes, respectively)
-                                also outputs composite reflectivity (cref)
+ output_dbz      - reflectivity (dBZ)?  Only available for ptype=2,3,5,26-28,50-53,55
+                   (Goddard-LFO, Thompson, Morrison, NSSL, P3, Jensen ISHMAEL schemes,
+                       respectively) also outputs composite reflectivity (cref)
                                 (i.e., max reflectivity in the column)
 
  output_buoyancy - buoyancy (relative to model's base state)?
@@ -1733,10 +1739,13 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
     Default values are noted. There is an additional internal namelist that
     can be accessed for more options. See README.NSSLmp
   
+  ihlcnh       - Graupel -> hail conversion option (old default was 1, new default is 3)
   rho_qr       - Rain density (1000 kg m**-3)
   rho_qs       - Snow density (100 kg m**-3)
-  rho_qh       - Graupel/hail density (500 kg m**-3) 
-                 [Only for ptype=28 (single moment)]
+  rho_qh       - Graupel density (500 kg m**-3) 
+                 [Only for ptype=28 (single moment) or with nssl_density_on=.false.]
+  rho_qhl      - Hail density (800 kg m**-3) 
+                 [Only for ptype=28 (single moment) or with nssl_density_on=.false.]
   cnor         - Rain intercept (8.e5 m**-4) 
                  [Only for ptype=28 (single moment)]
   cnos         - Snow intercept (3.e6 m**-4) 
@@ -1752,19 +1761,22 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
                  Value sets the concentration at MSL, and an initially
                  homogeneous number mixing ratio (ccn/1.225) is assumed throughout the depth of
                  the domain.
+  
+  irenuc (new option) : 2 = ccn field is UNactivated aerosol (previous default; old droplet activation)
+                        7 = ccn field is ACTVIATED aerosol (new default 2023) (new droplet activation)
 
   infall       - Two-moment sedimation options (default infall=4 recommended)
                           ! 0 -> uses number-wgt for N; NO correction applied 
                                  (results in excessive size sorting)
-                          ! 1 -> uses mass-weighted fallspeed for N ALWAYS 
+                          ! 1 -> uses mass-weighted fallspeed for N ALWAYS
                                  (prevents size sorting)
-                          ! 2 -> uses number-wgt for N and mass-weighted 
+                          ! 2 -> uses number-wgt for N and mass-weighted
                                  correction for N 
                                  (Method II in Mansell, 2010 JAS)
-                          ! 3 -> uses number-wgt for N and Z-weighted 
+                          ! 3 -> uses number-wgt for N and Z-weighted
                                  correction for N 
                                  (Method I in Mansell, 2010 JAS)
-                          ! 4 -> Hybrid of 2 and 3: Uses minimum N from each 
+                          ! 4 -> Hybrid of 2 and 3: Uses minimum N from each
                                  method (z-wgt and m-wgt corrections) 
                                  (Method I+II in Mansell, 2010 JAS)
   alphah       - Shape parameter for graupel (0.0)
@@ -1772,17 +1784,17 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
   
   Less-used parameters (see code)
   imurain      - DSD function option for rain (1 - gamma of diameter)
-  icdx         - fall speed option for graupel (3)
-  icdxhl       - fall speed option for hail (3)
+  icdx         - fall speed option for graupel (default was 3, now is 6)
+  icdxhl       - fall speed option for hail (default was 3, now is 6)
 
   dfrz         - Minimum diameter of new frozen drops (graupel);
                  default 0.15e-3, but can be set larger (up to 0.5e-5) to produce
                  larger graupel
   hldnmn       - Minimum hail particle density (500 kg m**-3) (changed from 750 in r17)
   iehw,iehlw   - Graupel (iehw) and Hail (iehlw) droplet collection efficiency
-                 options
-  ehw0,ehlw0   - Maximim droplet collection efficiencies for graupel (ehw0=0.75)
-                 and hail (ehlw0=0.75) (changed from 1.0 and 1.0 in r17)
+                 options 
+  ehw0,ehlw0   - Maximim droplet collection efficiencies for graupel (default was ehw0=0.75, now 0.9)
+                 and hail (default was ehlw0=0.75, now 0.9)
   dmrauto      - Options for limiting rain autoconversion
 
 -------------------------------------------------------------------------

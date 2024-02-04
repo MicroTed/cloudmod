@@ -469,6 +469,13 @@
             has_reqi = 1
             has_reqs = 1
           endif
+          if( ptype.eq.26 .or. ptype.eq.27 )then
+            ! NSSL scheme
+            mp_physics = 18
+            has_reqc = 1
+            has_reqi = 1
+            has_reqs = 1
+          endif
           if( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. ptype.eq.53 )then
             ! P3 microphysics
             ! use eff arrays from P3 scheme:
