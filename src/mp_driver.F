@@ -774,8 +774,6 @@
           enddo
           enddo
 
-<<<<<<< HEAD
-=======
           if( radopt.eq.2 )then
             has_reqc = 1
             has_reqi = 1
@@ -786,7 +784,6 @@
             has_reqs = 0
           endif
           
->>>>>>> origin/wforce_bubble_init
           IF ( ptype .eq. 26 ) THEN  ! graupel only
              call nssl_2mom_driver(                          &
                                th  = dum4,                   &
