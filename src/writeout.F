@@ -3588,74 +3588,76 @@
   !.............................................
 
     IF( imoist.eq.1 .and. numq.gt.1 )THEN
-    if(output_q      .eq.1)then
-      if( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. ptype.eq.53 )then
+    if (output_q.eq.1) then
+      if ( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. ptype.eq.53 .or. ptype.eq.54 .or.  &
+           ptype.eq.60 .or. ptype.eq.61 .or. ptype.eq.62 .or. ptype.eq.63) then
+
         n_out = n_out + 1
-        name_output(n_out) = 'p3_vmi'
-        desc_output(n_out) = 'P3: mean mass weighted ice fallspeed'
+        name_output(n_out) = 'p3_vmi1'
+        desc_output(n_out) = 'P3: mass-weighted mean fallspeed, ice category 1'
         unit_output(n_out) = 'm/s'
         grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
-
           !$omp parallel do default(shared)  &
           !$omp private(i,j,k)
-          do k=1,maxk
-          do j=1,nj
-          do i=1,ni
-            dum1(i,j,k) = p3o(i,j,k,1)
-          enddo
-          enddo
-          enddo
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,1)
+        enddo
+        enddo
+        enddo
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
-      endif
-    endif
-    ENDIF
 
-  !.............................................
 
-    IF( imoist.eq.1 .and. numq.gt.1 )THEN
-    if(output_q      .eq.1)then
-      if( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. ptype.eq.53 )then
         n_out = n_out + 1
-        name_output(n_out) = 'p3_di'
-        desc_output(n_out) = 'P3: mean mass weighted ice size'
+        name_output(n_out) = 'p3_dmi1'
+        desc_output(n_out) = 'P3: mass-weighted mean diameter, ice category 1'
         unit_output(n_out) = 'm'
         grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
-
           !$omp parallel do default(shared)  &
           !$omp private(i,j,k)
-          do k=1,maxk
-          do j=1,nj
-          do i=1,ni
-            dum1(i,j,k) = p3o(i,j,k,2)
-          enddo
-          enddo
-          enddo
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,2)
+        enddo
+        enddo
+        enddo
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
-      endif
-    endif
-    ENDIF
 
-  !.............................................
 
-    IF( imoist.eq.1 .and. numq.gt.1 )THEN
-    if(output_q      .eq.1)then
-      if( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. ptype.eq.53 )then
         n_out = n_out + 1
-        name_output(n_out) = 'p3_rhopo'
-        desc_output(n_out) = 'P3: mean mass weighted ice density'
+        name_output(n_out) = 'p3_rhoi1'
+        desc_output(n_out) = 'P3: mean ice density, ice category 1'
         unit_output(n_out) = 'kg/m3'
         grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
-
           !$omp parallel do default(shared)  &
           !$omp private(i,j,k)
-          do k=1,maxk
-          do j=1,nj
-          do i=1,ni
-            dum1(i,j,k) = p3o(i,j,k,3)
-          enddo
-          enddo
-          enddo
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,3)
+        enddo
+        enddo
+        enddo
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_dhmax1'
+        desc_output(n_out) = 'P3: max. hail size, ice category 1'
+        unit_output(n_out) = 'm'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,4)
+        enddo
+        enddo
+        enddo
+        call writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
       endif
     endif
     ENDIF
@@ -3663,77 +3665,239 @@
   !.............................................
 
     IF( imoist.eq.1 .and. numq.gt.1 )THEN
-    if(output_q      .eq.1)then
-      if( ptype.eq.52 )then
+    if (output_q.eq.1) then
+      if (ptype.eq.52 .or. ptype.eq.54 .or. ptype.eq.61 .or. ptype.eq. 62 .or. ptype.eq.63) then
+
         n_out = n_out + 1
         name_output(n_out) = 'p3_vmi2'
-        desc_output(n_out) = 'P3: mean mass weighted ice fallspeed, 2nd ice cat.'
+        desc_output(n_out) = 'P3: mass-weighted mean fallspeed, ice category 2'
+        unit_output(n_out) = 'm/s'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,5)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_dmi2'
+        desc_output(n_out) = 'P3: mass-weighted mean diameter, ice category 2'
+        unit_output(n_out) = 'm'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,6)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_rhoi2'
+        desc_output(n_out) = 'P3: mean ice density, ice category 2'
+        unit_output(n_out) = 'kg/m3'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,7)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_dhmax2'
+        desc_output(n_out) = 'P3: max. hail size, ice category 2'
+        unit_output(n_out) = 'm'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,8)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+      endif
+    endif
+    ENDIF
+
+
+  !.............................................
+
+    IF( imoist.eq.1 .and. numq.gt.1 )THEN
+    if (output_q.eq.1) then
+      if (ptype.eq.62 .or. ptype.eq.63) then
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_vmi3'
+        desc_output(n_out) = 'P3: mass-weighted mean fallspeed, ice category 3'
+        unit_output(n_out) = 'm/s'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,9)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_dmi3'
+        desc_output(n_out) = 'P3: mass-weighted mean diameter, ice category 3'
+        unit_output(n_out) = 'm'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,10)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_rhoi3'
+        desc_output(n_out) = 'P3: mean ice density, ice category 3'
+        unit_output(n_out) = 'kg/m3'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,11)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_dhmax3'
+        desc_output(n_out) = 'P3: max. hail size, ice category 3'
+        unit_output(n_out) = 'm'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,12)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+      endif
+    endif
+    ENDIF
+
+  !.............................................
+
+    IF( imoist.eq.1 .and. numq.gt.1 )THEN
+    if (output_q.eq.1) then
+      if (ptype.eq.63) then
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_vmi4'
+        desc_output(n_out) = 'P3: mass-weighted mean fallspeed, ice category 4'
         unit_output(n_out) = 'm/s'
         grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
 
           !$omp parallel do default(shared)  &
           !$omp private(i,j,k)
-          do k=1,maxk
-          do j=1,nj
-          do i=1,ni
-            dum1(i,j,k) = p3o(i,j,k,4)
-          enddo
-          enddo
-          enddo
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,13)
+        enddo
+        enddo
+        enddo
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
-      endif
-    endif
-    ENDIF
 
-  !.............................................
 
-    IF( imoist.eq.1 .and. numq.gt.1 )THEN
-    if(output_q      .eq.1)then
-      if( ptype.eq.52 )then
         n_out = n_out + 1
-        name_output(n_out) = 'p3_di2'
-        desc_output(n_out) = 'P3: mean mass weighted ice size, 2nd ice cat.'
+        name_output(n_out) = 'p3_dmi4'
+        desc_output(n_out) = 'P3: mass-weighted mean diameter, ice category 4'
         unit_output(n_out) = 'm'
         grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
 
           !$omp parallel do default(shared)  &
           !$omp private(i,j,k)
-          do k=1,maxk
-          do j=1,nj
-          do i=1,ni
-            dum1(i,j,k) = p3o(i,j,k,5)
-          enddo
-          enddo
-          enddo
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,14)
+        enddo
+        enddo
+        enddo
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
-      endif
-    endif
-    ENDIF
 
-  !.............................................
 
-    IF( imoist.eq.1 .and. numq.gt.1 )THEN
-    if(output_q      .eq.1)then
-      if( ptype.eq.52 )then
         n_out = n_out + 1
-        name_output(n_out) = 'p3_rhopo2'
-        desc_output(n_out) = 'P3: mean mass weighted ice density, 2nd ice cat.'
+        name_output(n_out) = 'p3_rhoi4'
+        desc_output(n_out) = 'P3: mean density, ice category 4'
         unit_output(n_out) = 'kg/m3'
         grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
 
           !$omp parallel do default(shared)  &
           !$omp private(i,j,k)
-          do k=1,maxk
-          do j=1,nj
-          do i=1,ni
-            dum1(i,j,k) = p3o(i,j,k,6)
-          enddo
-          enddo
-          enddo
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,15)
+        enddo
+        enddo
+        enddo
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
+
+        n_out = n_out + 1
+        name_output(n_out) = 'p3_dhmax4'
+        desc_output(n_out) = 'P3: max. hail size, ice category 4'
+        unit_output(n_out) = 'm'
+        grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+        do k=1,maxk
+        do j=1,nj
+        do i=1,ni
+           dum1(i,j,k) = p3o(i,j,k,16)
+        enddo
+        enddo
+        enddo
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+
       endif
     endif
     ENDIF
+
 
 !  end P3 diagnostics
 !--------------------------------------------------------------------------------
@@ -8975,7 +9139,7 @@
         enddo
 
           ! wait for data to arrive:
-          ntot = ppnode-1 + nodes-1 
+          ntot = ppnode-1 + nodes-1
           do nn=1,ntot
             call mpi_waitany(ntot,reqt(1:ntot),index,MPI_STATUS_IGNORE,ierr)
             if( index.le.(ppnode-1) )then

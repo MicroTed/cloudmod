@@ -35,7 +35,7 @@
 #endif
       use module_mp_thompson , only : thompson_init
       use module_mp_graupel
-      use module_mp_p3, only : p3_init
+      use microphy_p3, only : p3_init
       use module_mp_jensen_ishmael, only : jensen_ishmael_init
       use module_mp_nssl_2mom, only:    &
                         nssl_2mom_init, &
@@ -693,7 +693,7 @@
       betaplane = max( betaplane , 0 )
       betaplane = min( betaplane , 1 )
 
-      ! Cannot use beta plane for axisymmetric simulations, 
+      ! Cannot use beta plane for axisymmetric simulations,
       ! or 2d (x,z) simulations:
       if( axisymm.eq.1 .or. ny.le.3 )  betaplane = 0
 
@@ -928,14 +928,15 @@
         eqtset = 1
       ENDIF
       !-----
-      IF( (ptype.eq.4.or.ptype.eq.50.or.ptype.eq.51.or.ptype.eq.52.or.ptype.eq.53.or.ptype.eq.55) .and. eqtset.eq.2 )THEN
+      IF( (ptype.eq.4.or.ptype.eq.50.or.ptype.eq.51.or.ptype.eq.52.or.ptype.eq.53.or.ptype.eq.54.or.ptype.eq.55.or.ptype.eq.60  &
+           .or.ptype.eq.61 .or. ptype.eq.62 .or. ptype.eq.63) .and. eqtset.eq.2 )THEN
         if(myid.eq.0)then
         print *,'  -------------------------------- '
         print *
         print *,'  ptype      = ',ptype
         print *,'  eqtset     = ',eqtset
         print *
-        print *,'  ptype=4,50,51,52,53,55 requires eqtset=1 '
+        print *,'  ptype=4,50,51,52,53,54,55,60,61,62,63 requires eqtset=1 '
         print *
         print *,'  ... setting eqtset to 1 ... '
         print *
@@ -1708,7 +1709,7 @@
         print *
         print *,'  imoist  = ',imoist
         print *,'  ptype   = ',ptype
-        print *,'  nt_c    = ',nt_c   
+        print *,'  nt_c    = ',nt_c
         print *
         print *,'  nt_c is too small.  Please enter an appropriate value '
         print *,'  in the param3 section of namelist.input '
@@ -2272,13 +2273,15 @@
         call stopcm1
       ENDIF
       !-----
-      IF( radopt.eq.2 .and. ( ptype.ne.3 .and. ptype.ne.5 .and. ptype.ne.50 .and. ptype.ne.51 .and. ptype.ne.52 .and. ptype.ne.53 .and. ptype.ne.55 )  )THEN
+      IF( radopt.eq.2 .and. ( ptype.ne.3 .and. ptype.ne.5 .and. ptype.ne.50 .and. ptype.ne.51 .and. &
+                              ptype.ne.52 .and. ptype.ne.53 .and. ptype.ne.54 .and. ptype.ne.55 .and. ptype.ne.60 .and. &
+                              ptype.ne.61 .and. ptype.ne.62 .and. ptype.ne.63)  )THEN
         if(myid.eq.0)then
         print *
         print *,'  radopt   = ',radopt
         print *,'  ptype    = ',ptype
         print *
-        print *,'  radopt=2 requires ptype=3,5,50,51,52,53,55 (for now) '
+        print *,'  radopt=2 requires ptype=3,5,50,51,52,53,54,55,60,61,62,63 (for now) '
         print *
         print *,'   stopping model .... '
         print *
@@ -2704,7 +2707,12 @@
         if( ptype.eq.51 ) param_mp = 'Predicted Particle Property (P3)'
         if( ptype.eq.52 ) param_mp = 'Predicted Particle Property (P3)'
         if( ptype.eq.53 ) param_mp = 'Predicted Particle Property (P3)'
+        if( ptype.eq.54 ) param_mp = 'Predicted Particle Property (P3)'
         if( ptype.eq.55 ) param_mp = 'Jensen_ISHMAEL'
+        if( ptype.eq.60 ) param_mp = 'Predicted Particle Property (P3)'
+        if( ptype.eq.61 ) param_mp = 'Predicted Particle Property (P3)'
+        if( ptype.eq.62 ) param_mp = 'Predicted Particle Property (P3)'
+        if( ptype.eq.63 ) param_mp = 'Predicted Particle Property (P3)'
       endif
       if( idoles )then
         ! LES subgrid:
@@ -3044,7 +3052,7 @@
     !----------
     !  use average surface conditions to determine ust,mol,etc:
     !
-    !  For now, use this for a few well-established test cases. 
+    !  For now, use this for a few well-established test cases.
     !  In future: make this a namelist variable
 
     if( sfcmodel.eq.1 .or. sfcmodel.eq.5 )then
@@ -3176,7 +3184,7 @@
 !-----------------------------------------------------------------------
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !-----------------------------------------------------------------------
-        ELSEIF((ptype.eq.2).or.(ptype.eq.4))THEN    ! Goddard-LFO or 
+        ELSEIF((ptype.eq.2).or.(ptype.eq.4))THEN    ! Goddard-LFO or
                                                     ! GSR-LFO scheme
 
           iice = 1    ! this means that ptype=2,4 are ice schemes
@@ -3526,7 +3534,7 @@
           if(dowr) write(outfile,*) '         numq   = ',numq
           if(dowr) write(outfile,*) '         ihail  = ',ihail
         if(inum.eq.1)then
-          if(dowr) write(outfile,*) '         assuming constant cloud droplet concentration' 
+          if(dowr) write(outfile,*) '         assuming constant cloud droplet concentration'
           if(dowr) write(outfile,*) '         ndcnst = ',ndcnst
         else
           if(dowr) write(outfile,*) '         predicting cloud droplet concentration'
@@ -4058,7 +4066,8 @@
 !-----------------------------------------------------------------------
 
 
-        ELSEIF( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. ptype.eq.53 )THEN    ! P3
+        ELSEIF( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. ptype.eq.53 .or. ptype.eq.54 .or. ptype.eq.60 &
+                .or. ptype.eq.61 .or. ptype.eq.62 .or. ptype.eq.63) THEN    ! P3
 
           !----- initialize the P3 scheme -----
 
@@ -4069,6 +4078,7 @@
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
                          trplMomI=.false.,     &
+                         liqFrac=.false.,      &
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
@@ -4077,6 +4087,7 @@
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
                          trplMomI=.false.,     &
+                         liqFrac=.false.,      &
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
@@ -4085,6 +4096,7 @@
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
                          trplMomI=.false.,     &
+                         liqFrac=.false.,      &
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
@@ -4093,6 +4105,52 @@
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
                          trplMomI=.true.,      &
+                         liqFrac=.false.,      &
+                         model='WRF',          &
+                         stat=p3stat,          &
+                         abort_on_err=.false., &
+                         dowr=dowr)
+          elseif( ptype.eq.54 )then
+            call p3_init(lookup_file_dir='.',  &
+                         nCat=2,               &
+                         trplMomI=.true.,      &
+                         liqFrac=.false.,      &
+                         model='WRF',          &
+                         stat=p3stat,          &
+                         abort_on_err=.false., &
+                         dowr=dowr)
+          elseif( ptype.eq.60 )then
+            call p3_init(lookup_file_dir='.',  &
+                         nCat=1,               &
+                         trplMomI=.true.,      &
+                         liqFrac=.true.,       &
+                         model='WRF',          &
+                         stat=p3stat,          &
+                         abort_on_err=.false., &
+                         dowr=dowr)
+          elseif( ptype.eq.61 )then
+            call p3_init(lookup_file_dir='.',  &
+                         nCat=2,               &
+                         trplMomI=.true.,      &
+                         liqFrac=.true.,       &
+                         model='WRF',          &
+                         stat=p3stat,          &
+                         abort_on_err=.false., &
+                         dowr=dowr)
+          elseif( ptype.eq.62 )then
+            call p3_init(lookup_file_dir='.',  &
+                         nCat=3,               &
+                         trplMomI=.true.,      &
+                         liqFrac=.true.,       &
+                         model='WRF',          &
+                         stat=p3stat,          &
+                         abort_on_err=.false., &
+                         dowr=dowr)
+          elseif( ptype.eq.63 )then
+            call p3_init(lookup_file_dir='.',  &
+                         nCat=4,               &
+                         trplMomI=.true.,      &
+                         liqFrac=.true.,       &
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
@@ -4136,11 +4194,11 @@
           qname(1) = 'qv '
           qname(2) = 'qc '
           qname(3) = 'qr '
-          qname(4) = 'qi '
-          qname(5) = 'qni'
+          qname(4) = 'qi1'
+          qname(5) = 'ni1'
           qname(6) = 'qnr'
-          qname(7) = 'qir'
-          qname(8) = 'qib'
+          qname(7) = 'ri1'
+          qname(8) = 'bi1'
 
           qunit(1) = 'kg/kg'
           qunit(2) = 'kg/kg'
@@ -4164,7 +4222,8 @@
 
           ! for p3 arrays:
           np3a = 22
-          np3o =  3
+          np3a = np3a + nout2d + nout3d
+          np3o =  4
 
       !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
         ELSEIF( ptype.eq.51 )THEN
@@ -4190,11 +4249,11 @@
           qname(1) = 'qv '
           qname(2) = 'qc '
           qname(3) = 'qr '
-          qname(4) = 'qi '
-          qname(5) = 'qni'
+          qname(4) = 'qi1'
+          qname(5) = 'ni1'
           qname(6) = 'qnr'
-          qname(7) = 'qir'
-          qname(8) = 'qib'
+          qname(7) = 'ri1'
+          qname(8) = 'bi1'
           qname(9) = 'qnc'
 
           qunit(1) = 'kg/kg'
@@ -4220,8 +4279,9 @@
           qmag(9) = 1.0e8
 
           ! for p3 arrays:
-          np3a = 23
-          np3o =  3
+          np3a = 23            ! 1-mom, no_liqfrac, 1-cat (no extra output)
+          np3a = np3a + nout2d + nout3d + 1  !(1 for dhmax_x)
+          np3o =  4            ! 1 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
 
       !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
         ELSEIF( ptype.eq.52 )THEN
@@ -4251,13 +4311,13 @@
           qname( 1) = 'qv '
           qname( 2) = 'qc '
           qname( 3) = 'qr '
-          qname( 4) = 'qi '
+          qname( 4) = 'qi1'
           qname( 5) = 'qi2'
           qname( 6) = 'nc '
           qname( 7) = 'nr '
-          qname( 8) = 'ni '
-          qname( 9) = 'ri '
-          qname(10) = 'bi '
+          qname( 8) = 'ni1'
+          qname( 9) = 'ri1'
+          qname(10) = 'bi1'
           qname(11) = 'ni2'
           qname(12) = 'ri2'
           qname(13) = 'bi2'
@@ -4293,8 +4353,9 @@
           qmag(13) = 1.0e-5
 
           ! for p3 arrays:
-          np3a = 30
-          np3o =  6
+          np3a = 30            ! 2-mom, no_liqfrac, 2-cat (no extra output)
+          np3a = np3a + nout2d + nout3d + 2  !(2 for dhmax_x)
+          np3o =  8            ! 2 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
 
       !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
 
@@ -4319,16 +4380,16 @@
           cloudvar(9) = .false.
           cloudvar(10) = .false.
 
-          qname(1) = 'qv '
-          qname(2) = 'qc '
-          qname(3) = 'qr '
-          qname(4) = 'qi '
-          qname(5) = 'qni'
-          qname(6) = 'qnr'
-          qname(7) = 'qir'
-          qname(8) = 'qib'
-          qname(9) = 'qnc'
-          qname(10) = 'qzi'
+          qname(1)  = 'qv '
+          qname(2)  = 'qc '
+          qname(3)  = 'qr '
+          qname(4)  = 'qi1'
+          qname(5)  = 'ni1'
+          qname(6)  = 'qnr'
+          qname(7)  = 'ri1'
+          qname(8)  = 'bi1'
+          qname(9)  = 'qnc'
+          qname(10) = 'zi1'
 
           qunit(1) = 'kg/kg'
           qunit(2) = 'kg/kg'
@@ -4355,8 +4416,536 @@
           qmag(10) = 1.0e-3
 
           ! for p3 arrays:
-          np3a = 24
-          np3o =  3
+!--v00:
+!!         np3a = 24
+!          np3a = 29  ! for  3 + 2 (nout3d = 3, nout2d = 2) additional output variables
+!          np3o =  3
+!--
+          np3a = 24            ! 3-mom, no_liqfrac, 1-cat (incl. vmi_1, dmi_1, rhoi_1)
+          np3a = np3a + nout2d + nout3d + 1  !(1 for dhmax_x)
+          np3o =  4            ! 1 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
+
+      !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
+
+        ELSEIF( ptype.eq.54 )THEN
+
+          numq = 15   ! there are 13 q variables
+
+          nqv  = 1    ! qv
+          nql1 = 2    ! the first liquid variable
+          nql2 = 3    ! the last liquid variable
+          nqs1 = 4    ! the first solid variable
+          nqs2 = 5    ! the last solid variable
+
+          cloudvar( 1) = .false.
+          cloudvar( 2) = .true.
+          cloudvar( 3) = .false.
+          cloudvar( 4) = .true.
+          cloudvar( 5) = .true.
+          cloudvar( 6) = .false.
+          cloudvar( 7) = .false.
+          cloudvar( 8) = .false.
+          cloudvar( 9) = .false.
+          cloudvar(10) = .false.
+          cloudvar(11) = .false.
+          cloudvar(12) = .false.
+          cloudvar(13) = .false.
+          cloudvar(14) = .false.
+          cloudvar(15) = .false.
+
+          qname( 1) = 'qv '
+          qname( 2) = 'qc '
+          qname( 3) = 'qr '
+          qname( 4) = 'qi1'
+          qname( 5) = 'qi2'
+          qname( 6) = 'nc '
+          qname( 7) = 'nr '
+          qname( 8) = 'ni1'
+          qname( 9) = 'ri1'
+          qname(10) = 'bi1'
+          qname(11) = 'ni2'
+          qname(12) = 'ri2'
+          qname(13) = 'bi2'
+          qname(14) = 'zi1'
+          qname(15) = 'zi2'
+
+          qunit( 1) = 'kg/kg'
+          qunit( 2) = 'kg/kg'
+          qunit( 3) = 'kg/kg'
+          qunit( 4) = 'kg/kg'
+          qunit( 5) = 'kg/kg'
+          qunit( 6) = '#/kg'
+          qunit( 7) = '#/kg'
+          qunit( 8) = '#/kg'
+          qunit( 9) = 'kg/kg'
+          qunit(10) = 'm^-3 kg^-1'
+          qunit(11) = '#/kg'
+          qunit(12) = 'kg/kg'
+          qunit(13) = 'm^-3 kg^-1'
+          qunit(14) = 'm^6/kg'
+          qunit(15) = 'm^6/kg'
+
+          ! likely maximum value (order-of-magnitude)
+          ! (needed for monotonic advection schemes)
+          qmag( 1) = 0.01
+          qmag( 2) = 0.01
+          qmag( 3) = 0.01
+          qmag( 4) = 0.01
+          qmag( 5) = 0.01
+          qmag( 6) = 1.0e5
+          qmag( 7) = 1.0e5
+          qmag( 8) = 1.0e5
+          qmag( 9) = 0.01
+          qmag(10) = 1.0e-5
+          qmag(11) = 1.0e5
+          qmag(12) = 0.01
+          qmag(13) = 1.0e-5
+          qmag(14) = 1.0e-3
+          qmag(15) = 1.0e-3
+
+          ! for p3 arrays:
+!--v00:
+!!          np3a = 32
+!          np3a = 36 ! for additional 4 variables output
+!          np3o =  6
+!--
+          np3a = 32            ! 2-mom, no_liqfrac, 2-cat (no extra output)
+          np3a = np3a + nout2d + nout3d + 2  !(2 for dhmax_x)
+          np3o =  8            ! 2 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
+
+
+      !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
+
+        ELSEIF( ptype.eq.60 )THEN
+
+          numq = 11   ! there are 11 q variables
+
+          nqv  = 1    ! qv
+          nql1 = 2    ! the first liquid variable
+          nql2 = 3    ! the last liquid variable
+          nqs1 = 4    ! the first solid variable
+          nqs2 = 4    ! the last solid variable
+
+          cloudvar(1) = .false.
+          cloudvar(2) = .true.
+          cloudvar(3) = .false.
+          cloudvar(4) = .true.
+          cloudvar(5) = .false.
+          cloudvar(6) = .false.
+          cloudvar(7) = .false.
+          cloudvar(8) = .false.
+          cloudvar(9) = .false.
+          cloudvar(10) = .false.
+          cloudvar(11) = .false.
+
+          qname(1)  = 'qv '
+          qname(2)  = 'qc '
+          qname(3)  = 'qr '
+          qname(4)  = 'qi1'
+          qname(5)  = 'ni1'
+          qname(6)  = 'qnr'
+          qname(7)  = 'ri1'
+          qname(8)  = 'bi1'
+          qname(9)  = 'qnc'
+          qname(10) = 'zi1'
+          qname(11) = 'li1'
+
+          qunit(1) = 'kg/kg'
+          qunit(2) = 'kg/kg'
+          qunit(3) = 'kg/kg'
+          qunit(4) = 'kg/kg'
+          qunit(5) = '#/kg'
+          qunit(6) = '#/kg'
+          qunit(7) = 'kg/kg'
+          qunit(8) = 'm^3 kg^-1'
+          qunit(9) = '#/kg'
+          qunit(10) = 'm(6) kg(-1)'
+          qunit(11) = 'kg/kg'
+
+          ! likely maximum value (order-of-magnitude)
+          ! (needed for monotonic advection schemes)
+          qmag(1) = 0.01
+          qmag(2) = 0.01
+          qmag(3) = 0.01
+          qmag(4) = 0.01
+          qmag(5) = 1.0e5
+          qmag(6) = 1.0e5
+          qmag(7) = 0.01
+          qmag(8) = 1.0e-5
+          qmag(9) = 1.0e8
+          qmag(10) = 1.0e-3
+          qmag(11) = 0.01
+
+          ! for p3 arrays:
+!-- v00:
+!!         np3a = 25
+!          np3a = 30   ! for 3+2 additional output variables
+!          np3o =  3
+!--
+          np3a = 25            ! 3-mom, liqfrac, 1-cat (incl. vmi_1, dmi_1, rhoi_1)
+          np3a = np3a + nout2d + nout3d + 1  !(1 for dhmax_x)
+          np3o =  4            ! 1 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
+
+      !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
+        ELSEIF( ptype.eq.61 )THEN
+
+          numq = 17   ! there are 17 q variables
+
+          nqv  = 1    ! qv
+          nql1 = 2    ! the first liquid variable
+          nql2 = 3    ! the last liquid variable
+          nqs1 = 4    ! the first solid variable
+          nqs2 = 5    ! the last solid variable
+
+          cloudvar( 1) = .false.
+          cloudvar( 2) = .true.
+          cloudvar( 3) = .false.
+          cloudvar( 4) = .true.
+          cloudvar( 5) = .true.
+          cloudvar( 6) = .false.
+          cloudvar( 7) = .false.
+          cloudvar( 8) = .false.
+          cloudvar( 9) = .false.
+          cloudvar(10) = .false.
+          cloudvar(11) = .false.
+          cloudvar(12) = .false.
+          cloudvar(13) = .false.
+          cloudvar(14) = .false.
+          cloudvar(15) = .false.
+          cloudvar(16) = .false.
+          cloudvar(17) = .false.
+
+          qname( 1) = 'qv '
+          qname( 2) = 'qc '
+          qname( 3) = 'qr '
+          qname( 4) = 'qi1'
+          qname( 5) = 'qi2'
+          qname( 6) = 'nc '
+          qname( 7) = 'nr '
+          qname( 8) = 'ni1'
+          qname( 9) = 'ri1'
+          qname(10) = 'bi1'
+          qname(11) = 'ni2'
+          qname(12) = 'ri2'
+          qname(13) = 'bi2'
+          qname(14) = 'zi1'
+          qname(15) = 'li1'
+          qname(16) = 'zi2'
+          qname(17) = 'li2'
+
+          qunit( 1) = 'kg/kg'
+          qunit( 2) = 'kg/kg'
+          qunit( 3) = 'kg/kg'
+          qunit( 4) = 'kg/kg'
+          qunit( 5) = 'kg/kg'
+          qunit( 6) = '#/kg'
+          qunit( 7) = '#/kg'
+          qunit( 8) = '#/kg'
+          qunit( 9) = 'kg/kg'
+          qunit(10) = 'm^-3 kg^-1'
+          qunit(11) = '#/kg'
+          qunit(12) = 'kg/kg'
+          qunit(13) = 'm^-3 kg^-1'
+          qunit(14) = 'm^6 kg^-1'
+          qunit(15) = 'kg/kg'
+          qunit(16) = 'm^6 kg^-1'
+          qunit(17) = 'kg/kg'
+
+          ! likely maximum value (order-of-magnitude)
+          ! (needed for monotonic advection schemes)
+          qmag( 1) = 0.01
+          qmag( 2) = 0.01
+          qmag( 3) = 0.01
+          qmag( 4) = 0.01
+          qmag( 5) = 0.01
+          qmag( 6) = 1.0e5
+          qmag( 7) = 1.0e5
+          qmag( 8) = 1.0e5
+          qmag( 9) = 0.01
+          qmag(10) = 1.0e-5
+          qmag(11) = 1.0e5
+          qmag(12) = 0.01
+          qmag(13) = 1.0e-5
+          qmag(14) = 1.0e-3
+          qmag(15) = 0.01
+          qmag(16) = 1.0e-3
+          qmag(17) = 0.01
+
+          ! for p3 arrays:
+!--v00:
+!!         np3a = 34
+!          np3a = 39   ! for 3+2 additional output variables
+!          np3o =  6
+!--
+          np3a = 34            ! 3-mom, liqfrac, 2-cat  (no extra output)
+          np3a = np3a + nout2d + nout3d + 2  !(2 for dhmax_x)
+          np3o =  8            ! 2 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
+
+      !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
+
+        ELSEIF( ptype.eq.62 )THEN
+
+          numq = 23   ! there are 17 q variables
+
+          nqv  = 1    ! qv
+          nql1 = 2    ! the first liquid variable
+          nql2 = 3    ! the last liquid variable
+          nqs1 = 4    ! the first solid variable
+          nqs2 = 6    ! the last solid variable
+
+          cloudvar( 1) = .false.
+          cloudvar( 2) = .true.
+          cloudvar( 3) = .false.
+          cloudvar( 4) = .true.
+          cloudvar( 5) = .true.
+          cloudvar( 6) = .true.
+          cloudvar( 7) = .false.
+          cloudvar( 8) = .false.
+          cloudvar( 9) = .false.
+          cloudvar(10) = .false.
+          cloudvar(11) = .false.
+          cloudvar(12) = .false.
+          cloudvar(13) = .false.
+          cloudvar(14) = .false.
+          cloudvar(15) = .false.
+          cloudvar(16) = .false.
+          cloudvar(17) = .false.
+          cloudvar(18) = .false.
+          cloudvar(19) = .false.
+          cloudvar(20) = .false.
+          cloudvar(21) = .false.
+          cloudvar(22) = .false.
+          cloudvar(23) = .false.
+
+          qname( 1) = 'qv '
+          qname( 2) = 'qc '
+          qname( 3) = 'qr '
+          qname( 4) = 'qi1'
+          qname( 5) = 'qi2'
+          qname( 6) = 'qi3'
+          qname( 7) = 'nc '
+          qname( 8) = 'nr '
+          qname( 9) = 'ni1'
+          qname(10) = 'ri1'
+          qname(11) = 'bi1'
+          qname(12) = 'ni2'
+          qname(13) = 'ri2'
+          qname(14) = 'bi2'
+          qname(15) = 'zi1'
+          qname(16) = 'li1'
+          qname(17) = 'zi2'
+          qname(18) = 'li2'
+          qname(19) = 'ni3'
+          qname(20) = 'ri3'
+          qname(21) = 'bi3'
+          qname(22) = 'zi3'
+          qname(23) = 'li3'
+
+          qunit( 1) = 'kg/kg'
+          qunit( 2) = 'kg/kg'
+          qunit( 3) = 'kg/kg'
+          qunit( 4) = 'kg/kg'
+          qunit( 5) = 'kg/kg'
+          qunit( 6) = 'kg/kg'
+          qunit( 7) = '#/kg'
+          qunit( 8) = '#/kg'
+          qunit( 9) = '#/kg'
+          qunit(10) = 'kg/kg'
+          qunit(11) = 'm^-3 kg^-1'
+          qunit(12) = '#/kg'
+          qunit(13) = 'kg/kg'
+          qunit(14) = 'm^-3 kg^-1'
+          qunit(15) = 'm^6 kg^-1'
+          qunit(16) = 'kg/kg'
+          qunit(17) = 'm^6 kg^-1'
+          qunit(18) = 'kg/kg'
+          qunit(19) = '#/kg'
+          qunit(20) = 'kg/kg'
+          qunit(21) = 'm^-3 kg^-1'
+          qunit(22) = 'm^6 kg^-1'
+          qunit(23) = 'kg/kg'
+
+          ! likely maximum value (order-of-magnitude)
+          ! (needed for monotonic advection schemes)
+          qmag( 1) = 0.01
+          qmag( 2) = 0.01
+          qmag( 3) = 0.01
+          qmag( 4) = 0.01
+          qmag( 5) = 0.01
+          qmag( 6) = 0.01
+          qmag( 7) = 1.0e5
+          qmag( 8) = 1.0e5
+          qmag( 9) = 1.0e5
+          qmag(10) = 0.01
+          qmag(11) = 1.0e-5
+          qmag(12) = 1.0e5
+          qmag(13) = 0.01
+          qmag(14) = 1.0e-5
+          qmag(15) = 1.0e-3
+          qmag(16) = 0.01
+          qmag(17) = 1.0e-3
+          qmag(18) = 0.01
+          qmag(19) = 1.0e5
+          qmag(20) = 0.01
+          qmag(21) = 1.0e-5
+          qmag(22) = 1.0e-3
+          qmag(23) = 0.01
+
+          ! for p3 arrays:
+!--v00:
+!!         np3a = 43
+!          np3a = 48 ! for 3+2 additional output variables
+!          np3o =  9
+!--
+          np3a = 43            ! 3-mom, liqfrac, 3-cat (no extra output)
+          np3a = np3a + nout2d + nout3d + 3  !(3 for dhmax_x)
+          np3o = 12            ! 3 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
+
+      !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
+
+        ELSEIF( ptype.eq.63 )THEN
+
+          numq = 29   ! there are 29 q variables
+
+          nqv  = 1    ! qv
+          nql1 = 2    ! the first liquid variable
+          nql2 = 3    ! the last liquid variable
+          nqs1 = 4    ! the first solid variable
+          nqs2 = 7    ! the last solid variable
+
+          cloudvar( 1) = .false.
+          cloudvar( 2) = .true.
+          cloudvar( 3) = .false.
+          cloudvar( 4) = .true.
+          cloudvar( 5) = .true.
+          cloudvar( 6) = .true.
+          cloudvar( 7) = .true.
+          cloudvar( 8) = .false.
+          cloudvar( 9) = .false.
+          cloudvar(10) = .false.
+          cloudvar(11) = .false.
+          cloudvar(12) = .false.
+          cloudvar(13) = .false.
+          cloudvar(14) = .false.
+          cloudvar(15) = .false.
+          cloudvar(16) = .false.
+          cloudvar(17) = .false.
+          cloudvar(18) = .false.
+          cloudvar(19) = .false.
+          cloudvar(20) = .false.
+          cloudvar(21) = .false.
+          cloudvar(22) = .false.
+          cloudvar(23) = .false.
+          cloudvar(24) = .false.
+          cloudvar(25) = .false.
+          cloudvar(26) = .false.
+          cloudvar(27) = .false.
+          cloudvar(28) = .false.
+          cloudvar(29) = .false.
+
+          qname( 1) = 'qv '
+          qname( 2) = 'qc '
+          qname( 3) = 'qr '
+          qname( 4) = 'qi1'
+          qname( 5) = 'qi2'
+          qname( 6) = 'qi3'
+          qname( 7) = 'qi4'
+          qname( 8) = 'nc '
+          qname( 9) = 'nr '
+          qname(10) = 'ni1'
+          qname(11) = 'ri1'
+          qname(12) = 'bi1'
+          qname(13) = 'ni2'
+          qname(14) = 'ri2'
+          qname(15) = 'bi2'
+          qname(16) = 'zi1'
+          qname(17) = 'li1'
+          qname(18) = 'zi2'
+          qname(19) = 'li2'
+          qname(20) = 'ni3'
+          qname(21) = 'ri3'
+          qname(22) = 'bi3'
+          qname(23) = 'zi3'
+          qname(24) = 'li3'
+          qname(25) = 'ni4'
+          qname(26) = 'ri4'
+          qname(27) = 'bi4'
+          qname(28) = 'zi4'
+          qname(29) = 'li4'
+
+
+          qunit( 1) = 'kg/kg'
+          qunit( 2) = 'kg/kg'
+          qunit( 3) = 'kg/kg'
+          qunit( 4) = 'kg/kg'
+          qunit( 5) = 'kg/kg'
+          qunit( 6) = 'kg/kg'
+          qunit( 7) = 'kg/kg'
+          qunit( 8) = '#/kg'
+          qunit( 9) = '#/kg'
+          qunit(10) = '#/kg'
+          qunit(11) = 'kg/kg'
+          qunit(12) = 'm^-3 kg^-1'
+          qunit(13) = '#/kg'
+          qunit(14) = 'kg/kg'
+          qunit(15) = 'm^-3 kg^-1'
+          qunit(16) = 'm^6 kg^-1'
+          qunit(17) = 'kg/kg'
+          qunit(18) = 'm^6 kg^-1'
+          qunit(19) = 'kg/kg'
+          qunit(20) = '#/kg'
+          qunit(21) = 'kg/kg'
+          qunit(22) = 'm^-3 kg^-1'
+          qunit(23) = 'm^6 kg^-1'
+          qunit(24) = 'kg/kg'
+          qunit(25) = '#/kg'
+          qunit(26) = 'kg/kg'
+          qunit(27) = 'm^-3 kg^-1'
+          qunit(28) = 'm^6 kg^-1'
+          qunit(29) = 'kg/kg'
+
+          ! likely maximum value (order-of-magnitude)
+          ! (needed for monotonic advection schemes)
+          qmag( 1) = 0.01
+          qmag( 2) = 0.01
+          qmag( 3) = 0.01
+          qmag( 4) = 0.01
+          qmag( 5) = 0.01
+          qmag( 6) = 0.01
+          qmag( 7) = 0.01
+          qmag( 8) = 1.0e5
+          qmag( 9) = 1.0e5
+          qmag(10) = 1.0e5
+          qmag(11) = 0.01
+          qmag(12) = 1.0e-5
+          qmag(13) = 1.0e5
+          qmag(14) = 0.01
+          qmag(15) = 1.0e-5
+          qmag(16) = 1.0e-3
+          qmag(17) = 0.01
+          qmag(18) = 1.0e-3
+          qmag(19) = 0.01
+          qmag(20) = 1.0e5
+          qmag(21) = 0.01
+          qmag(22) = 1.0e-5
+          qmag(23) = 1.0e-3
+          qmag(24) = 0.01
+          qmag(25) = 1.0e5
+          qmag(26) = 0.01
+          qmag(27) = 1.0e-5
+          qmag(28) = 1.0e-3
+          qmag(29) = 0.01
+
+          ! for p3 arrays:
+!--v00:
+!!         np3a = 52
+!          np3a = 57 ! for 3+2 additional output variables
+!          np3o = 12
+!--
+          np3a = 52            ! 3-mom, liqfrac, 4-cat  (no extra output)
+          np3a = np3a + nout2d + nout3d + 4  !(4 for dhmax_x)
+          np3o = 16            ! 4 x nCat for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
+
 
         ENDIF
 
@@ -5211,7 +5800,9 @@
 
       ! array indices for P3 microphysics:
       ! (use these arrays for ISHMAEL diag output, too)
-      if( imoist.eq.1 .and. ( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. ptype.eq.53 .or. ptype.eq.55 ) )then
+      if( imoist.eq.1 .and. ( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.52 .or. &
+                              ptype.eq.53 .or. ptype.eq.54 .or. ptype.eq.55 .or. ptype.eq.60 .or. &
+                              ptype.eq.61 .or. ptype.eq.62 .or. ptype.eq.63) )then
         ibp3 = 1
         iep3 = ni
         jbp3 = 1
@@ -6615,7 +7206,7 @@
       if(dowr) write(outfile,*)
 #endif
 
-  ! define grid, assuming no stretching 
+  ! define grid, assuming no stretching
   ! (we will correct the grid later if stretch_x or stretch_y >= 1)
 
     allocate( xfdp(1-ngxy:nx+ngxy+1) )
@@ -6778,7 +7369,7 @@
 
 
       if(dowr) write(outfile,*)
- 
+
       if(dowr) write(outfile,130) 'ib,ibm,ibi,ibc,ibt=',ib,ibm,ibi,ibc,ibt
       if(dowr) write(outfile,130) 'ie,iem,iei,iec,iet=',ie,iem,iei,iec,iet
       if(dowr) write(outfile,130) 'jb,jbm,jbi,jbc,jbt=',jb,jbm,jbi,jbc,jbt
@@ -7269,8 +7860,8 @@
 !  End specify xfdp
 !-----------------------------------------------------------------------
 !
-!  Optional:  to use a different stretching function, or to use 
-!  arbitrarily located grid points, simply comment out the 
+!  Optional:  to use a different stretching function, or to use
+!  arbitrarily located grid points, simply comment out the
 !  "hard-wired" section above, and then specify values for xfref
 !  here.  Do not change anything below here!
 !
@@ -7638,8 +8229,8 @@
 !  End specify yfdp
 !-----------------------------------------------------------------------
 !
-!  Optional:  to use a different stretching function, or to use 
-!  arbitrarily located grid points, simply comment out the 
+!  Optional:  to use a different stretching function, or to use
+!  arbitrarily located grid points, simply comment out the
 !  "hard-wired" section above, and then specify values for yfref
 !  here.  Do not change anything below here!
 !
@@ -7922,10 +8513,10 @@
 ! kb = 0
 ! so ng = 1 and zfw1d(-ng+1:nz+ng)
 ! SUBROUTINE ZGRID(dz, dz_stretch, nz, nbndlyr, gzc, gze, ng, dzmax,ztopstr,rtop,dzmaxtop)
-       
+
        nbndlyr = Int( str_bot/dz_bot + 0.01) - 1
        CALL ZGRID(dz, dz_bot, ke, nbndlyr, gzc, gze, 1, dz_top,ztopstr,rtop,dzmaxtop)
-       
+
          IF ( myid == 0 ) THEN
            DO k = 1,ke
              write(6,*) 'k,gzc,gze = ',k,gzc(k),gze(k)
@@ -7969,8 +8560,8 @@
         ! (note:  specify levels in meters ASL)
         ! See run/config_files/les_StratoCuDrizzle/input_grid_z for an example.
 
-        ! NOTE:  this section of code expects the model heights on HALF LEVELS 
-        !        (aka scalar levels), eg, 0.5*dz, 1.5*dz, 2.5*dz, etc 
+        ! NOTE:  this section of code expects the model heights on HALF LEVELS
+        !        (aka scalar levels), eg, 0.5*dz, 1.5*dz, 2.5*dz, etc
 
         if( myid.eq.0 )then
 
@@ -8035,8 +8626,8 @@
         ! User specifies w levels in a file called "input_grid_z"
         ! (note:  specify levels in meters ASL)
 
-        ! NOTE:  this section of code expects the model heights on FULL LEVELS 
-        !        (aka w levels), eg, 0.0*dz, 1.0*dz, 2.0*dz, 3.0*dz, etc 
+        ! NOTE:  this section of code expects the model heights on FULL LEVELS
+        !        (aka w levels), eg, 0.0*dz, 1.0*dz, 2.0*dz, 3.0*dz, etc
 
         if( myid.eq.0 )then
 
@@ -8107,14 +8698,14 @@
 !  End hard-wired analytic stretching function
 !-----------------------------------------------------------------------
 !
-!  Optional:  to use a different stretching function, or to use 
-!  arbitrarily located grid points, simply comment out the 
+!  Optional:  to use a different stretching function, or to use
+!  arbitrarily located grid points, simply comment out the
 !  "hard-wired" section above, and then specify values for zf
 !  here.  Do not change anything below here!
 !
-!  Note:  zf stores the location of the staggered w points. 
+!  Note:  zf stores the location of the staggered w points.
 !
-!  Note:  if you are using terrain, you need to also specify the nominal 
+!  Note:  if you are using terrain, you need to also specify the nominal
 !  locations of the zf points in the sigmaf array.
 !
 !-----------------------------------------------------------------------
@@ -8619,7 +9210,7 @@
           enddo
           enddo
         enddo
- 
+
         do j=jb,je
         do i=ib,ie
           do k=1,nk+1
@@ -8684,7 +9275,7 @@
         ENDIF
 
         ! 170803:  If you do not want/need the horizontal Rayleigh damper
-        !          on certain sides of the domain, then set the 
+        !          on certain sides of the domain, then set the
         !          appropriate variable below to .false.
 
         hrdamp_west   =  .true.
@@ -9098,7 +9689,7 @@
           if(dowr) write(outfile,*) '  ... using Thompson microphysics scheme ... '
           if(dowr) write(outfile,*) '         numq   = ',numq
           if(dowr) write(outfile,*)
-          if(dowr) write(outfile,*) '         assuming constant cloud droplet concentration' 
+          if(dowr) write(outfile,*) '         assuming constant cloud droplet concentration'
           if(dowr) write(outfile,*) '         Nt_c   = ',Nt_c
           if(dowr) write(outfile,*)
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
@@ -9796,9 +10387,9 @@
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>   SUBROUTINE ZGRID  <<<<<<<<<<<<<<<<<<<<<<<<<<< !
 !
 !-------------------------------------------------------------------------------
-! Creates the vertical grid using a geometric stretch 
+! Creates the vertical grid using a geometric stretch
 !
-! Option - set nbndlyr > 0 input deck.  A suggested value is ~ nz/4 to create a 
+! Option - set nbndlyr > 0 input deck.  A suggested value is ~ nz/4 to create a
 ! layer having constant resolution near the surface.
 !
 !-------------------------------------------------------------------------------
@@ -9862,7 +10453,7 @@
 !    write(6,*) 'ZGRID: gze,gzc = ',k,gze(k+1),gzc(k)
    ENDDO
 
-   gzc(nz) = 2.*gzc(nz-1) - gzc(nz-2) 
+   gzc(nz) = 2.*gzc(nz-1) - gzc(nz-2)
 
 
   END SUBROUTINE ZGRID
@@ -9891,11 +10482,11 @@
   sum = 0.0d0
   dzmaxdp = dzmax
   dzmax2dp = dzmax2
-  
+
 !  zctop = 10000.
 !  ztopr = 1.09
 !  dzmax2 = 1000. ! 2*dzmax
-  
+
   n2 = 0
 
   DO k = 1,nz
@@ -9929,10 +10520,10 @@
       integer, intent(in) :: nlevels
 
 
-      !  To reduce memory usage, the time-averaging code is designed as a series 
+      !  To reduce memory usage, the time-averaging code is designed as a series
       !  of smaller time averages.
       !
-      !  Total length of time averge is ntim * rtim.  
+      !  Total length of time averge is ntim * rtim.
       !  (so, ntim = 5 with rtime = 60.0s  yields 300-s average
 
 

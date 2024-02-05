@@ -399,6 +399,10 @@
 !    variables "out1", "out2", "out3", ... etc.
 
       nout3d =   0
+      ! P3:
+      IF ( ( ptype>=50 .and. ptype<=54 ) .or. (ptype>=60 .and. ptype<=63) ) THEN
+       nout3d = 3
+      ENDIF
 
 !----------------------------------------------------------------------
 !  For arbitrary 2d output array:  
@@ -413,6 +417,10 @@
 !    variables "out2d1", "out2d2", "out2d3", ... etc.
 
       nout2d =   0
+      ! P3:
+      IF ( ( ptype>=50 .and. ptype<=54 ) .or. (ptype>=60 .and. ptype<=63) ) THEN
+        nout2d =   2
+      ENDIF
 
 !----------------------------------------------------------------------
 !  Initialize MPI
