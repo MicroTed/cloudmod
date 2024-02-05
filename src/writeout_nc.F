@@ -966,7 +966,11 @@
           call disp_err( nf90_put_att(ncid,varid,"units","kg/kg") , .true. )
         elseif(idm.eq.1.and.n.ge.nnc1.and.n.le.nnc2)then
           call disp_err( nf90_put_att(ncid,varid,"long_name","number concentration") , .true. )
+          IF ( output_n_as_m3 == 0 ) THEN
           call disp_err( nf90_put_att(ncid,varid,"units","kg^{-1}") , .true. )
+          ELSE
+          call disp_err( nf90_put_att(ncid,varid,"units","m^{-3}") , .true. )
+          ENDIF
         elseif(idm .eq. 1 .and. n.ge.nzl1 .and. n .le. nzl2)then
           call disp_err( nf90_put_att(ncid,varid,"long_name","reflectivity moment") , .true. )
           call disp_err( nf90_put_att(ncid,varid,"units","Z m^{-3}kg^{-1}") , .true. )

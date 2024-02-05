@@ -26,6 +26,7 @@
 
     use input
     use constants
+    use index_module
     use misclibs
     use kessler_module
     use goddard_module, only : goddard,satadj_ice,consat2
@@ -755,14 +756,7 @@
 
       ELSEIF (ptype.ge.26 .and. ptype.le.28) THEN
 
-          IF ( ptype .eq. 26 ) THEN
-            j = 13
-          ELSEIF ( ptype .eq. 27 ) THEN
-            j = 16
-          ELSEIF ( ptype .eq. 28) THEN ! single moment
-            j = 6
-          ENDIF
-          DO i = 1,j
+          DO i = 1,numq
             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
@@ -780,22 +774,39 @@
           enddo
           enddo
 
+<<<<<<< HEAD
+=======
+          if( radopt.eq.2 )then
+            has_reqc = 1
+            has_reqi = 1
+            has_reqs = 1
+          else
+            has_reqc = 0
+            has_reqi = 0
+            has_reqs = 0
+          endif
+          
+>>>>>>> origin/wforce_bubble_init
           IF ( ptype .eq. 26 ) THEN  ! graupel only
              call nssl_2mom_driver(                          &
                                th  = dum4,                   &
-                               qv  = q3d(ib,jb,kb, 1),       &
-                               qc  = q3d(ib,jb,kb, 2),       &
-                               qr  = q3d(ib,jb,kb, 3),       &
-                               qi  = q3d(ib,jb,kb, 4),       &
-                               qs  = q3d(ib,jb,kb, 5),       &
-                               qh  = q3d(ib,jb,kb, 6),       &
-                               cn  = q3d(ib,jb,kb, 7),       &
-                               ccw = q3d(ib,jb,kb, 8),       &
-                               crw = q3d(ib,jb,kb, 9),       &
-                               cci = q3d(ib,jb,kb, 10),      &
-                               csw = q3d(ib,jb,kb, 11),      &
-                               chw = q3d(ib,jb,kb, 12),      &
-                               vhw = q3d(ib,jb,kb, 13),      &
+                               qv  = q3d(ib,jb,kb, lv),      &
+                               qc  = q3d(ib,jb,kb, lc),      &
+                               qr  = q3d(ib,jb,kb, lr),      &
+                               qi  = q3d(ib,jb,kb, li),      &
+                               qs  = q3d(ib,jb,kb, ls),      &
+                               qh  = q3d(ib,jb,kb, lgh),     &
+                               cn  = q3d(ib,jb,kb, lccn),    &
+                               cna = q3d(ib,jb,kb, lccna),   &
+                               cni = q3d(ib,jb,kb, lcina),   &
+                               ccw = q3d(ib,jb,kb, lnc),     &
+                               crw = q3d(ib,jb,kb, lnr),     &
+                               cci = q3d(ib,jb,kb, lni),     &
+                               csw = q3d(ib,jb,kb, lns),     &
+                               chw = q3d(ib,jb,kb, lnh),     &
+                               zrw = q3d(ib,jb,kb, lzr),     &
+                               zhw = q3d(ib,jb,kb, lzh),     &
+                               vhw = q3d(ib,jb,kb, lvh),     &
                                pii = dum1,                   &
                                p   =  prs,                   &
                                w   =  w3d,                   &
@@ -814,7 +825,10 @@
                               tevar = qbudget(5),            &
                               train = qbudget(6),            &
                               rr    = dum3,                  &
-                              diagflag = getdbz,                  &
+                  re_cloud=effc, re_ice=effi, re_snow=effs,                  &
+                  has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,   &
+                              dorad = dorad,                 &
+                              diagflag = getdbz,             &
                   ib3d=ib3d,ie3d=ie3d,jb3d=jb3d,je3d=je3d,kb3d=kb3d,ke3d=ke3d, &
                   nout3d=nout3d,out3d=out3d,                                 &
                               ims = ib ,ime = ie , jms = jb ,jme = je, kms = kb,kme = ke,  &
@@ -822,22 +836,27 @@
          ELSEIF ( ptype .eq. 27 ) THEN
              call nssl_2mom_driver(                          &
                                th  = dum4,                   &
-                               qv  = q3d(ib,jb,kb, 1),       &
-                               qc  = q3d(ib,jb,kb, 2),       &
-                               qr  = q3d(ib,jb,kb, 3),       &
-                               qi  = q3d(ib,jb,kb, 4),       &
-                               qs  = q3d(ib,jb,kb, 5),       &
-                               qh  = q3d(ib,jb,kb, 6),       &
-                               qhl = q3d(ib,jb,kb, 7),       &
-                               cn  = q3d(ib,jb,kb, 8),       &
-                               ccw = q3d(ib,jb,kb, 9),       &
-                               crw = q3d(ib,jb,kb,10),       &
-                               cci = q3d(ib,jb,kb, 11),      &
-                               csw = q3d(ib,jb,kb, 12),      &
-                               chw = q3d(ib,jb,kb, 13),      &
-                               chl = q3d(ib,jb,kb, 14),      &
-                               vhw = q3d(ib,jb,kb, 15),      &
-                               vhl = q3d(ib,jb,kb, 16),      &
+                               qv  = q3d(ib,jb,kb, lv),      &
+                               qc  = q3d(ib,jb,kb, lc),      &
+                               qr  = q3d(ib,jb,kb, lr),      &
+                               qi  = q3d(ib,jb,kb, li),      &
+                               qs  = q3d(ib,jb,kb, ls),      &
+                               qh  = q3d(ib,jb,kb, lgh),     &
+                               qhl = q3d(ib,jb,kb, lhl),     &
+                               cn  = q3d(ib,jb,kb, lccn),    &
+                               cna = q3d(ib,jb,kb, lccna),   &
+                               cni = q3d(ib,jb,kb, lcina),   &
+                               ccw = q3d(ib,jb,kb, lnc),     &
+                               crw = q3d(ib,jb,kb, lnr),     &
+                               cci = q3d(ib,jb,kb, lni),     &
+                               csw = q3d(ib,jb,kb, lns),     &
+                               chw = q3d(ib,jb,kb, lnh),     &
+                               chl = q3d(ib,jb,kb, lnhl),    &
+                               zrw = q3d(ib,jb,kb, lzr),     &
+                               zhw = q3d(ib,jb,kb, lzh),     &
+                               zhl = q3d(ib,jb,kb, lzhl),    &
+                               vhw = q3d(ib,jb,kb, lvh),     &
+                               vhl = q3d(ib,jb,kb, lvhl),    &
                                pii = dum1,                   &
                                p   =  prs,                   &
                                w   =  w3d,                   &
@@ -856,6 +875,9 @@
                               tevar = qbudget(5),            &
                               train = qbudget(6),            &
                               rr    = dum3,                  &
+                  re_cloud=effc, re_ice=effi, re_snow=effs,                  &
+                  has_reqc=has_reqc, has_reqi=has_reqi, has_reqs=has_reqs,   &
+                              dorad = dorad,                 &
                               diagflag = getdbz,             &
                   ib3d=ib3d,ie3d=ie3d,jb3d=jb3d,je3d=je3d,kb3d=kb3d,ke3d=ke3d, &
                   nout3d=nout3d,out3d=out3d,                                 &
@@ -888,6 +910,7 @@
                               tevar = qbudget(5),            &
                               train = qbudget(6),            &
                               rr    = dum3,                  &
+                              dorad = .false.,                 &
                               diagflag = getdbz,                  &
                   ib3d=ib3d,ie3d=ie3d,jb3d=jb3d,je3d=je3d,kb3d=kb3d,ke3d=ke3d, &
                   nout3d=nout3d,out3d=out3d,                                 &

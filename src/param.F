@@ -24,6 +24,30 @@
                        ww31,ww32,we31,we32,ws31,ws32,wn31,wn32)
       use input
       use constants
+      use force_module, only :                  &
+                        iforce,         &
+                        twstrt,twstop,  &
+!                        iforcetyp,      &
+                        nwfor,          &
+                        iwforce,        &
+                        iwshap,         &
+!                        ivshap,         &
+!                        iushap,         &
+!                        iqshap,         &
+!                        itshap,         &
+!                        isshap,isslcl,  &
+                        wfmeso,         &
+                        ufmeso,umaxmeso,&
+                        xwfcen,         &
+                        ywfcen,         &
+                        zwfcen,         &
+                        xwfrad,         &
+                        ywfrad,         &
+                        zwfrad,         &
+                        xwfmov,         &
+                        ywfmov,         &
+                        zwfmov 
+      use index_module
       use init_terrain_module
       use bc_module
       use comm_module
@@ -37,28 +61,10 @@
       use module_mp_graupel
       use microphy_p3, only : p3_init
       use module_mp_jensen_ishmael, only : jensen_ishmael_init
-      use module_mp_nssl_2mom, only:    &
-                        nssl_2mom_init, &
-                        rho_qr,         &
-                        cnor,           &
-                        rho_qs,         &
-                        cnos,           &
-                        rho_qh,         &
-                        cnoh,           &
-                        ccn,            &
-                        infall,         &
-                        alphah,         &
-                        alphahl,        &
-                        imurain,        &
-                        icdx,           &
-                        icdxhl,         &
-                        dfrz,           &
-                        hldnmn,         &
-                        iferwisventr,   &
-                        iehw,iehlw,     &
-                        ehw0,ehlw0,     &
-                        dmrauto,        &
-                        ioldlimiter
+      use module_mp_nssl_2mom, only: nssl_2mom_init, rho_qr, cnor, rho_qs,        &
+                        cnos, rho_qh, rho_qhl, cnoh, ccn, irenuc, infall, alphah, alphahl, &
+                        imurain, icdx, icdxhl, dfrz, hldnmn, iferwisventr,        &
+                        iehw, iehlw,ehw0, ehlw0, dmrauto, inucopt, ioldlimiter, ihlcnh
       use goddard_module, only : consat,consat2
       use lfoice_module, only : lfoice_init
       implicit none
@@ -101,7 +107,7 @@
 !-----------------------------------------------------------------------
 
       integer i,j,k,n,m,nn,kst,ni1,ni2,ni3,nj1,nj2,nj3,nk1,nk2,nk3,vadv,p3stat
-      integer ival,jval,ii,jj
+      integer ival,jval,ii,jj,ltmp
       integer iterrain
       integer :: inum
       real :: var
@@ -129,6 +135,7 @@
       character(len=60) :: param_mp,param_sgs,param_pbl,param_sfclay,param_rad
 
       logical :: doit,getfall
+      logical :: nssl_hail_on = .false.
 #ifdef MPI
       integer :: ntmp1,ntmp2,ntmp3,ntmp4,reqs,reqs1,reqs2,reqs3,reqs4
       integer, dimension(MPI_STATUS_SIZE) :: status
@@ -142,9 +149,10 @@
                         cnor,           &
                         rho_qs,         &
                         cnos,           &
-                        rho_qh,         &
+                        rho_qh, rho_qhl,&
                         cnoh,           &
                         ccn,            &
+                        irenuc,         &
                         infall,         &
                         alphah,         &
                         alphahl,        &
@@ -156,9 +164,35 @@
                         iferwisventr,   &
                         iehw,iehlw,     &
                         ehw0,ehlw0,     &
+                        inucopt,        &
                         dmrauto,        &
-                        ioldlimiter
+                        ioldlimiter,    &
+                        ihlcnh
 
+   NAMELIST /forcing/                   &
+                        iforce,         &
+                        twstrt,twstop,  &
+!                        iforcetyp,      &
+                        nwfor,          &
+                        iwforce,        &
+                        iwshap,         &
+!                        ivshap,         &
+!                        iushap,         &
+!                        iqshap,         &
+!                        itshap,         &
+!                        isshap,isslcl,  &
+                        wfmeso,         &
+                        ufmeso,umaxmeso,&
+                        xwfcen,         &
+                        ywfcen,         &
+                        zwfcen,         &
+                        xwfrad,         &
+                        ywfrad,         &
+                        zwfrad,         &
+                        xwfmov,         &
+                        ywfmov,         &
+                        zwfmov         
+ 
 !--------------------------------------------------------------
 
 #ifdef MPI
@@ -284,6 +318,7 @@
       read(20,nml=param21,end=721)
 721   continue
       rewind(20)
+
 
       close(unit=20)
 
@@ -462,6 +497,8 @@
       call MPI_BCAST(output_qv     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_qvpert ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_q      ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(output_n_as_m3,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(output_uv_ground,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_dbz    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_buoyancy,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_u      ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -649,11 +686,13 @@
       call MPI_BCAST(rho_qs    ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(cnos      ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(rho_qh    ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(rho_qhl   ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(cnoh      ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(alphah    ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(alphahl   ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(dfrz      ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(hldnmn    ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(irenuc    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(infall    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(icdx      ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(icdxhl    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -663,10 +702,25 @@
       call MPI_BCAST(iehlw     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(ehw0      ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(ehlw0     ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(inucopt   ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(dmrauto   ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(ioldlimiter,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(ihlcnh    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(nssl_3moment,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(nssl_density_on,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
       ENDIF
 #endif
+
+      open(unit=20,file='namelist.input',form='formatted',status='old',    &
+           access='sequential',err=8000)
+      read(20,nml=forcing,end=722)
+722   continue
+      rewind(20)
+      read(20,nml=bubble,end=723)
+723   continue
+      rewind(20)
+
+      close(unit=20)
 
 !-----------------------------------------------------------------------
 !  Set constants:
@@ -1583,7 +1637,7 @@
         print *,'  ptype      = ',ptype
         print *,'  output_dbz = ',output_dbz
         print *
-        print *,'  output_dbz is only available for ptype=2,3,5,26,27,28'
+        print *,'  output_dbz is only available for ptype=2,3,5,26,27,28,50-55'
         print *
         endif
         IF(ptype.eq.4)THEN
@@ -3594,79 +3648,169 @@
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !-----------------------------------------------------------------------
 
-        ELSEIF ( ptype .eq. 26 ) THEN    ! ZVD scheme (with no hail category)
+        ELSEIF ( ptype .eq. 26 .or. ptype .eq. 27) THEN    ! NSSL variable density scheme (with no hail category)
+!        ELSEIF ( ptype .eq. 26 ) THEN    ! NSSL variable density scheme (with no hail category)
 
+          lv = 1
+          lc = 2
+          lr = 3
+          li = 4
+          ls = 5
+          lgh = 6
+          lhl = 0
+          lccn = 7
+          lvh = 0
+
+          IF ( ptype .eq. 26 ) THEN
+            nssl_hail_on = .false.
+            lhab = lgh
+          ELSE
+            nssl_hail_on = .true.
+            lhl = 7
+            lhab = lhl
+          ENDIF
+          
           iice = 1    ! this means that ptype=26 is an ice scheme
           idm  = 1    ! this means that ptype=26 has at least one double moment
           idmplus = 1
 
-          numq = 13   ! number of variables
+          ! inucopt is not used yet
+          i = 0
+          IF ( inucopt == 1 .or. inucopt == 3 ) THEN
+           i = i + 1
+          ENDIF
+          IF ( inucopt == 2 .or. inucopt == 3 ) THEN
+           i = i + 1
+          ENDIF
+          
+          j = 0
+          IF ( nssl_3moment ) THEN
+           j = 2 ! three extra variables for 3moment
+          ENDIF
+          
+          k = 0
+          IF ( nssl_density_on ) THEN
+            k = 1
+          ENDIF
 
           nqv  = 1    ! qv is the first array
           nql1 = 2    ! the first liquid variable
           nql2 = 3    ! the last liquid variable
           nqs1 = 4    ! the first solid variable
-          nqs2 = 6    ! the last solid variable
-          nnc1 = 7    ! the first number concentration var
-          nnc2 = 12   ! the last number concentration var
-          nvl1 = 13   ! the first particle volume var
-          nvl2 = 13   ! the last particle volume var
+          nqs2 = lhab
+          ltmp = nqs2+1
+          nnc1 = ltmp    ! the first number concentration var (lccn)
 
-          cloudvar( 1) = .false.
-          cloudvar( 2) = .true.
-          cloudvar( 3) = .false.
-          cloudvar( 4) = .true.
-          cloudvar( 5) = .false.
-          cloudvar( 6) = .false.
-          cloudvar( 7) = .false.
-          cloudvar( 8) = .false.
-          cloudvar( 9) = .false.
-          cloudvar(10) = .false.
-          cloudvar(11) = .false.
-          cloudvar(12) = .false.
-          cloudvar(13) = .false.
+          lccn = nnc1
+          
+          lnc = nnc1+1+i
+          lnr = nnc1+2+i
+          lni = nnc1+3+i
+          lns = nnc1+4+i
+          lnh = nnc1+5+i
 
-          qname( 1) = 'qv '
-          qname( 2) = 'qc '
-          qname( 3) = 'qr '
-          qname( 4) = 'qi '
-          qname( 5) = 'qs '
-          qname( 6) = 'qg '
-          qname( 7) = 'ccn' ! CCN concentration
-          qname( 8) = 'ccw' ! droplet conc
-          qname( 9) = 'crw' ! rain conc
-          qname(10) = 'cci' ! ice crystal conc
-          qname(11) = 'csw' ! snow conc
-          qname(12) = 'chw' ! graupel conc
-          qname(13) = 'vhw' ! graupel volume
+          IF ( nssl_hail_on ) THEN
+            lnhl = nnc1+6+i
+            ltmp = lnhl
+          ELSE
+            ltmp = lnh
+          ENDIF
+          
+          nnc2 = ltmp
 
-          qunit( 1) = 'kg/kg'
-          qunit( 2) = 'kg/kg'
-          qunit( 3) = 'kg/kg'
-          qunit( 4) = 'kg/kg'
-          qunit( 5) = 'kg/kg'
-          qunit( 6) = 'kg/kg'
-          qunit( 7) = '#/kg'
-          qunit( 8) = '#/kg'
-          qunit( 9) = '#/kg'
-          qunit(10) = '#/kg'
-          qunit(11) = '#/kg'
-          qunit(12) = '#/kg'
-          qunit(13) = 'm^3/kg'
+          
+          IF ( nssl_density_on ) THEN
+            ltmp = ltmp + 1
+            lvh  = ltmp
+            nvl1 = ltmp ! the first particle volume var
+            IF ( nssl_hail_on ) THEN
+              ltmp = ltmp + 1
+              lvhl = ltmp
+            ENDIF
+            nvl2 = ltmp ! the last particle volume var
+          ENDIF
+          
+          IF ( nssl_3moment ) THEN
+            lzr = ltmp+1
+            nzl1 = lzr    ! the first reflectivity var (rain)
+            lzh = ltmp+2
+            ltmp = lzh
+            
+            IF ( nssl_hail_on ) THEN
+              ltmp = ltmp + 1
+              lzhl = ltmp
+            ENDIF
+            
+            nzl2 = ltmp   ! the last reflectivity var
+          ENDIF
 
-          rhovar( 1) = .false.
-          rhovar( 2) = .false.
-          rhovar( 3) = .false.
-          rhovar( 4) = .false.
-          rhovar( 5) = .false.
-          rhovar( 6) = .false.
-          rhovar( 7) = .true.
-          rhovar( 8) = .true.
-          rhovar( 9) = .true.
-          rhovar(10) = .true.
-          rhovar(11) = .true.
-          rhovar(12) = .true.
-          rhovar(13) = .true.
+          numq = ltmp   ! number of variables
+
+
+          cloudvar(lv) = .false.
+          cloudvar(lc) = .true.
+          cloudvar(lr) = .false.
+          cloudvar(li) = .true.
+          cloudvar(ls) = .false.
+          cloudvar(lgh) = .false.
+          cloudvar( lhab:numq) = .false.
+
+
+          qname(lv) = 'qv '
+          qname(lc) = 'qc '
+          qname(lr) = 'qr '
+          qname(li) = 'qi '
+          qname(ls) = 'qs '
+          qname(lgh) = 'qg '
+          IF ( nssl_hail_on ) qname(lhl) = 'qhl'
+          qname(lccn) = 'ccn' ! CCN concentration
+
+          i = 0
+          lccna = 1
+          lcina = 1
+          IF ( inucopt == 1 .or. inucopt == 3 ) THEN
+           i = i + 1
+          qname(lccn+i) = 'cna' ! activated CCN concentration
+          lccna = lccn+i
+          f_ccna = .true.
+          ENDIF
+          IF ( inucopt == 2 .or. inucopt == 3 ) THEN
+           i = i + 1
+          qname(lccn+i) = 'cia' ! activated CIN concentration
+          lcina = lccn+i
+          f_cina = .true.
+          ENDIF
+          
+          qname(lnc) = 'ccw' ! droplet conc
+          qname(lnr) = 'crw' ! rain conc
+          qname(lni) = 'cci' ! ice crystal conc
+          qname(lns) = 'csw' ! snow conc
+          qname(lnh) = 'chw' ! graupel conc
+          IF ( nssl_hail_on ) qname(lnhl) = 'chl' ! graupel conc
+          
+          IF ( nssl_density_on ) THEN
+           qname(lvh) = 'vhw' ! graupel volume
+           IF ( nssl_hail_on ) qname(lvhl) = 'vhl' ! hail volume
+          ENDIF
+          
+          IF ( nssl_3moment ) THEN
+            qname(lzr) = 'zrw' ! rain reflectivity moment
+            qname(lzh) = 'zhw' ! graupel reflectivity moment
+            IF ( nssl_hail_on ) qname(lzhl) = 'zhl' ! hail reflectivity
+          ENDIF
+
+          qunit(lv:lhab) = 'kg/kg'
+
+          qunit(nnc1:nnc2) = '#/kg'
+          IF ( nssl_density_on ) THEN
+            qunit(nvl1:nvl2) = 'm^3/kg'
+          ENDIF
+          IF ( nssl_3moment ) THEN
+            qunit(nzl1:nzl2) = 'Z/m^3/kg'
+          ENDIF
+
+          rhovar(lv:lhab) = .false.
+          rhovar(lhab+1:numq) = .true.
 
           ! likely maximum value (order-of-magnitude)
           ! (needed for monotonic advection schemes)
@@ -3676,46 +3820,13 @@
           qmag( 4) = 0.01
           qmag( 5) = 0.01
           qmag( 6) = 0.01
-          qmag( 7) = 1.0e5
-          qmag( 8) = 1.0e5
-          qmag( 9) = 1.0e5
-          qmag(10) = 1.0e5
-          qmag(11) = 1.0e5
-          qmag(12) = 1.0e5
-          qmag(13) = 1.0e-5
+          qmag(nnc1:nnc2) = 1.e8
+          qmag( lnc) = 1.0e10
+          qmag( lni) = 3.0e9
+          IF ( nssl_3moment ) qmag(nzl1:nzl2) = 1.0e-12
+          IF ( nssl_density_on ) qmag(nvl1:nvl2) = 1.0e-5
+          qmag(:) = 1.e-12
 
-!          ipconc = 5
-!          lr = 4
-!          li = 5
-!          ls = 6
-!          lh = 7
-!          lg = lh
-!          lhab = lh
-!          lhl = 0
-!          lqe  = lhab
-!
-!          lccn = 8
-!          lnc  = 9
-!          lnr  = 10
-!          lni  = 11
-!          lns  = 12
-!          lnh  = 13
-!          lnhl = 0
-!          lss  = 14
-!          lvh  = 15
-!
-!          lsch = 0
-!          lschab = 0
-!          lscw = 0
-!          lscb = lscw
-!          lscni = 0
-!          lscpi = 0
-!          lsce = lscni
-!          lsceq= lschab
-!
-!          lsw  = 0
-!          lhw  = 0
-!          lhlw = 0
 
           !----- budget stuff below here -----
 
@@ -3734,213 +3845,51 @@
 
           budrain = 6
 
-          !----- initialize the ZVD scheme -----
+          !----- initialize the NSSL scheme -----
 
           if(dowr) write(outfile,*)
-          if(dowr) write(outfile,*) 'Calling index_module_init'
+          if(dowr) write(outfile,*) 'Calling nssl_2mom_init'
           if(dowr) write(outfile,*)
 
-!          write(0,*) 'option 26 currently not available'
-!          call stopcm1
-         CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=-1,eqtset_tmp=eqtset)
-!          call INDEX_MODULE_INIT(ptype)
+         IF ( nssl_3moment ) THEN
+!           CALL nssl_2mom_init(ipctmp=8,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
+           CALL nssl_2mom_init(ipctmp=8,mixphase=0,nssl_hail_on=nssl_hail_on,nssl_density_on=nssl_density_on, &
+                     eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
+         ELSE
+!           CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=-1,eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
+           CALL nssl_2mom_init(ipctmp=5,mixphase=0,nssl_hail_on=nssl_hail_on,nssl_density_on=nssl_density_on, &
+                     eqtset_tmp=eqtset,myrank=myid,mpiroot=0)
+         ENDIF
 
           if(dowr) write(outfile,*)
-          if(dowr) write(outfile,*) 'Returned from index_module_init'
+          if(dowr) write(outfile,*) 'Returned from nssl_2mom_init'
           if(dowr) write(outfile,*)
 
           if(dowr) write(outfile,*)
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
+          IF ( nssl_3moment ) THEN
+          if(dowr) write(outfile,*) '  using NSSL 3-moment scheme  '
+          ELSE
           if(dowr) write(outfile,*) '  using NSSL 2-moment scheme  '
-          if(dowr) write(outfile,*) '  (graupel-only, no hail; graupel density predicted ) '
+          ENDIF
+
+          IF ( nssl_hail_on ) THEN
+          if(dowr) write(outfile,*) '  (with hail ) '
+          ELSE
+          if(dowr) write(outfile,*) '  (graupel-only, no hail ) '
+          ENDIF
+          IF ( nssl_density_on ) THEN
+          if(dowr) write(outfile,*) '  (graupel/hail density predicted ) '
+          ENDIF
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
           if(dowr) write(outfile,*)
+
 
 !-----------------------------------------------------------------------
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !-----------------------------------------------------------------------
 
-        ELSEIF ( ptype .eq. 27 ) THEN    ! ZVDH scheme (with hail)
-
-          iice = 1    ! this means that ptype=27 is an ice scheme
-          idm  = 1    ! this means that ptype=27 has at least one double moment
-          idmplus = 1
-
-          numq = 16   ! number of variables
-
-          nqv  = 1    ! qv is the first array
-          nql1 = 2    ! the first liquid variable
-          nql2 = 3    ! the last liquid variable
-          nqs1 = 4    ! the first solid variable
-          nqs2 = 7    ! the last solid variable
-          nnc1 = 8    ! the first number concentration var
-          nnc2 = 14   ! the last number concentration var
-          nvl1 = 15   ! the first particle volume var
-          nvl2 = 16   ! the last particle volume var
-
-          cloudvar( 1) = .false.
-          cloudvar( 2) = .true.
-          cloudvar( 3) = .false.
-          cloudvar( 4) = .true.
-          cloudvar( 5) = .false.
-          cloudvar( 6) = .false.
-          cloudvar( 7) = .false.
-          cloudvar( 8) = .false.
-          cloudvar( 9) = .false.
-          cloudvar(10) = .false.
-          cloudvar(11) = .false.
-          cloudvar(12) = .false.
-          cloudvar(13) = .false.
-          cloudvar(14) = .false.
-          cloudvar(15) = .false.
-          cloudvar(16) = .false.
-
-          qname( 1) = 'qv '
-          qname( 2) = 'qc '
-          qname( 3) = 'qr '
-          qname( 4) = 'qi '
-          qname( 5) = 'qs '
-          qname( 6) = 'qg '
-          qname( 7) = 'qhl'
-          qname( 8) = 'ccn' ! CCN concentration
-          qname( 9) = 'ccw' ! droplet conc
-          qname(10) = 'crw' ! rain conc
-          qname(11) = 'cci' ! ice crystal conc
-          qname(12) = 'csw' ! snow conc
-          qname(13) = 'chw' ! graupel conc
-          qname(14) = 'chl' ! hail conc
-          qname(15) = 'vhw' ! graupel volume
-          qname(16) = 'vhl' ! hail volume
-
-          qunit( 1) = 'kg/kg'
-          qunit( 2) = 'kg/kg'
-          qunit( 3) = 'kg/kg'
-          qunit( 4) = 'kg/kg'
-          qunit( 5) = 'kg/kg'
-          qunit( 6) = 'kg/kg'
-          qunit( 7) = 'kg/kg'
-          qunit( 8) = '#/kg'
-          qunit( 9) = '#/kg'
-          qunit(10) = '#/kg'
-          qunit(11) = '#/kg'
-          qunit(12) = '#/kg'
-          qunit(13) = '#/kg'
-          qunit(14) = '#/kg'
-          qunit(15) = 'm^3/kg'
-          qunit(16) = 'm^3/kg'
-
-          rhovar( 1) = .false.
-          rhovar( 2) = .false.
-          rhovar( 3) = .false.
-          rhovar( 4) = .false.
-          rhovar( 5) = .false.
-          rhovar( 6) = .false.
-          rhovar( 7) = .false.
-          rhovar( 8) = .true.
-          rhovar( 9) = .true.
-          rhovar(10) = .true.
-          rhovar(11) = .true.
-          rhovar(12) = .true.
-          rhovar(13) = .true.
-          rhovar(14) = .true.
-          rhovar(15) = .true.
-          rhovar(16) = .true.
-
-          ! likely maximum value (order-of-magnitude)
-          ! (needed for monotonic advection schemes)
-          qmag( 1) = 0.01
-          qmag( 2) = 0.01
-          qmag( 3) = 0.01
-          qmag( 4) = 0.01
-          qmag( 5) = 0.01
-          qmag( 6) = 0.01
-          qmag( 7) = 0.01
-          qmag( 8) = 1.0e5
-          qmag( 9) = 1.0e5
-          qmag(10) = 1.0e5
-          qmag(11) = 1.0e5
-          qmag(12) = 1.0e5
-          qmag(13) = 1.0e5
-          qmag(14) = 1.0e5
-          qmag(15) = 1.0e-5
-          qmag(16) = 1.0e-5
-
-!          ipconc = 5
-!          lr = 4
-!          li = 5
-!          ls = 6
-!          lh = 7
-!          lhl = 8
-!          lg = lh
-!          lhab = lhl
-!          lqe  = lhab
-!
-!          lccn = 9
-!          lnc  = 10
-!          lnr  = 11
-!          lni  = 12
-!          lns  = 13
-!          lnh  = 14
-!          lnhl = 15
-!          lss  = 16
-!          lvh  = 17
-!          lvhl = 18
-!
-!          lsch = 0
-!          lschab = 0
-!          lscw = 0
-!          lscb = lscw
-!          lscni = 0
-!          lscpi = 0
-!          lsce = lscni
-!          lsceq= lschab
-!
-!          lsw  = 0
-!          lhw  = 0
-!          lhlw = 0
-
-          !----- budget stuff below here -----
-
-          nbudget = 10
-
-          budname(1) = 'tcond '
-          budname(2) = 'tevac '
-          budname(3) = 'tauto '
-          budname(4) = 'taccr '
-          budname(5) = 'tevar '
-          budname(6) = 'train '
-          budname(7) = 'erain '
-          budname(8) = 'qsfc  '
-          budname(9) = 'esfc  '
-          budname(10) = 'erad  '
-
-          budrain = 6
-
-          !----- initialize the ZVD scheme -----
-
-!          if(dowr) write(outfile,*)
-!          if(dowr) write(outfile,*) 'Calling graupel_init'
-!          if(dowr) write(outfile,*)
-
-!          call INDEX_MODULE_INIT(ptype)
-         CALL nssl_2mom_init(ipctmp=5,mixphase=0,ihvol=1,eqtset_tmp=eqtset)
-
-!          if(dowr) write(outfile,*)
-!          if(dowr) write(outfile,*) 'Returned from graupel_init'
-!          if(dowr) write(outfile,*)
-
-          if(dowr) write(outfile,*)
-          if(dowr) write(outfile,*) ' ----------------------------------------------- '
-          if(dowr) write(outfile,*) '  using NSSL 2-moment scheme  '
-          if(dowr) write(outfile,*) '  (graupel and hail; graupel and hail density predicted ) '
-          if(dowr) write(outfile,*) ' ----------------------------------------------- '
-          if(dowr) write(outfile,*)
-
-!-----------------------------------------------------------------------
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-!-----------------------------------------------------------------------
-
-        ELSEIF ( ptype .eq. 28 ) THEN    ! single moment ZIEG scheme (without hail)
+        ELSEIF ( ptype .eq. 28 ) THEN    ! single moment NSSL scheme (without hail)
 
           iice = 1    ! this means that ptype=28 is an ice scheme
           idm  = 0    ! this means that ptype=28 has at least one double moment
@@ -3991,38 +3940,6 @@
           qmag(5) = 0.01
           qmag(6) = 0.01
 
-!          ipconc = 0
-!          lr = 4
-!          li = 5
-!          ls = 6
-!          lh = 7
-!          lg = lh
-!          lhab = lh
-!          lhl = 0
-!          lqe  = lhab
-!
-!          lccn = 0
-!          lnc  = 0
-!          lnr  = 0
-!          lni  = 0
-!          lns  = 0
-!          lnh  = 0
-!          lnhl = 0
-!          lss  = 0
-!          lvh  = 0
-!
-!          lsch = 0
-!          lschab = 0
-!          lscw = 0
-!          lscb = lscw
-!          lscni = 0
-!          lscpi = 0
-!          lsce = lscni
-!          lsceq= lschab
-!
-!          lsw  = 0
-!          lhw  = 0
-!          lhlw = 0
 
           !----- budget stuff below here -----
 
@@ -4041,7 +3958,7 @@
 
           budrain = 6
 
-          !----- initialize the ZVD scheme -----
+          !----- initialize the NSSL scheme -----
 
 !          if(dowr) write(outfile,*)
 !          if(dowr) write(outfile,*) 'Calling graupel_init'
@@ -8513,10 +8430,10 @@
 ! kb = 0
 ! so ng = 1 and zfw1d(-ng+1:nz+ng)
 ! SUBROUTINE ZGRID(dz, dz_stretch, nz, nbndlyr, gzc, gze, ng, dzmax,ztopstr,rtop,dzmaxtop)
-
-       nbndlyr = Int( str_bot/dz_bot + 0.01) - 1
-       CALL ZGRID(dz, dz_bot, ke, nbndlyr, gzc, gze, 1, dz_top,ztopstr,rtop,dzmaxtop)
-
+       
+       nbndlyr = Max(0,Int( str_bot/dz_bot + 0.01) - 1)
+       CALL ZGRID(dz, dz_bot, ke, nbndlyr, gzc, gze, 1, dz_top,ztopstr,rtop,dzmaxtop,myid)
+       
          IF ( myid == 0 ) THEN
            DO k = 1,ke
              write(6,*) 'k,gzc,gze = ',k,gzc(k),gze(k)
@@ -10125,6 +10042,10 @@
       write(21,*) '  tconfig                   = ',tconfig
       write(21,*) '  bcturbs                   = ',bcturbs
       write(21,*) '  ptype                     = ',ptype
+      IF ( ptype.eq.26 .or. ptype.eq.27  ) THEN
+      write(21,*) '  nssl_3moment              = ',nssl_3moment
+      ENDIF
+
       write(21,*) '  wbc                       = ',wbc
       write(21,*) '  ebc                       = ',ebc
       write(21,*) '  sbc                       = ',sbc
@@ -10394,15 +10315,15 @@
 !
 !-------------------------------------------------------------------------------
 
- SUBROUTINE ZGRID(dz, dz_stretch, nz, nbndlyr, gzc, gze, ng, dzmax,ztopstr,rtop,dzmaxtop)
+ SUBROUTINE ZGRID(dz, dz_stretch, nz, nbndlyr, gzc, gze, ng, dzmax,ztopstr,rtop,dzmaxtop,myid)
 
    implicit none
 
 
    real dz, dz_stretch
    real  dzmax,ztopstr,rtop,dzmaxtop
-   integer, intent(in) :: nbndlyr, nz, ng
-   double precision gzc(-ng+1:nz+ng), gze(-ng+1:nz+ng)  ! stay   real gzc(nz), gze(nz)  ??
+   integer, intent(in) :: nbndlyr, nz, ng, myid
+   double precision gzc(-ng+1:nz+ng), gze(-ng+1:nz+ng)
 
 !   real dzmax
 !   parameter( dzmax = 700. )
@@ -10437,13 +10358,17 @@
 
    write(6,*)
    IF( stretch .gt. 1.1 ) THEN
+    IF ( myid == 0 ) THEN
     write(6,*) 'STRETCH FAC TOO BIG! - NUMERICAL ERRORS WILL BE LARGE'
     write(6,*) 'STRETCH FAC  = ',stretch
     write(6,*) 'INCREASE NZ in namelist or increase dz_bot'
+    ENDIF
     call stopcm1
    ELSE
+    IF ( myid == 0 ) THEN
     write(6,*) 'ZGRID:  STRETCH FAC  = ',stretch
     write(6,*) 'ZGRID:  DOMAIN  HGT  = ',ZHEIGHT(dz_stretch,stretch,nz-1,dzmax,nbndlyr,ztopstr,rtop,dzmaxtop)
+    ENDIF
    ENDIF
 
    gze(1) = 0.0

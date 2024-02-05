@@ -470,13 +470,18 @@
 
              6 = Rotunno-Emanuel (1987) simple water-only scheme
 
-            (Note: options 26,27,28 use namelist nssl2mom_params, see below)
+            (Note: options 26,27,28 use namelist nssl2mom_params, see below and 
+                   README.NSSLmp
+                   3-moment option can be activated with nssl_3moment = .true.)
              26 = NSSL 2-moment scheme (graupel-only, no hail); 
                   graupel density predicted
              27 = NSSL 2-moment scheme (graupel and hail); 
                   graupel and hail densities predicted
              28 = NSSL single-moment scheme (graupel-only, similar to ptype=4);
                   fixed graupel density (rho_qh)
+             Ice density prediction can be turned off with nssl_density_on  (logical flag, default .true.) 
+                 (ptype 26 or 27)
+
 
             (Note: P3 = Predicted Particle Property bulk microphysics scheme)
              50 = P3 1-ice category, 1-moment cloud water
@@ -485,6 +490,14 @@
              53 = P3 1-ice category, 3-moment ice, plus double-moment cloud water
 
              55 = Jensen's ISHMAEL (Ice-Spheroids Habit Model with Aspect-ratio Evolution)
+
+ nssl_3moment - logical (default = .false.) Works with ptype 26 and 27 to turn on 
+              the reflectivity moments for rain and graupel (ptype=26/27) and for 
+              hail (ptype=27) Includes option for bin-emulating melting 
+              (Mansell et al. 2020; see README.NSSLmp)
+
+ nssl_density_on  - logical flag (default .true.) to toggle graupel/hail density 
+                 prediction (ptype 26 or 27)
 
  ihail - Use hail or graupel for large ice category when ptype=2,5.
           (Goddard-LFO and Morrison schemes only)
@@ -656,7 +669,7 @@
                     4 = specified in external GrADS file
 
  iinit - 3D initialization option:  0 = no perturbation
-                                    1 = warm bubble
+                                    1 = warm bubble (see 'bubble' namelist for settings)
                                     2 = cold pool
     [additional variables           3 = line of warm bubbles
      need to be set in              4 = initialization for moist benchmark
@@ -842,8 +855,9 @@
         -----
 
         -----
-        Note:  for the RRTMG code, only the Thompson (ptype=3) and Morrison 
-        (ptype=5) schemes are accurately coupled with the radiation calculations.
+        Note:  for the RRTMG code, only the Thompson (ptype=3), Morrison 
+        (ptype=5), NSSL (ptype=26/27), P3 (50-53), and Jensen ISHMAEL (55) schemes are 
+        accurately coupled with the radiation calculations.
         -----
 
  If radopt >= 1, set the following parameters:
@@ -1117,7 +1131,12 @@
  stretch_z - Use vertically stretched grid spacing?  
                0 = no
                1 = Wilhelmson and Chen
-               2 = Smooth geometric
+               2 = Smooth geometric (L. Wicker) Stretch factor, 
+                          dz(k+1) = stretch*dz(k)
+                   is determined iteratively. Max stretch factor 
+                   of 1.1 to limit finite difference errors. If an error
+                   is issued, either increase nz or adjust other parameters
+                   and try again.
                3 = Arbitrary, specified by user in input_grid_z file.
                    Note: this option specifies the heights of scalar
                    levels (also known as "half levels").
@@ -1136,13 +1155,15 @@
  ztop - Total depth of the domain (i.e., the height of the top of the
         domain) (m).
 
- str_bot - Level where stretching begins (m).
+ str_bot - Level where stretching begins (m). For stretch_z=2, this sets the
+           value of nbndlyr = Max(0,Int( str_bot/dz_bot + 0.01) - 1)
 
- str_top - Level where stretching ends (m).  (not used for stretch_z = 2)
+ str_top - Level where stretching ends (m).  (diagnosed iteratively for stretch_z = 2)
 
  dz_bot - Grid spacing at (and below) str_bot (m).
 
- dz_top - Grid spacing at (and above) str_top (m).
+ dz_top - Grid spacing at (and above) str_top (m). For stretch_z=2, this sets
+          the maximum dz (which might not be reached, depending on parameters)
 
 -------------------------------------------------------------------------
   param7 section -- Options relating to Direct Numerical Simulation (DNS)
@@ -1178,28 +1199,98 @@
  compile the code.  Then, var1 can be changed in the namelist.input file
  and the initial wind profile will change without needing to re-compile.
 
- Example: A user wants to change the location, size, and amplitude of the 
- initial thermal bubble.  Using the flex vars, the code could be modified in 
- this manner:
-        ric     =    var1
-        rjc     =    var2
-        zc      =    var3
-        bhrad   =    var4
-        bvrad   =    var5
-        bptpert =    var6
-
- and then the values in namelist.input might be set as follows:
-        var1    =  50000.0,
-        var2    =  25000.0,
-        var3    =   2000.0,
-        var4    =  10000.0,
-        var5    =   1000.0,
-        var6    =      1.5,
-
+ Thermal bubble settings are in the 'bubble' namelist (for setting 1 or more bubbles)
+ 
  Notes: - the flex variables are all real (float) variables.
         - the flex variables are automatically passed into most subroutines
           in the model
 
+-------------------------------------------------------------------------
+  bubble section - thermal bubble options
+  
+  This is only used when iinit=1 (thermal bubble initiation)
+  If numbub = 0 (default value), then default settings are used,
+    such as xcbub = xcenter, ycbub = ycenter, tbub = 1.0
+  Must have numbub <= maxbubble (set as 10, but can be changed in input.F)
+  Random perturbations (2D horizontal) can be added to all bubbles by setting tbubrandpert > 0,
+    where tbubrandpert sets the +/- range of the perturbations. Perts are added
+    only in the bubble footprint. Even if tbub = 0, then the perturbations will still
+    be inserted, which can be used to insert perts when other forcing is used (such
+    as wforce) (based on Ovtchinnikov and Kogan 2000, JAS). A good starting value is 
+    0.1 K.
+    
+    xcbub,ycbub,zcbub : x, y, and z center locations (in meters) of each bubble
+    xradbub,yradbub,zradbub : x, y, and z radii of each bubble (in meters)
+    tbub : center temperature perturbation (Kelvin)
+    
+ Example (1 bubble, but values given for two):
+ 
+&bubble
+          numbub =            1,
+          tbubrandpert =     0.1, 
+          tbub =             1.0,   1.5, 
+          xradbub =       10000.0, 1.0e4,
+          yradbub =       10000.0, 1.0e4,
+          zradbub =        1400.0, 1400.,
+          xcbub =         17000.0, 17000,
+          ycbub =         10000.0, 30000.,
+          zcbub =          1400.0, 1400.,
+/
+
+
+-------------------------------------------------------------------------
+  forcing section - Boundary layer updraft acceleration options (Mansell et al. 2010, JAS)
+
+ FORCING namelist
+  Here you can set up one or more ellipsoidal region of vertical forcing, which 
+  induces horizontal convergence.  At the moment, only forcing of W is 
+  available
+  
+  iforce :  0 = no forcing; 1 = forcing on
+  nwfor  : number of forcing regions (separate settings for each region; up to 10 of them)
+  iwforce : 0 = no W forcing; 1 = W forcing
+  iwshap  : -1 = no forcing in downdraft (default) ; 1 = forcing independent of W
+  wfmeso  : value of dW/dt (acceleration, usually on the order of 1e-2 to 6e-2 (6e-2 is pretty strong)
+  twstrt  : integer time (seconds) when forcing starts
+  twstop  : integer time (seconds) for forcing to stop
+  
+  xwfrad, ywfrad, zwfrad : radii (meters) of ellipsoidal vertical acceleration region
+  xwfcen, ywfcen, zwfcen : location (meters) of ellipsoidal vertical acceleration region
+  
+  xwfmov  : x-direction movement of forcing region,
+      -1000 moves region with mean wind in forcing depth (default)
+      -999 moves region with weighted wind in forcing depth
+      See wforce.F for other options or to create custom options
+  ywfmov  : y-direction movement of forcing region, (If xwfmov <= -999, then this is set automatically)
+
+  Of course xwfmov and ywfmov can be set manually, for example by using a trial run with
+    a thermal bubble and tracking the cell movement
+
+  Some soundings may require extended forcing (30-40 min or more) until the storm produces
+    sufficient cold pool to sustain itself. Some may also need higher values of wfmeso (10e-2).
+    
+  
+  Random thermal perturbations can be added via the 'bubble' namelist and setting the 
+    same center location, similar (or larger) radii, and a small (or zero) tbub.
+
+Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
+
+&forcing
+         iforce =           1,
+          nwfor =           1,
+        iwforce =           1, 
+         iwshap =          -1,     -1,   -1,
+         wfmeso =          3.0e-2, 2.0e-2, 4.0e-2
+         xwfrad =          6000.0, 6000., 2.5e3,
+         ywfrad =          6000.0, 6000., 2.5e3,
+         zwfrad =          1500.0, 1000., 1500.,
+         zwfcen =         1500.0,   0.0,    0.0,
+         xwfcen =         17000.0,16000., 8.5e3,
+         ywfcen =         20000.0,20000., 6.0e3,
+         twstrt =          0,      3600,     0,
+         twstop =          1200,   5400,  3600,
+         xwfmov =          -1000., -1000.,-1000.
+/
 
 -------------------------------------------------------------------------
   param9 section - output options
@@ -1321,9 +1412,9 @@
  output_q        - liquid and solid water mixing ratios?
                    (and number concentrations for double-moment schemes)
 
- output_dbz      - reflectivity (dBZ)?  Only available for ptype=2,3,5
-                   (Goddard-LFO, Thompson, Morrison schemes, respectively)
-                                also outputs composite reflectivity (cref)
+ output_dbz      - reflectivity (dBZ)?  Only available for ptype=2,3,5,26-28,50-53,55
+                   (Goddard-LFO, Thompson, Morrison, NSSL, P3, Jensen ISHMAEL schemes,
+                       respectively) also outputs composite reflectivity (cref)
                                 (i.e., max reflectivity in the column)
 
  output_buoyancy - buoyancy (relative to model's base state)?
@@ -1645,12 +1736,16 @@
 -------------------------------------------------------------------------
   nssl2mom_params section - parameters/options for NSSL microphysics scheme
     (used only if ptype=26,27,28)
-    Default values are noted. 
+    Default values are noted. There is an additional internal namelist that
+    can be accessed for more options. See README.NSSLmp
   
+  ihlcnh       - Graupel -> hail conversion option (old default was 1, new default is 3)
   rho_qr       - Rain density (1000 kg m**-3)
   rho_qs       - Snow density (100 kg m**-3)
-  rho_qh       - Graupel/hail density (500 kg m**-3) 
-                 [Only for ptype=28 (single moment)]
+  rho_qh       - Graupel density (500 kg m**-3) 
+                 [Only for ptype=28 (single moment) or with nssl_density_on=.false.]
+  rho_qhl      - Hail density (800 kg m**-3) 
+                 [Only for ptype=28 (single moment) or with nssl_density_on=.false.]
   cnor         - Rain intercept (8.e5 m**-4) 
                  [Only for ptype=28 (single moment)]
   cnos         - Snow intercept (3.e6 m**-4) 
@@ -1666,19 +1761,22 @@
                  Value sets the concentration at MSL, and an initially
                  homogeneous number mixing ratio (ccn/1.225) is assumed throughout the depth of
                  the domain.
+  
+  irenuc (new option) : 2 = ccn field is UNactivated aerosol (previous default; old droplet activation)
+                        7 = ccn field is ACTVIATED aerosol (new default 2023) (new droplet activation)
 
   infall       - Two-moment sedimation options (default infall=4 recommended)
                           ! 0 -> uses number-wgt for N; NO correction applied 
                                  (results in excessive size sorting)
-                          ! 1 -> uses mass-weighted fallspeed for N ALWAYS 
+                          ! 1 -> uses mass-weighted fallspeed for N ALWAYS
                                  (prevents size sorting)
-                          ! 2 -> uses number-wgt for N and mass-weighted 
+                          ! 2 -> uses number-wgt for N and mass-weighted
                                  correction for N 
                                  (Method II in Mansell, 2010 JAS)
-                          ! 3 -> uses number-wgt for N and Z-weighted 
+                          ! 3 -> uses number-wgt for N and Z-weighted
                                  correction for N 
                                  (Method I in Mansell, 2010 JAS)
-                          ! 4 -> Hybrid of 2 and 3: Uses minimum N from each 
+                          ! 4 -> Hybrid of 2 and 3: Uses minimum N from each
                                  method (z-wgt and m-wgt corrections) 
                                  (Method I+II in Mansell, 2010 JAS)
   alphah       - Shape parameter for graupel (0.0)
@@ -1686,17 +1784,17 @@
   
   Less-used parameters (see code)
   imurain      - DSD function option for rain (1 - gamma of diameter)
-  icdx         - fall speed option for graupel (3)
-  icdxhl       - fall speed option for hail (3)
+  icdx         - fall speed option for graupel (default was 3, now is 6)
+  icdxhl       - fall speed option for hail (default was 3, now is 6)
 
   dfrz         - Minimum diameter of new frozen drops (graupel);
                  default 0.15e-3, but can be set larger (up to 0.5e-5) to produce
                  larger graupel
   hldnmn       - Minimum hail particle density (500 kg m**-3) (changed from 750 in r17)
   iehw,iehlw   - Graupel (iehw) and Hail (iehlw) droplet collection efficiency
-                 options
-  ehw0,ehlw0   - Maximim droplet collection efficiencies for graupel (ehw0=0.75)
-                 and hail (ehlw0=0.75) (changed from 1.0 and 1.0 in r17)
+                 options 
+  ehw0,ehlw0   - Maximim droplet collection efficiencies for graupel (default was ehw0=0.75, now 0.9)
+                 and hail (default was ehlw0=0.75, now 0.9)
   dmrauto      - Options for limiting rain autoconversion
 
 -------------------------------------------------------------------------

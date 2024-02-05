@@ -42,10 +42,13 @@
               do_recycle_w,do_recycle_s,do_recycle_e,do_recycle_n,            &
               do_lsnudge,do_lsnudge_u,do_lsnudge_v,do_lsnudge_th,do_lsnudge_qv, &
               do_ib
+      logical :: nssl_3moment = .false.
+      logical :: nssl_density_on = .true.
 
 !-----------------------------------------------------------------------
 
-      integer nx,ny,nz,nodex,nodey,ppnode,timeformat,timestats,outunits,      &
+      integer :: nodex=0,nodey=0
+      integer nx,ny,nz,ppnode,timeformat,timestats,outunits,      &
               ni,nj,nk,nkp1,ngxy,ngz,                                         &
               ib,ie,jb,je,kb,ke,                                              &
               ibm,iem,jbm,jem,kbm,kem,                                        &
@@ -165,6 +168,8 @@
               ntim,ntavr,utav,vtav,wtav,ttav,qtav,etav,uutav,vvtav,           &
               nsfctavr,les_subdomain_shape,ib_init
 
+      integer :: output_n_as_m3 = 0   ! convert number conc from #/kg to #/m3
+      integer :: output_uv_ground = 0  ! output u,v, as ground relative
 !-----------------------------------------------------------------------
 
       real dx,dy,dz,dtl,timax,run_time,                                       &
@@ -204,6 +209,14 @@
            top_cd,side_cd,outunitconv,                                        &
            recycle_width_dx,recycle_depth_m,                                  &
            recycle_cap_loc_m,recycle_inj_loc_m
+
+!-----------------------------------------------------------------------
+
+      integer, parameter :: maxbubble = 10
+      integer :: numbub = 0
+      real    :: tbubrandpert = 0
+      real, dimension(maxbubble) :: tbub = 1.0, xcbub,ycbub,zcbub,            &
+                                    xradbub,yradbub,zradbub
 
 !-----------------------------------------------------------------------
 
@@ -250,7 +263,7 @@
 
       namelist /param0/ nx,ny,nz,ppnode,                                &
                         timeformat,timestats,terrain_flag,procfiles,    &
-                        outunits
+                        outunits,nodex,nodey
       namelist /param1/ dx,dy,dz,dtl,timax,run_time,                    &
                         tapfrq,rstfrq,statfrq,prclfrq
       namelist /param2/                                                 &
@@ -259,7 +272,8 @@
           advwenos,advwenov,weno_order,                                 &
           apmasscon,idiff,mdiff,difforder,imoist,                       &
           ipbl,sgsmodel,tconfig,bcturbs,horizturb,doimpl,               &
-          irdamp,hrdamp,psolver,ptype,ihail,iautoc,                     &
+          irdamp,hrdamp,psolver,ptype,nssl_3moment,nssl_density_on,     &
+          ihail,iautoc,         &
           icor,betaplane,lspgrad,eqtset,idiss,efall,rterm,              &
           wbc,ebc,sbc,nbc,bbc,tbc,irbc,roflux,nudgeobc,                 &
           isnd,iwnd,itern,iinit,                                        &
@@ -274,6 +288,8 @@
       namelist /param7/ bc_temp,ptc_top,ptc_bot,viscosity,pr_num
       namelist /param8/ var1,var2,var3,var4,var5,var6,var7,var8,var9,var10,   &
                         var11,var12,var13,var14,var15,var16,var17,var18,var19,var20
+      namelist /bubble/ numbub,tbub,tbubrandpert,xcbub,ycbub,zcbub,           &
+                         xradbub,yradbub,zradbub
       namelist /param9/                                                       &
               output_format,output_filetype,                                  &
               output_interp,                                                  &
@@ -292,7 +308,8 @@
               output_radten,output_cape,output_cin,output_lcl,output_lfc,     &
               output_pwat,output_lwp,                                         &
               output_thbudget,output_qvbudget,                                &
-              output_ubudget,output_vbudget,output_wbudget,output_pdcomp
+              output_ubudget,output_vbudget,output_wbudget,output_pdcomp,     &
+              output_n_as_m3, output_uv_ground
       namelist /param16/                                                      &
               restart_format,restart_filetype,restart_reset_frqtim,           &
               restart_file_theta,restart_file_dbz,restart_file_th0,           &

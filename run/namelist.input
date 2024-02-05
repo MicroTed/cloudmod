@@ -209,6 +209,37 @@
  var20     =   0.0,
  /
 
+! custom bubble settings for iinit=1
+&bubble
+          numbub =            0,
+          tbubrandpert =     0.0, 
+          tbub =             1.0,   1.0, 3.0,  
+          xradbub =       10000.0, 1.0e4, 1.0e4, 
+          yradbub =       10000.0, 1.0e4, 1.0e4,
+          zradbub =        1400.0, 1500., 1500.,
+          xcbub =         17000.0, 17000, 5.0e4,
+          ycbub =         10000.0, 30000., 1.1e5,
+          zcbub =          1400.0, 1500., 1500.,
+/
+
+! updraft acceleration
+&forcing
+         iforce =           0,
+          nwfor =           0,
+        iwforce =           0, 
+         iwshap =          -1,     -1,   -1,
+         wfmeso =          3.0e-2, 2.0e-2, 4.0e-2
+         xwfrad =          6000.0, 6000., 2.5e3,
+         ywfrad =          6000.0, 6000., 2.5e3,
+         zwfrad =          1500.0, 1000., 1500.,
+         zwfcen =         1500.0,   0.0,    0.0,
+         xwfcen =         17000.0,16000., 8.5e3,
+         ywfcen =         20000.0,20000., 6.0e3,
+         twstrt =          0,      3600,     0,
+         twstop =          1200,   5400,  3600,
+         xwfmov =          -1000., -1000.,-1000.
+/
+
  &param9
  output_format    = 1,
  output_filetype  = 1,

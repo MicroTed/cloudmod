@@ -8,12 +8,14 @@
 #              (NOTE: Don't change lines 3 and 4!)
 #  Note:  you may need to remove -DNCFPLUS if you use an old version of netcdf
 #
+#NETCDF = /Users/Shared/opt/local/netcdf480ser
 #OUTPUTINC = -I$(NETCDF)/include
 #OUTPUTLIB = -L$(NETCDF)/lib
 #OUTPUTOPT = -DNETCDF -DNCFPLUS
-#LINKOPTS  = -lnetcdf -lnetcdff
+#LINKOPTS  = -lnetcdf -lnetcdff -lhdf5_hl -lhdf5 -lm -lz
 #-----------------------------------------------------------------------------
 
+include local.mk
 
 #-----------------------------------------------------------------------------
 #                     HARDWARE SECTION
@@ -201,7 +203,8 @@ SRC   = constants.F \
 	module_bl_mynn.F \
 	module_sf_mynn.F \
 	module_bl_myjpbl.F \
-	module_sf_myjsfc.F
+	module_sf_myjsfc.F \
+	wforce.F
 
 OBJS = $(addsuffix .o, $(basename $(SRC)))
 
@@ -271,7 +274,7 @@ module_sf_myjsfc.o: module_ra_etc.o
 morrison.o: input.o constants.o
 module_mp_jensen_ishmael.o: input.o module_ra_etc.o
 mp_driver.o: constants.o input.o misclibs.o kessler.o goddard.o thompson.o lfoice.o morrison.o module_mp_nssl_2mom.o module_mp_p3.o module_mp_jensen_ishmael.o
-param.o: constants.o input.o init_terrain.o bc.o comm.o thompson.o morrison.o module_mp_nssl_2mom.o goddard.o lfoice.o module_mp_p3.o module_mp_jensen_ishmael.o ib_module.o eddy_recycle.o lsnudge.o
+param.o: constants.o input.o init_terrain.o bc.o comm.o thompson.o morrison.o module_mp_nssl_2mom.o goddard.o lfoice.o module_mp_p3.o module_mp_jensen_ishmael.o ib_module.o eddy_recycle.o lsnudge.o wforce.o
 parcel.o: constants.o input.o cm1libs.o bc.o comm.o writeout_nc.o
 pdef.o: input.o bc.o comm.o
 pdcomp.o: constants.o input.o adv.o poiss.o ib_module.o
@@ -282,7 +285,7 @@ restart_write.o: constants.o input.o writeout_nc.o lsnudge.o
 restart_read.o: constants.o input.o writeout_nc.o lsnudge.o goddard.o lfoice.o restart_write.o
 sfcphys.o: constants.o input.o cm1libs.o
 solve1.o: constants.o input.o bc.o diff2.o turbtend.o misclibs.o testcase_simple_phys.o eddy_recycle.o lsnudge.o
-solve2.o: constants.o input.o bc.o comm.o adv.o adv_routines.o sound.o sounde.o soundns.o soundcb.o anelp.o misclibs.o module_mp_nssl_2mom.o ib_module.o
+solve2.o: constants.o input.o bc.o comm.o adv.o adv_routines.o sound.o sounde.o soundns.o soundcb.o anelp.o misclibs.o ib_module.o wforce.o
 solve3.o: constants.o input.o bc.o comm.o adv_routines.o misclibs.o parcel.o lsnudge.o
 sorad3d.o: radlib3d.o
 sound.o: constants.o input.o misclibs.o bc.o comm.o ib_module.o

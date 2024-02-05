@@ -80,6 +80,7 @@
                    xh,rxh,arh1,arh2,uh,ruh,xf,rxf,arf1,arf2,uf,ruf,  &
                    yh,vh,rvh,yf,vf,rvf,                              &
                    dumk1,dumk2,dumk3,dumk4,rds,sigma,rdsf,sigmaf,    &
+                   u01d,v01d,                                        &
                    zh,mh,rmh,c1,c2,zf,mf,rmf,wprof,                  &
                    pi0,rho0,prs0,thv0,th0,rth0,qv0,qc0,              &
                    qi0,rr0,rf0,rrf0,thrd,                            &
@@ -126,13 +127,13 @@
       use comm_module
       use adv_module
       use adv_routines , only : movesfc
+      use force_module, only: wforce,iforce,iwforce
       use sound_module
       use sounde_module
       use soundns_module
       use soundcb_module
       use anelp_module
       use misclibs
-      use module_mp_nssl_2mom, only : zscale, nssl_2mom_driver
       use ib_module
 #ifdef MPI
       use mpi
@@ -161,6 +162,7 @@
       double precision, intent(inout), dimension(kb:ke) :: dumk1,dumk2
       double precision, intent(inout), dimension(nk) :: dumk3,dumk4
       real, intent(in), dimension(kb:ke) :: rds,sigma
+      real, intent(in), dimension(kb:ke) :: u01d,v01d
       real, intent(in), dimension(kb:ke+1) :: rdsf,sigmaf
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: zh,mh,rmh,c1,c2
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: zf,mf,rmf
@@ -997,6 +999,16 @@
         enddo
 
       ENDIF  termod1
+
+! w-forcing
+      IF ( iforce > 0 .and. iwforce > 0 ) THEN
+          CALL WFORCE (xh,rxh,uh,ruh,xf,rxf,uf,ruf,yh,vh,rvh,yf,vf,rvf,zf, &
+                       dttmp,wa,w3d,wten,ua,u3d,uten,dum1,         &
+                       mtime,       &
+                       u01d,v01d,sigma,sigmaf)
+      
+      
+      ENDIF
 
 !--------------------------------------------------------------------
 !  Pressure equation
