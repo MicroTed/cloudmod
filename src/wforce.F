@@ -140,7 +140,8 @@
    real, intent(in), dimension(ib:ie+1) :: xf,rxf,uf,ruf
    real, intent(in), dimension(jb:je)   :: yh,vh,rvh
    real, intent(in), dimension(jb:je+1) :: yf,vf,rvf
-   real, intent(in), dimension(kb:ke)   :: sigma,sigmaf
+   real, intent(in), dimension(kb:ke)   :: sigma
+   real, intent(in), dimension(kb:ke+1) :: sigmaf
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: wa
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: wndgten
 

@@ -1,6 +1,6 @@
 
 #SHELL = /bin/csh
-
+EXE = cm1.exe
 #-----------------------------------------------------------------------------
 #                      NETCDF SECTION
 #  (uncomment the following four lines if you want netcdf output capability)
@@ -217,7 +217,7 @@ AR      = ar cru
 all : cm1
 
 cm1:			$(OBJS)
-			$(FC) $(OBJS) $(FFLAGS) $(OUTPUTINC) $(OUTPUTLIB) $(LINKOPTS) -o ../run/cm1.exe
+			$(FC) $(OBJS) $(FFLAGS) $(OUTPUTINC) $(OUTPUTLIB) $(LINKOPTS) -o ../run/$(EXE)
 			$(AR) onefile.F $(SRC)
 			mv onefile.F ../run
 
