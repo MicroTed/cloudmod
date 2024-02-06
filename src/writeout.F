@@ -3572,12 +3572,13 @@
                 enddo
                 enddo
                 
-                ! hack to output number per m^3
                 IF ( output_n_as_m3 > 0 ) THEN
+                ! convert output to number per m^3
                 IF ( trim(qunit(n)) == '#/kg' ) THEN
                   unit_output(n_out) = '#/m3'
-                
-! nnc1, nnc2
+
+                !$omp parallel do default(shared)  &
+                !$omp private(i,j,k)
                 do k=1,maxk
                 do j=1,nj
                 do i=1,ni
