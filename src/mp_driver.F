@@ -1055,7 +1055,8 @@
                                diag2d_02     = p3a(1,1,25),                  &
                                diag3d_01     = p3a(1,1,26),                  &
                                diag3d_02     = p3a(1,1,27),                  &
-                               diag3d_03     = p3a(1,1,28) )
+                               diag3d_03     = p3a(1,1,28),                  &
+                               diagflag      = (getdbz .or. dowriteout)  )
 
              ! user-specified diagnostic output
                do i=1,ni
@@ -1121,7 +1122,8 @@
                                diag2d_02     = p3a(1,1,26),                  &
                                diag3d_01     = p3a(1,1,27),                  &
                                diag3d_02     = p3a(1,1,28),                  &
-                               diag3d_03     = p3a(1,1,29) )
+                               diag3d_03     = p3a(1,1,29),                  &
+                               diagflag      = (getdbz .or. dowriteout)  )
 
                do k=1,nk
                do i=1,ni
@@ -1194,7 +1196,8 @@
                                diag2d_02     = p3a(1,1,27),                  &
                                diag3d_01     = p3a(1,1,28),                  &
                                diag3d_02     = p3a(1,1,29),                  &
-                               diag3d_03     = p3a(1,1,30) )
+                               diag3d_03     = p3a(1,1,30),                  &
+                               diagflag      = (getdbz .or. dowriteout)  )
 
                do k=1,nk
                do i=1,ni
@@ -1271,7 +1274,8 @@
                                diag2d_02     = p3a(1,1,28),                  &
                                diag3d_01     = p3a(1,1,29),                  &
                                diag3d_02     = p3a(1,1,30),                  &
-                               diag3d_03     = p3a(1,1,31) )
+                               diag3d_03     = p3a(1,1,31),                  &
+                               diagflag      = (getdbz .or. dowriteout) )
 
                do k=1,nk
                do i=1,ni
@@ -1462,7 +1466,8 @@
                                diag2d_02     = p3a(1,1,34),                  &
                                diag3d_01     = p3a(1,1,35),                  &
                                diag3d_02     = p3a(1,1,36),                  &
-                               diag3d_03     = p3a(1,1,37) )
+                               diag3d_03     = p3a(1,1,37),                  &
+                               diagflag      = (getdbz .or. dowriteout) )
 
             if( axisymm.eq.1 )then
                do i=1,ni
@@ -1649,7 +1654,8 @@
                                diag2d_02     = p3a(1,1,36),                  &
                                diag3d_01     = p3a(1,1,37),                  &
                                diag3d_02     = p3a(1,1,38),                  &
-                               diag3d_03     = p3a(1,1,39) )
+                               diag3d_03     = p3a(1,1,39),                  &
+                               diagflag      = (getdbz .or. dowriteout)    )
 
             if( axisymm.eq.1 )then
                do i=1,ni
@@ -1842,7 +1848,8 @@
                                diag2d_02     = p3a(1,1,38),                  &
                                diag3d_01     = p3a(1,1,39),                  &
                                diag3d_02     = p3a(1,1,40),                  &
-                               diag3d_03     = p3a(1,1,41) )
+                               diag3d_03     = p3a(1,1,41),                  &
+                               diagflag      = (getdbz .or. dowriteout) )
 
             if( axisymm.eq.1 )then
                do i=1,ni
@@ -2053,7 +2060,8 @@
                                diag2d_02     = p3a(1,1,48),                  &
                                diag3d_01     = p3a(1,1,49),                  &
                                diag3d_02     = p3a(1,1,50),                  &
-                               diag3d_03     = p3a(1,1,51) )
+                               diag3d_03     = p3a(1,1,51),                  &
+                               diagflag      = (getdbz .or. dowriteout) )
 
 
             if( axisymm.eq.1 )then
@@ -2295,7 +2303,8 @@
                                diag2d_02     = p3a(1,1,58),                  &
                                diag3d_01     = p3a(1,1,59),                  &
                                diag3d_02     = p3a(1,1,60),                  &
-                               diag3d_03     = p3a(1,1,61) )
+                               diag3d_03     = p3a(1,1,61),                  &
+                               diagflag      = (getdbz .or. dowriteout) )
 
             if( axisymm.eq.1 )then
                do i=1,ni

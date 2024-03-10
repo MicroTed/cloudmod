@@ -117,7 +117,7 @@
 
 !==================================================================================================!
 
- subroutine p3_init(lookup_file_dir,nCat,trplMomI,liqfrac,model,stat,abort_on_err,dowr)
+ subroutine p3_init(lookup_file_dir,nCat,trplMomI,liqfrac,model,stat,abort_on_err,dowr,nanew1_in)
 
 !------------------------------------------------------------------------------------------!
 ! This subroutine initializes all physical constants and parameters needed by the P3       !
@@ -141,6 +141,7 @@
  logical,          intent(in),  optional  :: abort_on_err       ! abort when an error is encountered [.false.]
  character(len=*), intent(in),  optional  :: model              ! driving model
  logical,          intent(in)             :: dowr
+ real,             intent(in),  optional  :: nanew1_in
 
 ! Local variables and parameters:
  logical, save                  :: is_init = .false.
@@ -292,6 +293,7 @@
  inv_rm1 = 2.e+7           ! inverse aerosol mean size (m-1)
  sig1    = 2.0             ! aerosol standard deviation
  nanew1  = 300.e6          ! aerosol number mixing ratio (kg-1)
+ IF ( present( nanew1_in ) ) nanew1 = nanew1_in
  f11     = 0.5*exp(2.5*(log(sig1))**2)
  f21     = 1. + 0.25*log(sig1)
 
@@ -760,7 +762,7 @@ END subroutine p3_init
                 qit_3, qni_3, qir_3, qib_3, diag_vmi_3, diag_dmi_3, diag_rhoi_3, qzi_3, qli_3,  &
                 qit_4, qni_4, qir_4, qib_4, diag_vmi_4, diag_dmi_4, diag_rhoi_4, qzi_4, qli_4,  &
                 nc, diag2d_01, diag2d_02, diag3d_01, diag3d_02, diag3d_03,                      &
-                diag_dhmax_1, diag_dhmax_2, diag_dhmax_3, diag_dhmax_4 )
+                diag_dhmax_1, diag_dhmax_2, diag_dhmax_3, diag_dhmax_4, diagflag )
 
   !------------------------------------------------------------------------------------------!
   ! This is the main WRF interface with the P3 microphysics scheme.                          !
@@ -863,6 +865,7 @@ END subroutine p3_init
    real, intent(in)    :: dt
    integer, intent(in) :: itimestep
    integer, intent(in) :: n_iceCat
+   logical, intent(in), optional :: diagflag
 
    !--- local variables/parameters:
 
@@ -890,6 +893,7 @@ END subroutine p3_init
    logical                           :: log_liqFrac
    logical, parameter                :: log_scpf      = .false.  ! switch for activation of SCPF scheme
    logical, parameter                :: log_debug     = .false.  ! switch for internal real-time debug checking
+   logical                           :: log_diag
 
    real, dimension(ims:ime, kms:kme) :: cldfrac                  ! cloud fraction computed by SCPF
    real                              :: scpf_pfrac               ! precipitation fraction factor (SCPF)
@@ -905,6 +909,12 @@ END subroutine p3_init
 
    scpf_pfrac   = 0.  ! SCPF currently not used in WRF/CM1
    scpf_resfact = 0.  ! SCPF currently not used in WRF/CM1
+   
+   IF ( present( diagflag ) ) THEN
+     log_diag = diagflag
+   ELSE
+     log_diag = .false.
+   ENDIF
 
    j_loop: do j = jts,jte      ! j loop (north-south)
 
@@ -961,7 +971,7 @@ END subroutine p3_init
                       diag_effi,diag_vmi,diag_dmi,diag_rhoi,n_diag2d,diag2d,             &
                       n_diag3d,diag3d,log_predictNc,trim(model),clbfact_dep,             &
                       clbfact_sub,log_debug,log_scpf,scpf_pfrac,scpf_resfact,cldfrac,    &
-                      log_3momIce,log_liqFrac, diag_dhmax = diag_dhmax )
+                      log_3momIce,log_liqFrac, diag_dhmax = diag_dhmax, log_diag = log_diag )
 
      !surface precipitation output:
       dum1 = 1000.*dt
@@ -1815,7 +1825,7 @@ END subroutine p3_init
                     log_3momentIce,log_LiquidFrac,prt_drzl,prt_rain,prt_crys,prt_snow,    &
                     prt_grpl,prt_pell,prt_hail,prt_sndp,prt_wlsnow,prt_wcrys,prt_wsnow,   &
                     prt_wgrpl,prt_wpell,prt_whail,qi_type,diag_vis,diag_vis1,diag_vis2,   &
-                    diag_vis3,diag_dhmax)
+                    diag_vis3,diag_dhmax,log_diag)
 
 !----------------------------------------------------------------------------------------!
 !                                                                                        !
@@ -1912,7 +1922,7 @@ END subroutine p3_init
  real,    intent(in)                                  :: scpf_pfrac    ! precipitation fraction factor (SCPF)
  real,    intent(in)                                  :: scpf_resfact  ! model resolution factor (SCPF)
  real,    intent(out), dimension(its:ite,kts:kte)     :: SCF_out       ! cloud fraction from SCPF
-
+ logical, intent(in)                                  :: log_diag
 !----- Local variables and parameters:  -------------------------------------------------!
 
  real, dimension(its:ite,kts:kte) :: mu_r  ! shape parameter of rain
@@ -5688,7 +5698,8 @@ END subroutine p3_init
 !   partition surface precipitation rates into types (and aslo for the
 !   maximum hail size, dhmax).
 
- if (freq3DtypeDiag>0. .and. mod(it*dt,freq3DtypeDiag*60.)==0. .and. trim(model)=='WRF') then
+ if ( (log_diag .or. (freq3DtypeDiag>0. .and. mod(it*dt,freq3DtypeDiag*60.)==0.)) &
+         .and. trim(model)=='WRF') then
 
     do i = its,ite
        do k = ktop,kbot,-kdir
@@ -5738,7 +5749,7 @@ END subroutine p3_init
     prt_whail(:) = 0.
     if (present(qi_type)) qi_type(:,:,:) = 0.
 
-    if (freq3DtypeDiag>0. .and. mod(it*dt,freq3DtypeDiag*60.)==0.) then
+    if (log_diag .or. (freq3DtypeDiag>0. .and. mod(it*dt,freq3DtypeDiag*60.)==0.)) then
       !diagnose hydrometeor types for full columns
        ktop_typeDiag = ktop
     else

@@ -136,6 +136,8 @@
 
       logical :: doit,getfall
       logical :: nssl_hail_on = .false.
+      
+      real    :: p3_cccn = 300.e6
 #ifdef MPI
       integer :: ntmp1,ntmp2,ntmp3,ntmp4,reqs,reqs1,reqs2,reqs3,reqs4
       integer, dimension(MPI_STATUS_SIZE) :: status
@@ -168,6 +170,9 @@
                         dmrauto,        &
                         ioldlimiter,    &
                         ihlcnh
+
+   NAMELIST /p3_params/                 &
+                        p3_cccn
 
    NAMELIST /forcing/                   &
                         iforce,         &
@@ -298,6 +303,13 @@
 751      continue
          rewind(20)
       ENDIF
+      
+      IF ( (ptype.ge.50 .and. ptype.le.54) .or. (ptype.ge.60 .and. ptype.le.63) ) THEN
+         read(20,nml=p3_params,end=752)
+752      continue
+         rewind(20)
+      ENDIF
+      
 
       read(20,nml=param17,end=717)
 717   continue
@@ -709,6 +721,8 @@
       call MPI_BCAST(nssl_3moment,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(nssl_density_on,1,MPI_LOGICAL,0,MPI_COMM_WORLD,ierr)
       ENDIF
+
+      call MPI_BCAST(p3_cccn   ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
 #endif
 
       open(unit=20,file='namelist.input',form='formatted',status='old',    &
@@ -3049,7 +3063,7 @@
       if(dowr) write(outfile,*)
 
 
-      IF ( ptype >= 26 .and. dowr ) THEN
+      IF ( ptype >= 26 .and. ptype <= 28 .and. dowr ) THEN
         write(outfile,NML=nssl2mom_params)
 !        write(outfile,*) 'alphah    =',alphah
 !        write(outfile,*) 'alphahl   =',alphahl
@@ -3067,6 +3081,12 @@
 !        write(outfile,*) 'dmrauto   =',dmrauto
 !        write(outfile,*) 'ioldlimiter=',ioldlimiter
       ENDIF
+
+      IF ( (ptype.ge.50 .and. ptype.le.54) .or. (ptype.ge.60 .and. ptype.le.63) ) THEN
+        write(outfile,NML=p3_params)
+      ENDIF
+
+
 
 !--------------------------------------------------------------
 
@@ -3999,7 +4019,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           elseif( ptype.eq.51 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4008,7 +4028,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           elseif( ptype.eq.52 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4017,7 +4037,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           elseif( ptype.eq.53 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4026,7 +4046,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           elseif( ptype.eq.54 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4035,7 +4055,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           elseif( ptype.eq.60 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4044,7 +4064,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           elseif( ptype.eq.61 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4053,7 +4073,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           elseif( ptype.eq.62 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=3,               &
@@ -4062,7 +4082,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           elseif( ptype.eq.63 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=4,               &
@@ -4071,7 +4091,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr)
+                         dowr=dowr, nanew1_in=p3_cccn)
           endif
 
           if(dowr) write(outfile,*) 'Returned from P3_INIT'
