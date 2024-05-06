@@ -3826,7 +3826,7 @@
             qunit(nvl1:nvl2) = 'm^3/kg'
           ENDIF
           IF ( nssl_3moment ) THEN
-            qunit(nzl1:nzl2) = 'Z/m^3/kg'
+            qunit(nzl1:nzl2) = 'Z/kg'
           ENDIF
 
           rhovar(lv:lhab) = .false.
