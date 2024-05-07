@@ -476,6 +476,15 @@
       read(20,nml=param8)
       close(unit=20)
 
+      ! P3:
+      write(0,*) 'cm1: ptype = ',ptype
+      IF ( ( ptype>=50 .and. ptype<=54 ) .or. (ptype>=60 .and. ptype<=63) ) THEN
+        nout3d = Max(nout3d, 3)
+      ENDIF
+      IF ( ( ptype>=50 .and. ptype<=54 ) .or. (ptype>=60 .and. ptype<=63) ) THEN
+        nout2d = Max(nout2d, 2)
+      ENDIF
+
       ! note:  read remainder of namelist sections in param.F !
 
 !----------------------------------------------------------------------
