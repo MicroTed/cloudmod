@@ -521,6 +521,14 @@
                     ((xh(i)-ric)/bhrad)**2       &
                    +((yh(j)-rjc)/byrad)**2       &
                    +((zh(i,j,k)-zc)/bvrad)**2)
+
+   ! IF Y radius is large, create a 2D bubble
+         IF( byrad .gt. 1.0e6 ) THEN 
+          beta=sqrt(                             &
+                    ((xh(i)-ric)/bhrad)**2       &
+                   +((zh(i,j,k)-zc)/bvrad)**2)
+         ENDIF
+
           if (beta.lt.1.0) then
             ! use largest perturbation rather than adding if there are overlaps
             tha(i,j,k) = Max( tha(i,j,k), tha(i,j,k) + bptpert*(cos(0.5*pi*beta)**2) )
