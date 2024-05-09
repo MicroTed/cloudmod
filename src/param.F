@@ -138,6 +138,7 @@
       logical :: nssl_hail_on = .false.
       
       real    :: p3_cccn = 300.e6
+      integer :: p3_iparam = 3
 #ifdef MPI
       integer :: ntmp1,ntmp2,ntmp3,ntmp4,reqs,reqs1,reqs2,reqs3,reqs4
       integer, dimension(MPI_STATUS_SIZE) :: status
@@ -172,7 +173,8 @@
                         ihlcnh
 
    NAMELIST /p3_params/                 &
-                        p3_cccn
+                        p3_cccn,        &
+                        p3_iparam
 
    NAMELIST /forcing/                   &
                         iforce,         &
@@ -723,8 +725,10 @@
       ENDIF
 
       call MPI_BCAST(p3_cccn   ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(p3_iparam ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
 #endif
 
+! namelists that all threads read so they don't have to be passed
       open(unit=20,file='namelist.input',form='formatted',status='old',    &
            access='sequential',err=8000)
       read(20,nml=forcing,end=722)
@@ -732,6 +736,9 @@
       rewind(20)
       read(20,nml=bubble,end=723)
 723   continue
+      rewind(20)
+      read(20,nml=wksounding,end=724)
+724   continue
       rewind(20)
 
       close(unit=20)
@@ -4019,7 +4026,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           elseif( ptype.eq.51 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4028,7 +4035,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           elseif( ptype.eq.52 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4037,7 +4044,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           elseif( ptype.eq.53 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4046,7 +4053,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           elseif( ptype.eq.54 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4055,7 +4062,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           elseif( ptype.eq.60 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4064,7 +4071,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           elseif( ptype.eq.61 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4073,7 +4080,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           elseif( ptype.eq.62 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=3,               &
@@ -4082,7 +4089,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           elseif( ptype.eq.63 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=4,               &
@@ -4091,7 +4098,7 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
           endif
 
           if(dowr) write(outfile,*) 'Returned from P3_INIT'

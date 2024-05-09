@@ -219,6 +219,15 @@
                                     xradbub,yradbub,zradbub
 
 !-----------------------------------------------------------------------
+!      namelist /wksounding/ z_trop, th_trop,t_trop,th_sfc,prs_sfc,qv_pbl 
+        real :: z_trop_wk   = 12000.0      ! height of tropopause (m)
+        real :: th_trop_wk  = 343.0        ! theta at tropopause (K)
+        real :: t_trop_wk   = 213.0        ! temp at tropopause (K)
+        real :: th_sfc_wk   = 300.0        ! theta at surface (K)
+        real :: prs_sfc_wk  = 100000.0     ! pressure at surface (Pa)
+        real :: qv_pbl_wk   = 0.014        ! constant value of mixing ratio in PBL
+
+!-----------------------------------------------------------------------
 
       double precision ::                                                     &
            tapfrq,rstfrq,statfrq,prclfrq,diagfrq,azimavgfrq,hifrqfrq
@@ -290,6 +299,7 @@
                         var11,var12,var13,var14,var15,var16,var17,var18,var19,var20
       namelist /bubble/ numbub,tbub,tbubrandpert,xcbub,ycbub,zcbub,           &
                          xradbub,yradbub,zradbub
+      namelist /wksounding/ z_trop_wk, th_trop_wk,t_trop_wk,th_sfc_wk,prs_sfc_wk,qv_pbl_wk       
       namelist /param9/                                                       &
               output_format,output_filetype,                                  &
               output_interp,                                                  &

@@ -367,13 +367,14 @@
         if(dowr) write(outfile,*)
         if(dowr) write(outfile,*) '  WK sounding'
 
-!  variables related to Weisman-Klemp analytic sounding
-        z_trop   = 12000.0      ! height of tropopause (m)
-        th_trop  = 343.0        ! theta at tropopause (K)
-        t_trop   = 213.0        ! temp at tropopause (K)
-        th_sfc   = 300.0        ! theta at surface (K)
-        prs_sfc  = 100000.0     ! pressure at surface (Pa)
-        qv_pbl   = 0.014        ! constant value of mixing ratio in PBL
+!  variables related to Weisman-Klemp analytic sounding 
+! These are set by the wksounding namelist; default values are in input.F
+        z_trop   = z_trop_wk  ! 12000.0      ! height of tropopause (m)
+        th_trop  = th_trop_wk ! 343.0        ! theta at tropopause (K)
+        t_trop   = t_trop_wk  ! 213.0        ! temp at tropopause (K)
+        th_sfc   = th_sfc_wk  ! 300.0        ! theta at surface (K)
+        prs_sfc  = prs_sfc_wk ! 100000.0     ! pressure at surface (Pa)
+        qv_pbl   = qv_pbl_wk  ! 0.014        ! constant value of mixing ratio in PBL
 
 !--------------
 

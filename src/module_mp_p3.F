@@ -117,7 +117,8 @@
 
 !==================================================================================================!
 
- subroutine p3_init(lookup_file_dir,nCat,trplMomI,liqfrac,model,stat,abort_on_err,dowr,nanew1_in)
+ subroutine p3_init(lookup_file_dir,nCat,trplMomI,liqfrac,model,stat,abort_on_err,dowr, &
+                    nanew1_in,iparam_in)
 
 !------------------------------------------------------------------------------------------!
 ! This subroutine initializes all physical constants and parameters needed by the P3       !
@@ -142,6 +143,7 @@
  character(len=*), intent(in),  optional  :: model              ! driving model
  logical,          intent(in)             :: dowr
  real,             intent(in),  optional  :: nanew1_in
+ integer,          intent(in),  optional  :: iparam_in
 
 ! Local variables and parameters:
  logical, save                  :: is_init = .false.
@@ -195,13 +197,15 @@
 
 ! maximum total ice concentration (sum of all categories)
  max_total_Ni = 2000.e+3  !(m)
+ IF ( present( nanew1_in ) ) max_total_Ni = nanew1_in
 
 ! switch for warm-rain parameterization
 ! = 1 Seifert and Beheng 2001
 ! = 2 Beheng 1994
 ! = 3 Khairoutdinov and Kogan 2000
 ! = 4 Kogan 2013
- iparam = 3
+ iparam = 3 ! set default
+ IF ( present( iparam_in ) ) iparam = iparam_in
 
 ! droplet concentration (m-3)
  nccnst = 200.e+6
@@ -2043,6 +2047,13 @@ END subroutine p3_init
 
  double precision :: tmpdbl1,tmpdbl2,tmpdbl3
 
+ integer, parameter :: dmrauto       = 0 
+ integer :: dmropt = 0 ! extra option for crcnw
+ double precision t2s, xdp, xvc, xvr, rwrad
+ double precision xl2p,rb
+ real :: alphac, alphar, volb, xdiac, rh, nh
+ real, parameter :: aa1 = 9.44e15, aa2 = 5.78e3
+
  integer :: dumi,i,k,ii,iice,iice_dest,dumj,dumii,dumjj,dumzz,tmpint1,ktop,kbot,kdir,    &
             dumic,dumiic,dumjjc,catcoll,k_qxbot,k_qxtop,k_temp,dumll,dumllc
 
@@ -3645,6 +3656,47 @@ END subroutine p3_init
              ncautr = qcaut*cons8
              ncautc = qcaut*nc(i,k)/qc(i,k)
 
+          elseif (iparam.eq.5) then
+            ! Cohard and Pinty (2000)
+            xvc = qc(i,k)/(nc(i,k)*900.)
+
+            xdiac = ((6.*xvc)/pi)**thrd
+            rb = 0.5*xdiac*(1./(1.+alphac))**(1./6.)
+            xl2p = Max(0.0d0, 2.7e-2*900.0*rho(i,k)*nc(i,k)*xvc*   &
+     &           ((0.5e20*rb**3*xdiac)-0.4) )
+            IF ( rb .gt. 3.51e-6 ) THEN
+              rh = Max( 41.d-6, 6.3d-4/(1.d6*(rb - 3.5d-6)) )
+            ELSE
+              rh = 41.d-6
+            ENDIF
+            IF ( xl2p .gt. 0.0 ) THEN
+              nh = 4.2d9*xl2p
+            ELSE
+              nh = 1.e30
+            ENDIF
+
+            alphac = 0.0
+            volb = xvc*(1./(1.+alphac))**(1./2.)
+            ncautc = Max(0.0, ((alphac+2.)/(alphac+1.))*aa1*(rho(i,k)*nc(i,k))**2*xvc**2 )*inv_rho(i,k)
+
+            IF ( rb .le. 7.51d-6 ) THEN
+              t2s = 1.d30
+              qcaut = 0.0
+              ncautr = 0.0
+              ncslf = -ncautc
+            ELSE
+              t2s = 3.72/(1.e6*(rb-7.500d-6)*rho(i,k)*qc(i,k))
+
+              qcaut = Max( 0.0d0, xl2p/(t2s*rho(i,k)) )
+
+              IF ( qr(i,k)*rho(i,k) > 1.2*xl2p .and. rho(i,k)*nc(i,k) > 1.e-8 ) THEN ! Cohard and Pinty (2000a) switch over from (18) to (19)
+                ncautr = nr(i,k)/qr(i,k)*qcaut
+              ELSE
+                ncautr = Max( 0.0d0, Min(3.5e9*xl2p/t2s*inv_rho(i,k),0.5*ncautc) )
+              ENDIF
+              ncslf = 0.0
+            ENDIF
+
           endif
 
           if (qcaut .eq.0.) ncautc = 0.
@@ -3667,6 +3719,8 @@ END subroutine p3_init
           elseif (iparam.eq.3.or.iparam.eq.4) then
             !Khroutdinov and Kogan (2000)
              ncslf = 0.
+          elseif (iparam.eq.5) then
+            ! ncslf = 0.
           endif
 
        endif
@@ -3701,6 +3755,10 @@ END subroutine p3_init
              dum2 = (SPF(k)-SPF_clr(k)) !in-cloud Precipitation fraction
              qcacc = 8.53*(qc(i,k)*iSCF(k))**1.05*(qr(i,k)*iSPF(k))**0.98 *dum2
              ncacc = qcacc*nc(i,k)/qc(i,k)
+          elseif (iparam.eq.5) then
+            ! Cohard and Pinty 2000
+            xvr = qr(i,k)/(nr(i,k)*900.)
+            ncacc = aa2*nr(i,k)*(rho(i,k)*nc(i,k))*(xvc + xvr)
           endif
 
           if (qcacc.eq.0.) ncacc = 0.
@@ -3736,6 +3794,19 @@ END subroutine p3_init
              nrslf = dum*5.78*nr(i,k)*iSPF(k)*qr(i,k)*iSPF(k)*rho(i,k)*SPF(k)
           elseif (iparam.eq.4) then
              nrslf = dum*205.*(qr(i,k)*iSPF(k))**1.55*(nr(i,k)*1.e-6*rho(i,k)*iSPF(k))**0.6*1.e6/rho(i,k)*SPF(k) ! 1.e6 converts cm-3 to m-3
+          elseif (iparam.eq.5) then
+            xvr = qr(i,k)/(nr(i,k)*900.)
+            alphar = 0
+            rwrad = 0.5*((6.*xvr)/pi)**thrd ! (6.*qr(i,k)/(pi*900.*nr(i,k)))**(1./3.)
+            IF ( rwrad .ge. 50.e-6 ) THEN
+              nrslf = dum*aa2*rho(i,k)*(nr(i,k))**2*xvr
+            ELSE
+              nrslf = dum*aa1*rho(i,k)*(nr(i,k)*xvr)**2*      &
+     &                   (alphar + 6.)*(alphar + 5.)*(alphar + 4.)/  &
+     &                  ((alphar + 3.)*(alphar + 2.)*(alphar + 1.))
+              
+            ENDIF
+          
           endif
 
        endif
