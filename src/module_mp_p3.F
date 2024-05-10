@@ -87,6 +87,9 @@
 ! integer switch for warm rain autoconversion/accretion schemes
  integer :: iparam
 
+! integer switch for primary ice nucleation
+ integer :: iparamice
+
 ! number of diagnostic ice-phase hydrometeor types
  integer, public, parameter :: n_qiType = 6
 
@@ -109,16 +112,19 @@
                    vi,epsm,rhoa,map,ma,rr,bact,inv_rm1,inv_rm2,sig1,nanew1,f11,f21,sig2, &
                    nanew2,f12,f22,pi,thrd,sxth,piov3,piov6,rho_rimeMin,                  &
                    rho_rimeMax,inv_rho_rimeMax,max_total_Ni,dbrk,nmltratio,minVIS,       &
-                   maxVIS,mu_i_initial,mu_r_constant,inv_Drmax
+                   maxVIS,mu_i_initial,mu_r_constant,inv_Drmax,rho00
 
  integer :: n_iceCat = -1   !used for GEM interface
+
+ integer :: rssflg = 1   ! Rain size-sorting allowed (1, default), or disallowed (0).  If 0, sets N and Z-weighted fall speeds to q-weighted value
+ integer :: sssflg = 1   ! As above but for ice (all ice)
 
  contains
 
 !==================================================================================================!
 
  subroutine p3_init(lookup_file_dir,nCat,trplMomI,liqfrac,model,stat,abort_on_err,dowr, &
-                    nanew1_in,iparam_in)
+                    nanew1_in,iparam_in,iparamice_in,rssflg_in,sssflg_in)
 
 !------------------------------------------------------------------------------------------!
 ! This subroutine initializes all physical constants and parameters needed by the P3       !
@@ -143,7 +149,7 @@
  character(len=*), intent(in),  optional  :: model              ! driving model
  logical,          intent(in)             :: dowr
  real,             intent(in),  optional  :: nanew1_in
- integer,          intent(in),  optional  :: iparam_in
+ integer,          intent(in),  optional  :: iparam_in,iparamice_in,rssflg_in,sssflg_in
 
 ! Local variables and parameters:
  logical, save                  :: is_init = .false.
@@ -207,6 +213,15 @@
  iparam = 3 ! set default
  IF ( present( iparam_in ) ) iparam = iparam_in
 
+ IF ( present( iparamice_in ) ) iparamice = iparamice_in
+ IF ( present( rssflg_in ) ) rssflg = rssflg_in
+ IF ( present( sssflg_in ) ) sssflg = sssflg_in
+
+! Primary ice nucleation
+! 1 = Cooper
+! 2 = Meyers-Ferrier
+ iparamice = 1
+
 ! droplet concentration (m-3)
  nccnst = 200.e+6
 
@@ -223,6 +238,7 @@
  ep_2   = 0.622
  rhosur = 100000./(rd*273.15)
  rhosui = 60000./(rd*253.15)
+ rho00  = 1.225
  ar     = 841.99667
  br     = 0.8
  f1r    = 0.78
@@ -242,8 +258,8 @@
  inv_rho_rimeMax = 1./rho_rimeMax
 
 ! minium allowable prognostic variables
- qsmall = 1.e-14
- nsmall = 1.e-16
+ qsmall = 1.e-10 ! 1.e-14
+ nsmall = 1.e-8  ! 1.e-16
  bsmall = qsmall*inv_rho_rimeMax
  zsmall = 1.e-35
 
@@ -2029,7 +2045,7 @@ END subroutine p3_init
 
  real, dimension(its:ite,kts:kte)      :: inv_dzq,inv_rho,ze_ice,ze_rain,prec,acn,rho,   &
             rhofacr,rhofaci,xxls,xxlv,xlf,qvs,qvi,sup,supi,vtrmi1,tmparr1,mflux_r,       &
-            mflux_i,invexn
+            mflux_i,invexn, t7
 
  real, dimension(kts:kte) :: V_qr,V_qit,V_nit,V_nr,V_qc,V_nc,V_zit,flux_qit,flux_qx,     &
             flux_nx,flux_nit,flux_qir,flux_bir,flux_zit,flux_qil
@@ -3515,9 +3531,14 @@ END subroutine p3_init
           sup_cld = Qv_cld(k)/qvs(i,k)-1.!in-cloud  sub/sur-saturation w.r.t. liq in %
        endif
 
-       if (t(i,k).lt.258.15 .and. supi_cld.ge.0.05) then
-!         dum = exp(-0.639+0.1296*100.*supi(i,k))*1000.*inv_rho(i,k)        !Meyers et al. (1992)
-          dum = 0.005*exp(0.304*(273.15-t(i,k)))*1000.*inv_rho(i,k)         !Cooper (1986)
+       if ( ( ( iparamice == 1 .and. t(i,k).lt.258.15) .or.  &
+              ( iparamice == 2 .and. t(i,k).lt.268.15) )     &
+                 .and. supi_cld.ge.0.05) then
+         if (iparamice == 1 ) then
+           dum = 0.005*exp(0.304*(273.15-t(i,k)))*1000./rho00 ! *inv_rho(i,k)         !Cooper (1986)
+         elseif (iparamice == 2 ) then
+           dum = exp(-0.639+0.1296*100.*supi(i,k))*1000./rho00 ! *inv_rho(i,k)        !Meyers et al. (1992)
+         endif
 !         dum = 0.005*dexp(dble(0.304*(273.15-t(i,k))))*1000.*inv_rho(i,k)  !Cooper (1986)
           dum = min(dum,100.e3*inv_rho(i,k)*SCF(k))
           N_nuc = max(0.,(dum-sum(nitot(i,k,:)))*odt)
@@ -4593,6 +4614,7 @@ END subroutine p3_init
                 V_nr(k) = dum1+(rdumjj-real(dumjj))*(dum2-dum1)            !interpolated
                 V_nr(k) = V_nr(k)*rhofacr(i,k)                !corrected for air density
 
+                if ( rssflg /= 1 ) V_nr(k) = V_qr(k)
              endif qr_not_small_1
 
              Co_max = max(Co_max, V_qr(k)*dt_left*inv_dzq(i,k))
@@ -4713,6 +4735,7 @@ END subroutine p3_init
                       V_qit(k) = f1pr02*rhofaci(i,k)     !mass-weighted  fall speed (with density factor)
                       V_nit(k) = f1pr01*rhofaci(i,k)     !number-weighted    fall speed (with density factor)
                     !==
+                     if ( sssflg /= 1 ) V_nit(k) = V_qit(k)
 
                    endif qi_notsmall_i1
 
@@ -4805,6 +4828,7 @@ END subroutine p3_init
                       V_qit(k) = f1pr02*rhofaci(i,k)     !mass-weighted  fall speed (with density factor)
                       V_nit(k) = f1pr01*rhofaci(i,k)     !number-weighted    fall speed (with density factor)
                     !==
+                     if ( sssflg /= 1 ) V_nit(k) = V_qit(k)
 
                    endif qi_notsmall_i2
 
@@ -4889,7 +4913,7 @@ END subroutine p3_init
                 kloop_sedi_i3: do k = k_qxtop,k_qxbot,-kdir
 
                    !-- compute Vq, Vn (get values from lookup table)
-                   qi_notsmall_i3: if (qitot(i,k,iice).ge.qsmall) then
+                   qi_notsmall_i3: if (qitot(i,k,iice).ge.qsmall .and. nitot(i,k,iice) >= nsmall ) then
 
                     !--Compute Vq, Vn:
                       nitot(i,k,iice) = max(nitot(i,k,iice),nsmall) !impose lower limits to prevent log(<0)
@@ -4926,6 +4950,22 @@ END subroutine p3_init
                       V_qit(k) = f1pr02*rhofaci(i,k)     !mass-weighted fall speed (with density factor)
                       V_nit(k) = f1pr01*rhofaci(i,k)     !number-weighted fall speed (with density factor)
                       V_zit(k) = f1pr19*rhofaci(i,k)     !reflectivity-weighted fall speed (with density factor)
+
+                     if ( sssflg /= 1 ) then
+                       V_nit(k) = V_qit(k)
+                       V_zit(k) = V_qit(k)
+                     endif
+
+                   else
+
+                      qv(i,k) = qv(i,k) + qitot(i,k,iice)
+                      th(i,k) = th(i,k) - invexn(i,k)*(qitot(i,k,iice)-qiliq(i,k,iice))*xxls(i,k)*inv_cp
+                      th(i,k) = th(i,k) - invexn(i,k)*qiliq(i,k,iice)*xxlv(i,k)*inv_cp
+                      qitot(i,k,iice) = 0.
+                      nitot(i,k,iice) = 0.
+                      qirim(i,k,iice) = 0.
+                      qiliq(i,k,iice) = 0.
+                      birim(i,k,iice) = 0.
 
                    endif qi_notsmall_i3
 
@@ -5044,6 +5084,11 @@ END subroutine p3_init
                       V_qit(k) = f1pr02*rhofaci(i,k)     !mass-weighted fall speed (with density factor)
                       V_nit(k) = f1pr01*rhofaci(i,k)     !number-weighted fall speed (with density factor)
                       V_zit(k) = f1pr19*rhofaci(i,k)     !reflectivity-weighted fall speed (with density factor)
+
+                     if ( sssflg /= 1 ) then
+                       V_nit(k) = V_qit(k)
+                       V_zit(k) = V_qit(k)
+                     endif
 
                    endif qi_notsmall_i4
 
@@ -5455,7 +5500,7 @@ END subroutine p3_init
 
        iice_loop_final_diagnostics:  do iice = 1,nCat
 
-          qi_not_small:  if (qitot(i,k,iice).ge.qsmall) then
+          qi_not_small:  if (qitot(i,k,iice).ge.qsmall .and. nitot(i,k,iice).ge.nsmall) then
 
             !impose lower limits to prevent taking log of # < 0
              nitot(i,k,iice) = max(nitot(i,k,iice),nsmall)
