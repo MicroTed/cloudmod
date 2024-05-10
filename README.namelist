@@ -489,6 +489,11 @@
              52 = P3 2-ice categories plus double-moment cloud water
              53 = P3 1-ice category, 3-moment ice, plus double-moment cloud water
 
+             54 = P3 2-mom-cld, 2-mom-rain, 3-mom-ice, 2-ice-category
+             61 = P3 2-mom-cld, 2-mom-rain, 3-mom-ice, 2-ice-category, liq-frac
+             62 = P3 2-mom-cld, 2-mom-rain, 3-mom-ice, 3-ice-category, liq-frac
+             63 = P3 2-mom-cld, 2-mom-rain, 3-mom-ice, 4-ice-category, liq-frac
+
              55 = Jensen's ISHMAEL (Ice-Spheroids Habit Model with Aspect-ratio Evolution)
 
  nssl_3moment - logical (default = .false.) Works with ptype 26 and 27 to turn on 
