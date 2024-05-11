@@ -147,11 +147,11 @@
 
    integer :: nx,ny,nz
    real    :: dt
-   real    :: w (ib:ie,jb:je,kb:ke) ! for Naylor forcing
-   real    :: wt(ib:ie,jb:je,kb:ke) ! for Naylor forcing
-   real    :: fw(ib:ie,jb:je,kb:ke) ! w tendency (for updraft acceleration term)
-   real    :: u (ib:ie+1,jb:je,kb:ke) ! ua for u forcing
-   real    :: ut(ib:ie+1,jb:je,kb:ke) ! u3d
+!   real    :: w (ib:ie,jb:je,kb:ke) ! for Naylor forcing
+!   real    :: wt(ib:ie,jb:je,kb:ke) ! for Naylor forcing
+   real, intent(inout)    :: fw(ib:ie,jb:je,kb:ke) ! w tendency (for updraft acceleration term)
+   real, intent(inout)    :: u (ib:ie+1,jb:je,kb:ke) ! ua for u forcing
+   real, intent(inout)    :: ut(ib:ie+1,jb:je,kb:ke) ! u3d
 !      real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: rru,ua,u3d,uten,uten1
    real    :: fu(ib:ie+1,jb:je,kb:ke) ! uten U tendency
    real    :: t0(ib:ie,jb:je,kb:ke) ! work array
@@ -277,11 +277,11 @@
 !     IF ( time .ge. twstrt(n) .and. time .le. twstop(n) ) THEN
       IF ( idofor(n) .eq. 1 ) THEN
 
-       DO k = 1,nk-1
+       DO k = 2,nk-1
         z = sigma(k)
-        DO j = jb,je
+        DO j = 1,nj ! jb,je
          y = yh(j)
-         DO i = ib,ie
+         DO i = 1,ni ! ib,ie
           x = xh(i)
 
          IF ( nj .gt. 2 ) THEN
@@ -302,9 +302,9 @@
          ELSE
            t0(i,j,k) = wfmeso(n)*(cos(pi*radius)+1.)/2.
          ENDIF
-        ELSEIF ( iwshap(n) .eq. -1 .and. w(i,j,k) .ge. -0.1 ) THEN
+        ELSEIF ( iwshap(n) .eq. -1 .and. wa(i,j,k) .ge. -0.1 ) THEN
 !         fw(i,j,k) = fw(i,j,k) + wfmeso(n)*(cos(pi*radius)+1.)/2.
-          t0(i,j,k) = Max(t0(i,j,k), wfmeso(n)*(cos(pi*radius)+1.)/2.)
+            t0(i,j,k) = Max(t0(i,j,k), wfmeso(n)*(cos(pi*radius)+1.)/2.)
         ENDIF
 !       ENDIF
        ENDIF
@@ -374,8 +374,8 @@
    ENDDO
 
     DO k = 1,nk-1
-      DO j = jb,je
-        DO i = ib,ie
+      DO j = 1,nj ! jb,je
+        DO i = 1,ni ! ib,ie
          fw(i,j,k) = fw(i,j,k) + t0(i,j,k)
         ENDDO
       ENDDO
