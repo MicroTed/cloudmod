@@ -5895,7 +5895,7 @@ END subroutine p3_init
 
  enddo i_loop_main
 
-     write(6,*) 'qtolmx/mn/cnt = ',qtolmax,qtolmin,iqtolcnt
+!      write(6,*) 'qtolmx/mn/cnt = ',qtolmax,qtolmin,iqtolcnt
 
 ! Save final microphysics values of theta and qv as old values for next time step
 !  note: This is not necessary for GEM, which already has these values available
