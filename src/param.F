@@ -4367,8 +4367,8 @@
           qmag(2) = 0.01
           qmag(3) = 0.01
           qmag(4) = 0.01
-          qmag(5) = 1.0e5
-          qmag(6) = 1.0e5
+          qmag(5) = 1.e-8
+          qmag(6) = 1.e-8
           qmag(7) = 0.01
           qmag(8) = 1.0e-5
           qmag(9) = 1.0e8
