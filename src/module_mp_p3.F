@@ -1091,11 +1091,11 @@ END subroutine p3_init
                case (1)
                   diag_effi_ave(i,k,j) = diag_effi(i,k,1)
                case (2)
-                  diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2))/(dum1+dum2)
+                  if (dum1+dum2 > 0.0) diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2))/(dum1+dum2)
                case (3)
-                  diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2)+qitot(i,k,3))/(dum1+dum2+dum3)
+                  if (dum1+dum2+dum3 > 0.0 ) diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2)+qitot(i,k,3))/(dum1+dum2+dum3)
                case (4)
-                  diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2)+qitot(i,k,3)+qitot(i,k,4))/(dum1+dum2+dum3+dum4)
+                  if (dum1+dum2+dum3+dum4 > 0.0 ) diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2)+qitot(i,k,3)+qitot(i,k,4))/(dum1+dum2+dum3+dum4)
             end select
 
          enddo  !k-loop
@@ -2420,7 +2420,8 @@ END subroutine p3_init
              log_hydrometeorsPresent = .true.    ! final update
           endif
 
-          if (log_LiquidFrac .and. qitot(i,k,iice).ge.qsmall .and. (qiliq(i,k,iice)/qitot(i,k,iice)).gt.0.99) then
+          if (log_LiquidFrac .and. qitot(i,k,iice).ge.qsmall ) then ! split line in case qitot = 0
+            if (( qiliq(i,k,iice)/qitot(i,k,iice)).gt.0.99) then
              qr(i,k) = qr(i,k) + qitot(i,k,iice)
              nr(i,k) = nr(i,k) + nitot(i,k,iice)
              th(i,k) = th(i,k) - invexn(i,k)*(qitot(i,k,iice)-qiliq(i,k,iice))*xlf(i,k)*inv_cp
@@ -2429,6 +2430,7 @@ END subroutine p3_init
              qirim(i,k,iice) = 0.
              qiliq(i,k,iice) = 0.
              birim(i,k,iice) = 0.
+            endif
           endif
 
 !          if (qitot(i,k,iice).ge.qsmall .and. qitot(i,k,iice).lt.1.e-8 .and.             &
@@ -3476,7 +3478,8 @@ END subroutine p3_init
 
         if (log_LiquidFrac) then
 
-              if (qitot(i,k,iice).ge.qsmall .and. (qiliq(i,k,iice)/qitot(i,k,iice)).lt.0.01) then
+              if (qitot(i,k,iice).ge.qsmall ) then
+                if ( (qiliq(i,k,iice)/qitot(i,k,iice)).lt.0.01) then
               ! Sublimation/deposition of ice
               !note: diffusional growth/decay rate: (stored as 'qidep' temporarily; may go to qisub below)
 !Note (BUG): Cholette (Jul 2022), remove *SCF(k) for ssat_cld and multiplication *CF for grid-mean qccon
@@ -3484,12 +3487,15 @@ END subroutine p3_init
 !                               (1.-dexp(-dble(xx*dt))))*oabi+(qvs(i,k)-dumqvi)*epsi(iice)*oabi)*SCF(k)
                  qidep(iice) = (aaa*epsi(iice)*oxx+(ssat_cld*SCF(k)-aaa*oxx)*odt*epsi(iice)*oxx*   &
                                (1.-dexp(-dble(xx*dt))))*oabi+(qvs(i,k)-dumqvi)*epsi(iice)*oabi
+               endif
               endif
 
               !for very small ice contents in dry air, sublimate all ice instantly
-              if (supi_cld.lt.-0.001 .and. qitot(i,k,iice).lt.1.e-12 .and. qitot(i,k,iice).ge.qsmall .and. &
-                 (qiliq(i,k,iice)/qitot(i,k,iice)).lt.0.01) &
+              if (supi_cld.lt.-0.001 .and. qitot(i,k,iice).lt.1.e-12 .and. qitot(i,k,iice).ge.qsmall ) then
+                if (qiliq(i,k,iice)/qitot(i,k,iice).lt.0.01) then
                  qidep(iice) = -(qitot(i,k,iice)-qiliq(i,k,iice))*odt
+                endif
+              endif
 
               !note: 'clbfact_dep' and 'clbfact_sub' calibration factors for ice deposition and sublimation
               !   These are adjustable ad hoc factors used to increase or decrease deposition and/or
@@ -3508,18 +3514,20 @@ END subroutine p3_init
                  qidep(iice) = min(qidep(iice), qv(i,k)*odt)
               endif
 
-              if (qitot(i,k,iice).ge.qsmall .and. (qiliq(i,k,iice)/qitot(i,k,iice)).ge.0.01) then
+              if (qitot(i,k,iice).ge.qsmall ) then
+                if ((qiliq(i,k,iice)/qitot(i,k,iice)).ge.0.01) then
               ! Condensation/evaporation fo qiliq
 !Note (BUG) Cholette (Jul 2022), remove *SCF(k) for ssat_cld and multiplication *CF for grid-mean qccon
 !                 qlcon(iice) = ((aaa*epsiw(iice)*oxx+(ssat_cld-aaa*oxx)*odt*epsiw(iice)*oxx* &
 !                               (1.-dexp(-dble(xx*dt))))/ab)*SCF(k)
                  qlcon(iice) = (aaa*epsiw(iice)*oxx+(ssat_cld*SCF(k)-aaa*oxx)*odt*epsiw(iice)*oxx* &
                                (1.-dexp(-dble(xx*dt))))/ab
+                endif
               endif
 
-              if (sup_cld.lt.-0.001 .and. qitot(i,k,iice).lt.1.e-12 .and. qitot(i,k,iice).ge.qsmall .and. &
-                 (qiliq(i,k,iice)/qitot(i,k,iice)).ge.0.01) &
-                 qlcon(iice) = -qiliq(i,k,iice)*odt
+              if (sup_cld.lt.-0.001 .and. qitot(i,k,iice).lt.1.e-12 .and. qitot(i,k,iice).ge.qsmall ) then
+                if ( (qiliq(i,k,iice)/qitot(i,k,iice)).ge.0.01) qlcon(iice) = -qiliq(i,k,iice)*odt
+              endif
 
               if (qlcon(iice).lt.0.) then
                  qlevp(iice) = -qlcon(iice)
@@ -3731,6 +3739,8 @@ END subroutine p3_init
             ! Cohard and Pinty (2000)
             xvc = qc(i,k)/(nc(i,k)*900.)
 
+            alphac = 0.0
+
             xdiac = ((6.*xvc)/pi)**thrd
             rb = 0.5*xdiac*(1./(1.+alphac))**(1./6.)
             xl2p = Max(0.0d0, 2.7e-2*900.0*rho(i,k)*nc(i,k)*xvc*   &
@@ -3746,7 +3756,6 @@ END subroutine p3_init
               nh = 1.e30
             ENDIF
 
-            alphac = 0.0
             volb = xvc*(1./(1.+alphac))**(1./2.)
             ncautc = Max(0.0, ((alphac+2.)/(alphac+1.))*aa1*(rho(i,k)*nc(i,k))**2*xvc**2 )*inv_rho(i,k)
 
@@ -3773,6 +3782,10 @@ END subroutine p3_init
           if (qcaut .eq.0.) ncautc = 0.
           if (ncautc.eq.0.) qcaut  = 0.
 
+       else
+          if (iparam.eq.5) then
+            xvc = 0.0
+          endif
        endif qc_not_small_1
 
 !............................
@@ -4345,7 +4358,8 @@ END subroutine p3_init
        ! clipping for Filiq > 0.99 (transfer unmelted ice to rain)
        if (log_LiquidFrac) then
          do iice = 1,nCat
-            if (qitot(i,k,iice).ge.qsmall .and. (qiliq(i,k,iice)/qitot(i,k,iice)).gt.0.99) then
+            if (qitot(i,k,iice).ge.qsmall ) then
+              if ((qiliq(i,k,iice)/qitot(i,k,iice)).gt.0.99) then ! split conditional to avoid div by zero
                   qr(i,k) = qr(i,k) + qitot(i,k,iice)
                   nr(i,k) = nr(i,k) + nitot(i,k,iice)
                   th(i,k) = th(i,k) - invexn(i,k)*(qitot(i,k,iice)-qiliq(i,k,iice))*xlf(i,k)*inv_cp
@@ -4354,6 +4368,7 @@ END subroutine p3_init
                   qirim(i,k,iice) = 0.
                   qiliq(i,k,iice) = 0.
                   birim(i,k,iice) = 0.
+               endif
             endif
           enddo !iice-loop
         endif
@@ -5922,8 +5937,13 @@ END subroutine p3_init
     do i = its,ite
        do k = ktop,kbot,-kdir
           do iice = 1,nCat
+             if ( nitot(i,k,iice) > nsmall .and. qitot(i,k,iice) > qsmall ) then
              diag_dhmax(i,k,iice) = maxHailSize(rho(i,k),nitot(i,k,iice),rhofaci(i,k),    &
                                                 arr_lami(i,k,iice),arr_mui(i,k,iice))
+             else
+             diag_dhmax(i,k,iice) = 0.0
+             endif
+             
           enddo
           diag_3d(i,k,1) = sum(qitot(i,k,:))
           diag_3d(i,k,2) = maxval(diag_dhmax(i,k,:))
