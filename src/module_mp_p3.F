@@ -4546,7 +4546,7 @@ END subroutine p3_init
 
              kloop_sedi_c2: do k = k_qxtop,k_qxbot,-kdir
 
-                if (qc(i,k)*iSCF(k).ge.qsmall) then
+                if (qc(i,k)*iSCF(k).ge.qsmall .and. nc(i,k) > nsmall) then
                    call get_cloud_dsd2(qc(i,k),nc(i,k),mu_c(i,k),rho(i,k),nu(i,k),dnu,   &
                                    lamc(i,k),lammin,lammax,tmp1,tmp2,iSCF(k))
                    dum = 1./lamc(i,k)**bcn
