@@ -2081,7 +2081,7 @@ END subroutine p3_init
  integer :: dmropt = 0 ! extra option for crcnw
  double precision t2s, xdp, xvc, xvr, rwrad
  double precision xl2p,rb
- real :: alphac, alphar, volb, xdiac, rh, nh
+ real :: alphac, alphar, volb, xdiac, rh, nh, erw
  real, parameter :: aa1 = 9.44e15, aa2 = 5.78e3
 
  integer :: dumi,i,k,ii,iice,iice_dest,dumj,dumii,dumjj,dumzz,tmpint1,ktop,kbot,kdir,    &
@@ -3777,6 +3777,38 @@ END subroutine p3_init
               ncslf = 0.0
             ENDIF
 
+             IF ( qr(i,k) > qsmall .and. qr(i,k)*rho(i,k) > 1.2*xl2p ) THEN
+           !  xvr = Max((4./3.)*pi*(40.e-6)**3, qr(i,k)/(nr(i,k)*900.))
+             xvr = Max((4./3.)*pi*(10.e-6)**3, qr(i,k)/(nr(i,k)*900.))
+             rwrad = 0.5*(6.*xvr/pi)**(1./3.)
+             alphar = 0.0
+             erw = 1.0
+             
+             IF ( rwrad > rh ) THEN
+             
+             IF ( rwrad > 50.e-6 ) THEN
+               ncacc = aa2*nr(i,k)*(rho(i,k)*nc(i,k))*(xvc + xvr)
+
+           !  IF ( qr(i,k)*rho(i,k) > 1.2*xl2p ) THEN
+              qcacc = erw*aa2*nr(i,k)*rho(i,k)*qc(i,k)*   &
+     &        ((alphac + 2.)*xvc/(alphac + 1.) + xvr) !*rhoinv(mgs)
+             ELSE
+              qcacc = aa1*nc(i,k)*rho(i,k)*qc(i,k)*                       &
+     &          ((alphac + 3.)*(alphac + 2.)*xvc**2/(alphac + 1.)**2 +    &
+     &           (alphar + 6.)*(alphar + 5.)*(alphar + 4.)*xvr**2/        &
+     &           ((alphar + 3.)*(alphar + 2.)*(alphar + 1.))) 
+
+               ncacc = aa1*nr(i,k)*nc(i,k)*rho(i,k)*   &
+     &          ((alphac + 2.)*xvc**2/(alphac + 1.) +    &
+     &          (alphar + 6.)*(alphar + 5.)*(alphar + 4.)*xvr**2/  &
+     &             ((alphar + 3.)*(alphar + 2.)*(alphar + 1.)) )
+             ENDIF ! rwrad
+
+               ncacc = Min(ncacc, 0.10*nc(i,k)*odt )
+               qcacc = Min(qcacc, 0.10*qc(i,k)*odt )
+
+             ENDIF ! rwrad > rh
+            ENDIF ! qr > qsmall
           endif
 
           if (qcaut .eq.0.) ncautc = 0.
@@ -3804,7 +3836,7 @@ END subroutine p3_init
             !Khroutdinov and Kogan (2000)
              ncslf = 0.
           elseif (iparam.eq.5) then
-            ! ncslf = 0.
+             ncslf = 0.
           endif
 
        endif
@@ -3841,8 +3873,7 @@ END subroutine p3_init
              ncacc = qcacc*nc(i,k)/qc(i,k)
           elseif (iparam.eq.5) then
             ! Cohard and Pinty 2000
-            xvr = qr(i,k)/(nr(i,k)*900.)
-            ncacc = aa2*nr(i,k)*(rho(i,k)*nc(i,k))*(xvc + xvr)
+            ! Done in section with autoconversion
           endif
 
           if (qcacc.eq.0.) ncacc = 0.
