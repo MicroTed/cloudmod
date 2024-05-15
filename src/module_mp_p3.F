@@ -115,8 +115,8 @@
                    vi,epsm,rhoa,map,ma,rr,bact,inv_rm1,inv_rm2,sig1,nanew1,f11,f21,sig2, &
                    nanew2,f12,f22,pi,thrd,sxth,piov3,piov6,rho_rimeMin,                  &
                    rho_rimeMax,inv_rho_rimeMax,max_total_Ni,dbrk,nmltratio,minVIS,       &
-                   maxVIS,mu_i_initial,mu_r_constant,inv_Drmax,rho00,ntiny
-
+                   maxVIS,mu_i_initial,mu_r_constant,inv_Drmax,ntiny
+ real, parameter ::  rho00 = 1.225
  integer :: n_iceCat = -1   !used for GEM interface
 
  integer :: rssflg = 1   ! Rain size-sorting allowed (1, default), or disallowed (0).  If 0, sets N and Z-weighted fall speeds to q-weighted value
@@ -127,7 +127,7 @@
 !==================================================================================================!
 
  subroutine p3_init(lookup_file_dir,nCat,trplMomI,liqfrac,model,stat,abort_on_err,dowr, &
-                    nanew1_in,iparam_in,iparamice_in,rssflg_in,sssflg_in)
+                    nanew1_in,iparam_in,iparamice_in,rssflg_in,sssflg_in,max_total_Ni_in)
 
 !------------------------------------------------------------------------------------------!
 ! This subroutine initializes all physical constants and parameters needed by the P3       !
@@ -151,7 +151,7 @@
  logical,          intent(in),  optional  :: abort_on_err       ! abort when an error is encountered [.false.]
  character(len=*), intent(in),  optional  :: model              ! driving model
  logical,          intent(in)             :: dowr
- real,             intent(in),  optional  :: nanew1_in
+ real,             intent(in),  optional  :: nanew1_in, max_total_Ni_in
  integer,          intent(in),  optional  :: iparam_in,iparamice_in,rssflg_in,sssflg_in
 
 ! Local variables and parameters:
@@ -206,7 +206,7 @@
 
 ! maximum total ice concentration (sum of all categories)
  max_total_Ni = 2000.e+3  !(m)
- IF ( present( nanew1_in ) ) max_total_Ni = nanew1_in
+ IF ( present( max_total_Ni_in ) ) max_total_Ni = max_total_Ni_in
 
 ! switch for warm-rain parameterization
 ! = 1 Seifert and Beheng 2001
@@ -244,7 +244,6 @@
  ep_2   = 0.622
  rhosur = 100000./(rd*273.15)
  rhosui = 60000./(rd*253.15)
- rho00  = 1.225
  ar     = 841.99667
  br     = 0.8
  f1r    = 0.78
@@ -320,7 +319,7 @@
  inv_rm1 = 2.e+7           ! inverse aerosol mean size (m-1)
  sig1    = 2.0             ! aerosol standard deviation
  nanew1  = 300.e6          ! aerosol number mixing ratio (kg-1)
- IF ( present( nanew1_in ) ) nanew1 = nanew1_in
+ IF ( present( nanew1_in ) ) nanew1 = nanew1_in/rho00
  f11     = 0.5*exp(2.5*(log(sig1))**2)
  f21     = 1. + 0.25*log(sig1)
 
@@ -2083,6 +2082,7 @@ END subroutine p3_init
  double precision xl2p,rb
  real :: alphac, alphar, volb, xdiac, rh, nh, erw
  real, parameter :: aa1 = 9.44e15, aa2 = 5.78e3
+ real, parameter :: rainbreakfac = 2.0e6
 
  integer :: dumi,i,k,ii,iice,iice_dest,dumj,dumii,dumjj,dumzz,tmpint1,ktop,kbot,kdir,    &
             dumic,dumiic,dumjjc,catcoll,k_qxbot,k_qxtop,k_temp,dumll,dumllc
@@ -3684,6 +3684,18 @@ END subroutine p3_init
 !................................................................
 ! autoconversion
 
+         if (iparam.eq.5) then
+           alphar = 0.0
+           erw = 1.0
+           if ( qr(i,k) > qsmall .and. nr(i,k) > nsmall ) then
+             xvr = Max((4./3.)*pi*(10.e-6)**3, qr(i,k)/(nr(i,k)*900.))
+             rwrad = 0.5*(6.*xvr/pi)**(1./3.)
+           else
+             xvr = 0.0
+             rwrad = 0.0
+           endif
+         endif
+
 !Note (BUG), needs to be in-cloud condition
        qc_not_small_1: if (qc(i,k)*iSCF(k).ge.1.e-8) then
 
@@ -3756,8 +3768,8 @@ END subroutine p3_init
               nh = 1.e30
             ENDIF
 
-            volb = xvc*(1./(1.+alphac))**(1./2.)
-            ncautc = Max(0.0, ((alphac+2.)/(alphac+1.))*aa1*(rho(i,k)*nc(i,k))**2*xvc**2 )*inv_rho(i,k)
+            !volb = xvc*(1./(1.+alphac))**(1./2.)
+            ncautc = Max(0.0, ((alphac+2.)/(alphac+1.))*aa1*rho(i,k)*(nc(i,k))**2*xvc**2 )
 
             IF ( rb .le. 7.51d-6 ) THEN
               t2s = 1.d30
@@ -3779,10 +3791,6 @@ END subroutine p3_init
 
              IF ( qr(i,k) > qsmall .and. qr(i,k)*rho(i,k) > 1.2*xl2p ) THEN
            !  xvr = Max((4./3.)*pi*(40.e-6)**3, qr(i,k)/(nr(i,k)*900.))
-             xvr = Max((4./3.)*pi*(10.e-6)**3, qr(i,k)/(nr(i,k)*900.))
-             rwrad = 0.5*(6.*xvr/pi)**(1./3.)
-             alphar = 0.0
-             erw = 1.0
              
              IF ( rwrad > rh ) THEN
              
@@ -3910,13 +3918,23 @@ END subroutine p3_init
           elseif (iparam.eq.4) then
              nrslf = dum*205.*(qr(i,k)*iSPF(k))**1.55*(nr(i,k)*1.e-6*rho(i,k)*iSPF(k))**0.6*1.e6/rho(i,k)*SPF(k) ! 1.e6 converts cm-3 to m-3
           elseif (iparam.eq.5) then
-            xvr = qr(i,k)/(nr(i,k)*900.)
-            alphar = 0
-            rwrad = 0.5*((6.*xvr)/pi)**thrd ! (6.*qr(i,k)/(pi*900.*nr(i,k)))**(1./3.)
-            IF ( rwrad .ge. 50.e-6 ) THEN
-              nrslf = dum*aa2*rho(i,k)*(nr(i,k))**2*xvr
+           ! xvr = qr(i,k)/(nr(i,k)*900.)
+           ! alphar = 0
+           ! rwrad = 0.5*((6.*xvr)/pi)**thrd ! (6.*qr(i,k)/(pi*900.*nr(i,k)))**(1./3.)
+            dum2 =  (3.67+alphar)*2.*rwrad
+            IF ( dum1 > 1.9e-3 ) THEN
+              dum = 0.0
             ELSE
-              nrslf = dum*aa1*rho(i,k)*(nr(i,k)*xvr)**2*      &
+              IF ( 2.*rwrad .lt. 6.1e-4  ) THEN
+                dum = 1.0
+              ELSE
+                dum = Exp(-50.0*(50.0*(2.*rwrad - 6.0e-4)))
+              ENDIF
+            ENDIF
+            IF ( rwrad .ge. 50.e-6 ) THEN
+              nrslf = dum*aa2*rho(i,k)*(nr(i,k))**2*xvr - (1. - dum)*Max( 0.0,  rainbreakfac*rho(i,k)*(qr(i,k))**2 )
+            ELSE
+              nrslf =  aa1*rho(i,k)*(nr(i,k)*xvr)**2*      &
      &                   (alphar + 6.)*(alphar + 5.)*(alphar + 4.)/  &
      &                  ((alphar + 3.)*(alphar + 2.)*(alphar + 1.))
               
@@ -5778,8 +5796,9 @@ END subroutine p3_init
 
           endif qi_not_small
 
-
        enddo iice_loop_final_diagnostics
+
+
 
      ! sum ze components and convert to dBZ
      ! for reflectivity paper
@@ -6173,6 +6192,7 @@ END subroutine p3_init
               enddo
              ENDIF
           ENDIF
+
 
 ! end of main microphysics routine
 

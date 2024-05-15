@@ -22,7 +22,7 @@
                          effc,effi,effs,effr,effg,effis,    &
                          tdiag,qdiag,out2d,out3d,  &
                          dowriteout,dorad,dotdwrite,doazimwrite,dorestart,  &
-                         getdbz,getvt,dotbud,doqbud)
+                         getdbz,getvt,dotbud,doqbud,qunit)
 
     use input
     use constants
@@ -69,6 +69,7 @@
     logical, intent(in) :: dowriteout,dorad,dotdwrite,doazimwrite,dorestart
     logical, intent(inout) :: getdbz,getvt
     logical, intent(in) :: dotbud,doqbud
+    character(len=20), dimension(maxq), intent(in) :: qunit
 
     !........
 
@@ -981,6 +982,11 @@
       ELSEIF (ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.53 .or.ptype.eq.60) THEN
 
       ! for 1-ice-category configurations
+          DO i = 1,numq
+            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+            endif
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -1149,6 +1155,7 @@
 !---------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 1-ice-category  !
 !---------------------------------------------------------------------------!
+
 
                do k=1,nk
                do i=1,ni
@@ -1385,6 +1392,12 @@
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 2-mom-ice, 2-ice-category  !
 !---------------------------------------------------------------------------!
 
+          DO i = 1,numq
+            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+            endif
+          ENDDO
+
          rdt = 1.0/dt
 
          p3_jloop2: DO j=1,nj
@@ -1568,6 +1581,12 @@
 !---------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 2-ice-category  !
 !---------------------------------------------------------------------------!
+
+          DO i = 1,numq
+            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+            endif
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -1758,6 +1777,12 @@
 !-------------------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 2-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
+
+          DO i = 1,numq
+            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+            endif
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -1953,6 +1978,12 @@
 !-------------------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 3-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
+
+          DO i = 1,numq
+            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+            endif
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -2180,6 +2211,12 @@
 !-------------------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 4-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
+
+          DO i = 1,numq
+            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+            endif
+          ENDDO
 
          rdt = 1.0/dt
 
