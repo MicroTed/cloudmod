@@ -111,6 +111,7 @@
                    rho_rimeMax,inv_rho_rimeMax,max_total_Ni,dbrk,nmltratio,minVIS,       &
                    maxVIS,mu_i_initial,mu_r_constant,inv_Drmax
 
+ real, parameter ::  rho00 = 1.225
  integer :: n_iceCat = -1   !used for GEM interface
 
  contains
@@ -118,7 +119,7 @@
 !==================================================================================================!
 
  subroutine p3_init(lookup_file_dir,nCat,trplMomI,liqfrac,model,stat,abort_on_err,dowr, &
-                    nanew1_in,iparam_in)
+                    nanew1_in,iparam_in,iparamice_in,rssflg_in,sssflg_in,max_total_Ni_in)
 
 !------------------------------------------------------------------------------------------!
 ! This subroutine initializes all physical constants and parameters needed by the P3       !
@@ -142,8 +143,8 @@
  logical,          intent(in),  optional  :: abort_on_err       ! abort when an error is encountered [.false.]
  character(len=*), intent(in),  optional  :: model              ! driving model
  logical,          intent(in)             :: dowr
- real,             intent(in),  optional  :: nanew1_in
- integer,          intent(in),  optional  :: iparam_in
+ real,             intent(in),  optional  :: nanew1_in, max_total_Ni_in
+ integer,          intent(in),  optional  :: iparam_in,iparamice_in,rssflg_in,sssflg_in
 
 ! Local variables and parameters:
  logical, save                  :: is_init = .false.
@@ -197,7 +198,7 @@
 
 ! maximum total ice concentration (sum of all categories)
  max_total_Ni = 2000.e+3  !(m)
- IF ( present( nanew1_in ) ) max_total_Ni = nanew1_in
+ IF ( present( max_total_Ni_in ) ) max_total_Ni = max_total_Ni_in
 
 ! switch for warm-rain parameterization
 ! = 1 Seifert and Beheng 2001
@@ -297,7 +298,7 @@
  inv_rm1 = 2.e+7           ! inverse aerosol mean size (m-1)
  sig1    = 2.0             ! aerosol standard deviation
  nanew1  = 300.e6          ! aerosol number mixing ratio (kg-1)
- IF ( present( nanew1_in ) ) nanew1 = nanew1_in
+ IF ( present( nanew1_in ) ) nanew1 = nanew1_in/rho00
  f11     = 0.5*exp(2.5*(log(sig1))**2)
  f21     = 1. + 0.25*log(sig1)
 

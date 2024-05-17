@@ -138,7 +138,10 @@
       logical :: nssl_hail_on = .false.
       
       real    :: p3_cccn = 300.e6
+      real    :: p3_nimax = 2000.e3
       integer :: p3_iparam = 3
+      integer :: rssflg = 1
+      integer :: sssflg = 1
 #ifdef MPI
       integer :: ntmp1,ntmp2,ntmp3,ntmp4,reqs,reqs1,reqs2,reqs3,reqs4
       integer, dimension(MPI_STATUS_SIZE) :: status
@@ -174,7 +177,10 @@
 
    NAMELIST /p3_params/                 &
                         p3_cccn,        &
-                        p3_iparam
+                        p3_nimax,       &
+                        p3_iparam,      &
+                        rssflg,         &
+                        sssflg
 
    NAMELIST /forcing/                   &
                         iforce,         &
@@ -725,7 +731,10 @@
       ENDIF
 
       call MPI_BCAST(p3_cccn   ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(p3_nimax  ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(p3_iparam ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(rssflg    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(sssflg    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
 #endif
 
 ! namelists that all threads read so they don't have to be passed
@@ -4026,7 +4035,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.51 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4035,7 +4045,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.52 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4044,7 +4055,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.53 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4053,7 +4065,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.54 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4062,7 +4075,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.60 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=1,               &
@@ -4071,7 +4085,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.61 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=2,               &
@@ -4080,7 +4095,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.62 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=3,               &
@@ -4089,7 +4105,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.63 )then
             call p3_init(lookup_file_dir='.',  &
                          nCat=4,               &
@@ -4098,7 +4115,8 @@
                          model='WRF',          &
                          stat=p3stat,          &
                          abort_on_err=.false., &
-                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam)
+                         dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           endif
 
           if(dowr) write(outfile,*) 'Returned from P3_INIT'
@@ -4140,7 +4158,7 @@
           qname(3) = 'qr '
           qname(4) = 'qi1'
           qname(5) = 'ni1'
-          qname(6) = 'qnr'
+          qname(6) = 'nr '
           qname(7) = 'ri1'
           qname(8) = 'bi1'
 
@@ -4195,10 +4213,10 @@
           qname(3) = 'qr '
           qname(4) = 'qi1'
           qname(5) = 'ni1'
-          qname(6) = 'qnr'
+          qname(6) = 'nr '
           qname(7) = 'ri1'
           qname(8) = 'bi1'
-          qname(9) = 'qnc'
+          qname(9) = 'nc '
 
           qunit(1) = 'kg/kg'
           qunit(2) = 'kg/kg'
@@ -4329,10 +4347,10 @@
           qname(3)  = 'qr '
           qname(4)  = 'qi1'
           qname(5)  = 'ni1'
-          qname(6)  = 'qnr'
+          qname(6)  = 'nr '
           qname(7)  = 'ri1'
           qname(8)  = 'bi1'
-          qname(9)  = 'qnc'
+          qname(9)  = 'nc '
           qname(10) = 'zi1'
 
           qunit(1) = 'kg/kg'
