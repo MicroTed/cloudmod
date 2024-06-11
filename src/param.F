@@ -140,6 +140,8 @@
       real    :: p3_cccn = 300.e6
       real    :: p3_nimax = 2000.e3
       integer :: p3_iparam = 3
+      integer :: p3_ccn_on = 0
+      integer :: p3_merge_opt = 1
       integer :: rssflg = 1
       integer :: sssflg = 1
 #ifdef MPI
@@ -179,6 +181,8 @@
                         p3_cccn,        &
                         p3_nimax,       &
                         p3_iparam,      &
+                        p3_ccn_on,      &
+                        p3_merge_opt,   &
                         rssflg,         &
                         sssflg
 
@@ -733,6 +737,8 @@
       call MPI_BCAST(p3_cccn   ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(p3_nimax  ,1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(p3_iparam ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(p3_ccn_on ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(p3_merge_opt,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(rssflg    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(sssflg    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
 #endif
@@ -4036,6 +4042,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.51 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4046,6 +4053,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.52 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4056,6 +4064,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.53 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4066,6 +4075,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.54 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4076,6 +4086,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.60 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4086,6 +4097,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.61 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4096,6 +4108,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.62 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4106,6 +4119,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.63 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4116,6 +4130,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           endif
 
@@ -4131,6 +4146,10 @@
 
           iice = 1    ! this scheme has ice microphysics
           idm  = 1    ! this scheme has at least one double moment
+          
+          ltmp = 0
+          lccn = 0
+          IF ( p3_ccn_on > 0 ) ltmp = 1
 
 
       !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
@@ -4323,7 +4342,7 @@
 
         ELSEIF( ptype.eq.53 )THEN
 
-          numq = 10   ! there are 9 q variables
+          numq = 10+ltmp   ! there are 9 q variables
 
           nqv  = 1    ! qv
           nql1 = 2    ! the first liquid variable
@@ -4341,6 +4360,7 @@
           cloudvar(8) = .false.
           cloudvar(9) = .false.
           cloudvar(10) = .false.
+          cloudvar(11) = .false.
 
           qname(1)  = 'qv '
           qname(2)  = 'qc '
@@ -4352,6 +4372,7 @@
           qname(8)  = 'bi1'
           qname(9)  = 'nc '
           qname(10) = 'zi1'
+          qname(11) = 'ccn'
 
           qunit(1) = 'kg/kg'
           qunit(2) = 'kg/kg'
@@ -4363,6 +4384,12 @@
           qunit(8) = 'm^3 kg^-1'
           qunit(9) = '#/kg'
           qunit(10) = 'm(6) kg(-1)'
+          IF ( p3_ccn_on > 0 ) THEN
+            lccn = 11
+            qunit(11) = '#/kg'
+          ELSE
+            qunit(11) = 'none'
+          ENDIF
 
           ! likely maximum value (order-of-magnitude)
           ! (needed for monotonic advection schemes)
@@ -4376,6 +4403,7 @@
           qmag(8) = 1.0e-5
           qmag(9) = 1.0e8
           qmag(10) = 1.0e-3
+          qmag(11) = 1.0e8
 
           ! for p3 arrays:
 !--v00:
@@ -4383,15 +4411,15 @@
 !          np3a = 29  ! for  3 + 2 (nout3d = 3, nout2d = 2) additional output variables
 !          np3o =  3
 !--
-          np3a = 24            ! 3-mom, no_liqfrac, 1-cat (incl. vmi_1, dmi_1, rhoi_1)
-          np3a = np3a + nout2d + nout3d + 1  !(1 for dhmax_x)
+          np3a = 24 + ltmp           ! 3-mom, no_liqfrac, 1-cat (incl. vmi_1, dmi_1, rhoi_1)
+          np3a = np3a + nout2d + nout3d + 1 + ltmp !(1 for dhmax_x)
           np3o =  4            ! 1 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
 
       !cccccccccccccccccccccccccccccccccccccccccccccccccccc!
 
         ELSEIF( ptype.eq.54 )THEN
 
-          numq = 15   ! there are 13 q variables
+          numq = 15 + ltmp  ! there are 13 q variables
 
           nqv  = 1    ! qv
           nql1 = 2    ! the first liquid variable
@@ -4414,6 +4442,7 @@
           cloudvar(13) = .false.
           cloudvar(14) = .false.
           cloudvar(15) = .false.
+          cloudvar(16) = .false.
 
           qname( 1) = 'qv '
           qname( 2) = 'qc '
@@ -4430,6 +4459,7 @@
           qname(13) = 'bi2'
           qname(14) = 'zi1'
           qname(15) = 'zi2'
+          qname(16) = 'ccn'
 
           qunit( 1) = 'kg/kg'
           qunit( 2) = 'kg/kg'
@@ -4446,6 +4476,12 @@
           qunit(13) = 'm^-3 kg^-1'
           qunit(14) = 'm^6/kg'
           qunit(15) = 'm^6/kg'
+          IF ( p3_ccn_on > 0 ) THEN
+            lccn = 16
+            qunit(16) = '#/kg'
+          ELSE
+            qunit(16) = 'none'
+          ENDIF
 
           ! likely maximum value (order-of-magnitude)
           ! (needed for monotonic advection schemes)
@@ -4464,6 +4500,7 @@
           qmag(13) = 1.0e-5
           qmag(14) = 1.0e-3
           qmag(15) = 1.0e-3
+          qmag(16) = 1.e8
 
           ! for p3 arrays:
 !--v00:
@@ -4472,7 +4509,7 @@
 !          np3o =  6
 !--
           np3a = 32            ! 2-mom, no_liqfrac, 2-cat (no extra output)
-          np3a = np3a + nout2d + nout3d + 2  !(2 for dhmax_x)
+          np3a = np3a + nout2d + nout3d + 2 + 1 !(2 for dhmax_x)
           np3o =  8            ! 2 x nCat; for vmi_(x), dmi_(x), rhoi_(x), dhmax_(x)
 
 

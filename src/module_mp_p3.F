@@ -121,13 +121,15 @@
 
  integer :: rssflg = 1   ! Rain size-sorting allowed (1, default), or disallowed (0).  If 0, sets N and Z-weighted fall speeds to q-weighted value
  integer :: sssflg = 1   ! As above but for ice (all ice)
+ integer :: ccn_on = 0
+ integer :: merge_opt = 1
 
  contains
 
 !==================================================================================================!
 
  subroutine p3_init(lookup_file_dir,nCat,trplMomI,liqfrac,model,stat,abort_on_err,dowr, &
-                    nanew1_in,iparam_in,iparamice_in,rssflg_in,sssflg_in,max_total_Ni_in)
+                    nanew1_in,iparam_in,p3_ccn_on,p3_merge_opt,iparamice_in,rssflg_in,sssflg_in,max_total_Ni_in)
 
 !------------------------------------------------------------------------------------------!
 ! This subroutine initializes all physical constants and parameters needed by the P3       !
@@ -152,7 +154,8 @@
  character(len=*), intent(in),  optional  :: model              ! driving model
  logical,          intent(in)             :: dowr
  real,             intent(in),  optional  :: nanew1_in, max_total_Ni_in
- integer,          intent(in),  optional  :: iparam_in,iparamice_in,rssflg_in,sssflg_in
+ integer,          intent(in),  optional  :: iparam_in,p3_ccn_on,p3_merge_opt, &
+                                             iparamice_in,rssflg_in,sssflg_in
 
 ! Local variables and parameters:
  logical, save                  :: is_init = .false.
@@ -219,7 +222,8 @@
  IF ( present( iparamice_in ) ) iparamice = iparamice_in
  IF ( present( rssflg_in ) ) rssflg = rssflg_in
  IF ( present( sssflg_in ) ) sssflg = sssflg_in
-
+ IF ( present( p3_ccn_on ) ) ccn_on = p3_ccn_on
+ IF ( present( p3_merge_opt ) ) merge_opt = p3_merge_opt
  log_nislf = .true.  ! flag for ice self-aggregation
  log_maxnsmall = .true. !flag for resetting n up to nsmall
 
@@ -239,7 +243,7 @@
  cp     = 1005.
  inv_cp = 1./cp
  g      = 9.816
- rd     = 287.15
+ rd     = 287.05
  rv     = 461.51
  ep_2   = 0.622
  rhosur = 100000./(rd*273.15)
@@ -776,6 +780,7 @@ END subroutine p3_init
 
 !==================================================================================================!
 #ifndef ECCCGEM
+!==================================================================================================!
 
    SUBROUTINE mp_p3_wrapper_wrf( th,qv,qc,qr,qnr,th_old,qv_old,pii,p,dz,w,dt,itimestep,         &
                 rainnc,rainncv,sr,snownc,snowncv,                                               &
@@ -787,7 +792,7 @@ END subroutine p3_init
                 qit_2, qni_2, qir_2, qib_2, diag_vmi_2, diag_dmi_2, diag_rhoi_2, qzi_2, qli_2,  &
                 qit_3, qni_3, qir_3, qib_3, diag_vmi_3, diag_dmi_3, diag_rhoi_3, qzi_3, qli_3,  &
                 qit_4, qni_4, qir_4, qib_4, diag_vmi_4, diag_dmi_4, diag_rhoi_4, qzi_4, qli_4,  &
-                nc, diag2d_01, diag2d_02, diag3d_01, diag3d_02, diag3d_03,                      &
+                nc, cn, diag2d_01, diag2d_02, diag3d_01, diag3d_02, diag3d_03,                  &
                 diag_dhmax_1, diag_dhmax_2, diag_dhmax_3, diag_dhmax_4, diagflag )
 
   !------------------------------------------------------------------------------------------!
@@ -850,7 +855,7 @@ END subroutine p3_init
    real, dimension(ims:ime, kms:kme, jms:jme), intent(inout):: th,qv,qc,qr,qnr,th_old,qv_old, &
                                                                diag_zdbz,diag_effc,           &
                                                                qit_1,qni_1,qir_1,qib_1
-   real, dimension(ims:ime, kms:kme, jms:jme), intent(inout), optional :: nc
+   real, dimension(ims:ime, kms:kme, jms:jme), intent(inout), optional :: nc, cn
    real, dimension(ims:ime, kms:kme, jms:jme), intent(inout), optional :: qzi_1
    real, dimension(ims:ime, kms:kme, jms:jme), intent(inout), optional :: qli_1
 
@@ -897,7 +902,7 @@ END subroutine p3_init
 
    character(len=16), parameter :: model = 'WRF'
 
-   real, dimension(ims:ime, kms:kme) ::nc_loc,ssat
+   real, dimension(ims:ime, kms:kme) ::nc_loc,cn_loc,ssat
 
    real, dimension(ims:ime, kms:kme, n_iceCat) :: qitot,qirim,nitot,birim,diag_dmi,diag_vmi,       &
                                                   diag_rhoi,diag_effi, diag_dhmax
@@ -950,6 +955,12 @@ END subroutine p3_init
          nc_loc = 0.
       endif
 
+      if ( present( cn ) .and. ccn_on > 0 ) then
+         cn_loc(:,:) = cn(:,:,j)  ! # of activated CCN
+      else
+         cn_loc = nc_loc(:,:)
+      endif
+
       ssat = 0.  ! note: code for prediction of ssat not currently avaiable
 
     ! contruct full ice arrays (with dimension n_iceCat) from individual ice category arrays:
@@ -994,7 +1005,7 @@ END subroutine p3_init
                       qv_old(:,:,j),qv(:,:,j),dt,qitot,qirim,qiliq,nitot,birim,zitot,    &
                       ssat,w(:,:,j),p(:,:,j),dz(:,:,j),itimestep,pcprt_liq,pcprt_sol,    &
                       its,ite,kts,kte,n_iceCat,diag_zdbz(:,:,j),diag_effc(:,:,j),        &
-                      diag_effi,diag_vmi,diag_dmi,diag_rhoi,n_diag2d,diag2d,             &
+                      cn_loc,diag_effi,diag_vmi,diag_dmi,diag_rhoi,n_diag2d,diag2d,      &
                       n_diag3d,diag3d,log_predictNc,trim(model),clbfact_dep,             &
                       clbfact_sub,log_debug,log_scpf,scpf_pfrac,scpf_resfact,cldfrac,    &
                       log_3momIce,log_liqFrac, diag_dhmax = diag_dhmax, log_diag = log_diag )
@@ -1008,6 +1019,9 @@ END subroutine p3_init
       sr(:,j)      = pcprt_sol(:)/(pcprt_liq(:)+pcprt_sol(:)+1.e-12)   ! solid-to-total ratio
 
       if (log_predictNc) nc(:,:,j) = nc_loc(:,:)
+      if ( present( cn ) .and. ccn_on > 0 ) then
+         cn(:,:,j) = cn_loc(:,:) 
+      endif
 
     !set background effective radii (i.e. with no explicit condensate) to prescribed values:
     !  where (qc(:,:,j) < 1.e-14) diag_effc(:,:,j) = 10.e-6
@@ -1845,7 +1859,7 @@ END subroutine p3_init
 
  SUBROUTINE p3_main(qc,nc,qr,nr,th_old,th,qv_old,qv,dt,qitot,qirim,qiliq,nitot,birim,     &
                     zitot,ssat,uzpl,pres,dzq,it,prt_liq,prt_sol,its,ite,kts,kte,nCat,     &
-                    diag_ze,diag_effc,diag_effi,diag_vmi,diag_di,diag_rhoi,n_diag_2d,     &
+                    diag_ze,diag_effc,cn,diag_effi,diag_vmi,diag_di,diag_rhoi,n_diag_2d,  &
                     diag_2d,n_diag_3d,diag_3d,log_predictNc,model,clbfact_dep,            &
                     clbfact_sub,debug_on,scpf_on,scpf_pfrac,scpf_resfact,SCF_out,         &
                     log_3momentIce,log_LiquidFrac,prt_drzl,prt_rain,prt_crys,prt_snow,    &
@@ -1880,6 +1894,7 @@ END subroutine p3_init
  real, intent(inout), dimension(its:ite,kts:kte)      :: qc         ! cloud, mass mixing ratio         kg kg-1
 ! note: Nc may be specified or predicted (set by log_predictNc)
  real, intent(inout), dimension(its:ite,kts:kte)      :: nc         ! cloud, number mixing ratio       #  kg-1
+ real, intent(inout), dimension(its:ite,kts:kte)      :: cn         ! act. CCN, number mixing ratio    #  kg-1
  real, intent(inout), dimension(its:ite,kts:kte)      :: qr         ! rain, mass mixing ratio          kg kg-1
  real, intent(inout), dimension(its:ite,kts:kte)      :: nr         ! rain, number mixing ratio        #  kg-1
  real, intent(inout), dimension(its:ite,kts:kte,nCat) :: qitot      ! ice, total mass mixing ratio     kg kg-1
@@ -2082,13 +2097,12 @@ END subroutine p3_init
  double precision xl2p,rb
  real :: alphac, alphar, volb, xdiac, rh, nh, erw
  real, parameter :: aa1 = 9.44e15, aa2 = 5.78e3
- real, parameter :: rainbreakfac = 2.0e6
 
  integer :: dumi,i,k,ii,iice,iice_dest,dumj,dumii,dumjj,dumzz,tmpint1,ktop,kbot,kdir,    &
             dumic,dumiic,dumjjc,catcoll,k_qxbot,k_qxtop,k_temp,dumll,dumllc
 
  logical :: log_nucleationPossible,log_hydrometeorsPresent,log_predictSsat,              &
-            log_exitlevel,log_hmossopOn,log_qxpresent
+            log_exitlevel,log_hmossopOn,log_qxpresent,log_test
 
 ! quantities related to process rates/parameters, interpolated from lookup tables:
 
@@ -3650,7 +3664,7 @@ END subroutine p3_init
              dum2  = nanew2*0.5*(1.-derf(uu2)) ! activated number in kg-1 mode 2
            ! make sure this value is not greater than total number of aerosol
              dum2  = min((nanew1+nanew2),dum1+dum2)
-             dum2  = (dum2-nc(i,k)*iSCF(k))*odt*SCF(k)
+             dum2  = (dum2-cn(i,k)*iSCF(k))*odt*SCF(k)
              dum2  = max(0.,dum2)
              ncnuc = dum2
            ! don't include mass increase from droplet activation during first time step
@@ -3688,7 +3702,7 @@ END subroutine p3_init
            alphar = 0.0
            erw = 1.0
            if ( qr(i,k) > qsmall .and. nr(i,k) > nsmall ) then
-             xvr = Max((4./3.)*pi*(10.e-6)**3, qr(i,k)/(nr(i,k)*900.))
+             xvr = Max((4./3.)*pi*(10.e-6)**3, qr(i,k)/(nr(i,k)*1000.))
              rwrad = 0.5*(6.*xvr/pi)**(1./3.)
            else
              xvr = 0.0
@@ -3749,7 +3763,7 @@ END subroutine p3_init
 
           elseif (iparam.eq.5) then
             ! Cohard and Pinty (2000)
-            xvc = qc(i,k)/(nc(i,k)*900.)
+            xvc = qc(i,k)/(nc(i,k)*1000.)
 
             alphac = 0.0
 
@@ -3789,6 +3803,8 @@ END subroutine p3_init
               ncslf = 0.0
             ENDIF
 
+!            IF ( i == 15 ) write(6,*) 'ncautr,k = ',k,ncautr,qc(i,k),nc(i,k),ncautc,xvc
+
              IF ( qr(i,k) > qsmall .and. qr(i,k)*rho(i,k) > 1.2*xl2p ) THEN
            !  xvr = Max((4./3.)*pi*(40.e-6)**3, qr(i,k)/(nr(i,k)*900.))
              
@@ -3812,8 +3828,8 @@ END subroutine p3_init
      &             ((alphar + 3.)*(alphar + 2.)*(alphar + 1.)) )
              ENDIF ! rwrad
 
-               ncacc = Min(ncacc, 0.10*nc(i,k)*odt )
-               qcacc = Min(qcacc, 0.10*qc(i,k)*odt )
+              ! ncacc = Min(ncacc, 0.10*nc(i,k)*odt )
+              ! qcacc = Min(qcacc, 0.10*qc(i,k)*odt )
 
              ENDIF ! rwrad > rh
             ENDIF ! qr > qsmall
@@ -3932,14 +3948,14 @@ END subroutine p3_init
               ENDIF
             ENDIF
             IF ( rwrad .ge. 50.e-6 ) THEN
-              nrslf = dum*aa2*rho(i,k)*(nr(i,k))**2*xvr - (1. - dum)*Max( 0.0,  rainbreakfac*rho(i,k)*(qr(i,k))**2 )
+              nrslf = dum*aa2*rho(i,k)*(nr(i,k))**2*xvr
             ELSE
               nrslf =  aa1*rho(i,k)*(nr(i,k)*xvr)**2*      &
      &                   (alphar + 6.)*(alphar + 5.)*(alphar + 4.)/  &
      &                  ((alphar + 3.)*(alphar + 2.)*(alphar + 1.))
-              
+
             ENDIF
-          
+!            IF ( i == 15 ) write(6,*) 'nrslf,k = ',k,nrslf,qr(i,k),nr(i,k),dum,rwrad
           endif
 
        endif
@@ -4390,6 +4406,7 @@ END subroutine p3_init
 
        if (log_predictNc) then
           nc(i,k) = nc(i,k) + (-ncacc-ncautc+ncslf+ncnuc)*dt
+          cn(i,k) = cn(i,k) + ncnuc*dt
        else
           nc(i,k) = nccnst*inv_rho(i,k)
        endif
@@ -5472,8 +5489,8 @@ END subroutine p3_init
 !..............................................
 ! Merge ice categories with similar properties (based on specified similarly condition)
 
-    multicat:  if (nCat.gt.1) then
-!   multicat:  if (.FALSE.) then       ! **** TEST
+    multicat:  if (nCat.gt.1 .and. merge_opt >= 1 ) then
+!    multicat:  if (.FALSE.) then       ! **** TEST
 
       !step 1:  adjustments and calculation of mean diameters
        k_loop_check_before_merge:  do k = kbot,ktop,kdir
@@ -5556,9 +5573,22 @@ END subroutine p3_init
       !step 2:  merge ice with similar properties into one category
        do k = kbot,ktop,kdir
           do iice = nCat,2,-1
-             tmp1 = abs(diag_di(i,k,iice)-diag_di(i,k,iice-1))
-             if (tmp1.le.deltaD_init .and. qitot(i,k,iice).gt.0. .and.               &
-                 qitot(i,k,iice-1).gt.0.) then
+             log_test = .false.
+             IF ( merge_opt == 1 ) THEN
+               ! absolute difference
+               tmp1 = abs(diag_di(i,k,iice)-diag_di(i,k,iice-1))
+               log_test = tmp1.le.deltaD_init
+             ELSEIF ( merge_opt == 2 ) THEN
+               ! relative difference
+               tmp1 = 100.
+               IF ( diag_di(i,k,iice)+diag_di(i,k,iice-1) > 0.0 ) THEN
+               tmp1 = 100.*abs(diag_di(i,k,iice)-diag_di(i,k,iice-1))/ &
+                       (diag_di(i,k,iice)+diag_di(i,k,iice-1))
+               ENDIF
+               log_test = tmp1.le.10.
+             ENDIF
+             if ( log_test .and. qitot(i,k,iice).gt.0. .and.           &
+                    qitot(i,k,iice-1).gt.0.) then
                 qitot(i,k,iice-1) = qitot(i,k,iice-1) + qitot(i,k,iice)
                 nitot(i,k,iice-1) = nitot(i,k,iice-1) + nitot(i,k,iice)
                 qirim(i,k,iice-1) = qirim(i,k,iice-1) + qirim(i,k,iice)
