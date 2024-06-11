@@ -982,10 +982,13 @@
       ELSEIF (ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.53 .or.ptype.eq.60) THEN
 
       ! for 1-ice-category configurations
-          DO i = 1,numq
-            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
-             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
-            endif
+!         DO i = 1,numq
+!           if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+!            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+!           endif
+!         ENDDO
+          DO i = 1,nqs2
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
          rdt = 1.0/dt
@@ -1392,10 +1395,13 @@
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 2-mom-ice, 2-ice-category  !
 !---------------------------------------------------------------------------!
 
-          DO i = 1,numq
-            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
-             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
-            endif
+!         DO i = 1,numq
+!           if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+!            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+!           endif
+!         ENDDO
+          DO i = 1,nqs2
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
          rdt = 1.0/dt
@@ -1582,10 +1588,13 @@
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 2-ice-category  !
 !---------------------------------------------------------------------------!
 
-          DO i = 1,numq
-            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
-             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
-            endif
+!         DO i = 1,numq
+!           if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+!            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+!           endif
+!         ENDDO
+          DO i = 1,nqs2
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
          rdt = 1.0/dt
@@ -1778,10 +1787,13 @@
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 2-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
 
-          DO i = 1,numq
-            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
-             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
-            endif
+!         DO i = 1,numq
+!           if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+!            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+!           endif
+!         ENDDO
+          DO i = 1,nqs2
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
          rdt = 1.0/dt
@@ -1979,10 +1991,13 @@
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 3-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
 
-          DO i = 1,numq
-            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
-             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
-            endif
+!         DO i = 1,numq
+!           if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+!            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+!           endif
+!         ENDDO
+          DO i = 1,nqs2
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
          rdt = 1.0/dt
@@ -2212,10 +2227,13 @@
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 4-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
 
-          DO i = 1,numq
-            if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
-             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
-            endif
+!         DO i = 1,numq
+!           if ( (trim(qunit(i)) /= '#/kg') .and. (qunit(i)(1:2) /= 'zi') ) then
+!            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+!           endif
+!         ENDDO
+          DO i = 1,numq ! nqs2
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
          rdt = 1.0/dt

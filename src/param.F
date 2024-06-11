@@ -504,6 +504,7 @@
       call MPI_BCAST(output_zh     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_basestate,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_th     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(output_temperature,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_thpert ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_prs    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(output_prspert,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -5217,6 +5218,7 @@
       output_zh      = max(0,min(1,output_zh))
       output_basestate = max(0,min(1,output_basestate))
       output_th      = max(0,min(1,output_th))
+      output_temperature = max(0,min(1,output_temperature))
       output_thpert  = max(0,min(1,output_thpert))
       output_prs     = max(0,min(1,output_prs))
       output_prspert = max(0,min(1,output_prspert))
@@ -5357,6 +5359,7 @@
       if(dowr) write(outfile,*) 'output_basestate =',output_basestate
       if(dowr) write(outfile,*) 'output_th        =',output_th
       if(dowr) write(outfile,*) 'output_thpert    =',output_thpert
+      if(dowr) write(outfile,*) 'output_temperature =',output_temperature
       if(dowr) write(outfile,*) 'output_prs       =',output_prs
       if(dowr) write(outfile,*) 'output_prspert   =',output_prspert
       if(dowr) write(outfile,*) 'output_pi        =',output_pi
