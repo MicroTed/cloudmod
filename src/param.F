@@ -141,9 +141,11 @@
       real    :: p3_nimax = 2000.e3
       integer :: p3_iparam = 3
       integer :: p3_ccn_on = 0
-      integer :: p3_merge_opt = 1
-      integer :: rssflg = 1
-      integer :: sssflg = 1
+      integer :: p3_merge_opt = 1 ! 0 = no merging; 1 = diameter-difference merge (original); 2 = percent difference in diam. (Cholette 2024)
+      integer :: p3_qrcol_opt = 0 ! 0 = no size check on qrcol; 1 = only allow qrcol for ice larger than rain
+                  ! for p3_merge_opt=0 with p3_qrcol_opt=2 and ncat=2, this disables qrcol for iice=2 
+      integer :: rssflg = 1 ! P3: Rain size-sorting allowed (1, default), or disallowed (0).  If 0, sets N and Z-weighted fall speeds to q-weighted value
+      integer :: sssflg = 1 ! P3: As for rain but for ice (all ice)
 #ifdef MPI
       integer :: ntmp1,ntmp2,ntmp3,ntmp4,reqs,reqs1,reqs2,reqs3,reqs4
       integer, dimension(MPI_STATUS_SIZE) :: status
@@ -183,6 +185,7 @@
                         p3_iparam,      &
                         p3_ccn_on,      &
                         p3_merge_opt,   &
+                        p3_qrcol_opt,   &
                         rssflg,         &
                         sssflg
 
@@ -740,6 +743,7 @@
       call MPI_BCAST(p3_iparam ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(p3_ccn_on ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(p3_merge_opt,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(p3_qrcol_opt,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(rssflg    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(sssflg    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
 #endif
@@ -4043,7 +4047,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.51 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4054,7 +4058,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.52 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4065,7 +4069,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.53 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4076,7 +4080,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.54 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4087,7 +4091,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.60 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4098,7 +4102,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.61 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4109,7 +4113,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.62 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4120,7 +4124,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           elseif( ptype.eq.63 )then
             call p3_init(lookup_file_dir='.',  &
@@ -4131,7 +4135,7 @@
                          stat=p3stat,          &
                          abort_on_err=.false., &
                          dowr=dowr, nanew1_in=p3_cccn,iparam_in=p3_iparam,  &
-                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,  &
+                         p3_ccn_on=p3_ccn_on,p3_merge_opt=p3_merge_opt,p3_qrcol_opt=p3_qrcol_opt,  &
                          rssflg_in=rssflg, sssflg_in=sssflg, max_total_Ni_in=p3_nimax )
           endif
 
@@ -4543,10 +4547,10 @@
           qname(3)  = 'qr '
           qname(4)  = 'qi1'
           qname(5)  = 'ni1'
-          qname(6)  = 'qnr'
+          qname(6)  = 'nr '
           qname(7)  = 'ri1'
           qname(8)  = 'bi1'
-          qname(9)  = 'qnc'
+          qname(9)  = 'nc '
           qname(10) = 'zi1'
           qname(11) = 'li1'
 
