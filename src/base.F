@@ -637,8 +637,8 @@
       if(imoist.eq.1)then
         do k=1,nsnd
           if(qvsnd(k).lt.1.0e-12)then
-            if(dowr) write(outfile,*) '  Qv is too small.  Setting rh to 0.1%.  k,zsnd=',k,zsnd(k)
-            qvsnd(k)=0.001*rslf(psnd(k),thsnd(k)*pisnd(k))
+            if(dowr) write(outfile,*) '  Qv is too small.  Setting rh to 0.01%.  k,zsnd=',k,zsnd(k)
+            qvsnd(k)=0.0001*rslf(psnd(k),thsnd(k)*pisnd(k))
           endif
           rhsnd(k)=qvsnd(k)/rslf(psnd(k),tsnd(k))
         enddo
@@ -1843,12 +1843,12 @@
 
         ztrop = 15000.0
 
-        qsfc = var2         ! get surface qv from namelist (var2)
+        qsfc = 0.01865
         qt = 10.0**(-11)
         zq1 = 4000.0
         zq2 = 7500.0
 
-        tsfc = tsk0           ! set air temperature equal to SST (bad idea, but oh well...)
+        tsfc = tsk0           ! set air temperature equal to SST 
         tvsfc = tsfc*(1.0+0.608*qsfc)
 
         psfc = 101480.0

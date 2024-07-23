@@ -1146,14 +1146,21 @@
 
       IF(pdscheme.eq.1)THEN
 
-        dum2d1 = 0.0
-        dum2d2 = 0.0
-        dum2d3 = 0.0
-        dum2d4 = 0.0
-        dum2d5 = 0.0
+      !$omp parallel do default(shared)   &
+      !$omp private(i,j,k)
+      DO j=1,nj
+
+        budj(j) = 0.0
+
+        do i=1,ni
+          dum2d1(i,j) = 0.0
+          dum2d2(i,j) = 0.0
+          dum2d3(i,j) = 0.0
+          dum2d4(i,j) = 0.0
+          dum2d5(i,j) = 0.0
+        enddo
 
         do k=1,nk
-        do j=1,nj
         do i=1,ni
           ! t1
           dum2d1(i,j)=dum2d1(i,j)+rho(i,j,k)*q3d(i,j,k)
@@ -1164,10 +1171,8 @@
           dum2d3(i,j)=dum2d3(i,j)+rho(i,j,k)*q3d(i,j,k)
         enddo
         enddo
-        enddo
 
         k = 1
-        do j=1,nj
         do i=1,ni
           ! t3
           dum2d4(i,j)=(dum2d1(i,j)+1.0d-20)/(dum2d3(i,j)+1.0d-20)
@@ -1176,22 +1181,23 @@
           ! a2
           dum2d5(i,j)=dum2d5(i,j)+rho(i,j,k)*q3d(i,j,k)*ruh(i)*rvh(j)*rmh(i,j,k)
         enddo
-        enddo
 
         do k=2,nk
-        do j=1,nj
         do i=1,ni
           q3d(i,j,k)=dum2d4(i,j)*q3d(i,j,k)
           ! a2
           dum2d5(i,j)=dum2d5(i,j)+rho(i,j,k)*q3d(i,j,k)*ruh(i)*rvh(j)*rmh(i,j,k)
         enddo
         enddo
+
+        do i=1,ni
+          budj(j)=budj(j)+(dum2d5(i,j)-dum2d2(i,j))
         enddo
 
+      ENDDO
+
         do j=1,nj
-        do i=1,ni
-          asq=asq+(dum2d5(i,j)-dum2d2(i,j))*tem
-        enddo
+          asq=asq+budj(j)*tem
         enddo
 
       ELSE
@@ -2735,19 +2741,23 @@
       integer, intent(inout) :: reqc
  
       integer :: i,j,k
-      real :: dtdx,dtdy,dtdz,fmax,wsp,tem
+      real :: dtdx,dtdy,dtdz,fmax,wsp
       real, dimension(nk) :: cfl
  
       dtdx=0.5*dt*rdx
       dtdy=0.5*dt*rdy
       dtdz=0.5*dt*rdz
 
-      cfl = 0.0
-
-!$omp parallel do default(shared)  &
-!$omp private(i,j,k,wsp,tem)
+      !$omp parallel do default(shared)  &
+      !$omp private(k)
       do k=1,nk
+        cfl(k) = 0.0
+      enddo
+
       if(nx.gt.1.and.ny.gt.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k,wsp)
+        do k=1,nk
         do j=1,nj
         do i=1,ni
           wsp = sqrt( ( ((ua(i,j,k)+ua(i+1,j,k))*dtdx*uh(i))**2     &
@@ -2757,7 +2767,11 @@
 !!!          if( wsp.ge.1.30 ) print *,'  cfl,myid,i,j,k = ',wsp,myid,i,j,k
         enddo
         enddo
+        enddo
       elseif(nx.gt.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k,wsp)
+        do k=1,nk
         do j=1,nj
         do i=1,ni
           wsp = sqrt( ((ua(i,j,k)+ua(i+1,j,k))*dtdx*uh(i))**2     &
@@ -2766,7 +2780,11 @@
 !!!          if( wsp.ge.1.30 ) print *,'  cfl,myid,i,j,k = ',wsp,myid,i,j,k
         enddo
         enddo
+        enddo
       elseif(axisymm.eq.0.and.ny.gt.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k,wsp)
+        do k=1,nk
         do j=1,nj
         do i=1,ni
           wsp = sqrt( ((va(i,j,k)+va(i,j+1,k))*dtdy*vh(j))**2     &
@@ -2775,8 +2793,8 @@
 !!!          if( wsp.ge.1.30 ) print *,'  cfl,myid,i,j,k = ',wsp,myid,i,j,k
         enddo
         enddo
+        enddo
       endif
-      enddo
 
       fmax=-99999999.
       do k=1,nk
@@ -2818,18 +2836,22 @@
  
       integer :: i,j,k
       real :: dtdx,dtdy,fmax,tem1,tem2,tem3
-      real, dimension(nk) :: ks
+      real, dimension(2:nk) :: ks
  
       dtdx=dt*rdx*rdx
       dtdy=dt*rdy*rdy
 
-      ks = 0.0
-
-!$omp parallel do default(shared)  &
-!$omp private(i,j,k,tem1,tem2,tem3)
+      !$omp parallel do default(shared)  &
+      !$omp private(k)
       do k=2,nk
+        ks(k) = 0.0
+      enddo
+
       if(nx.gt.1.and.ny.gt.1)then
         ! 3d:
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k,tem1,tem2,tem3)
+        do k=2,nk
         do j=1,nj
         do i=1,ni
           tem1 = sqrt( (kmh(i,j,k)*dtdx*uh(i)*uh(i))**2 &
@@ -2841,8 +2863,12 @@
           ks(k) = max( ks(k) , tem1 , tem2 , tem3 )
         enddo
         enddo
+        enddo
       elseif(nx.gt.1)then
         ! 2d (including axisymm):
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k,tem1,tem2,tem3)
+        do k=2,nk
         do j=1,nj
         do i=1,ni
           tem1 = kmh(i,j,k)*dtdx*uh(i)*uh(i)
@@ -2851,10 +2877,10 @@
           ks(k) = max( ks(k) , tem1 , tem2 , tem3 )
         enddo
         enddo
+        enddo
       elseif(axisymm.eq.0.and.ny.gt.1)then
         stop 1112
       endif
-      enddo
 
       fmax=-99999999.
       do k=2,nk
@@ -2869,7 +2895,8 @@
 
 !!!      if(ksmax.ge.0.50) stopit=.true.
 
-      if(timestats.ge.1) time_stat=time_stat+mytime()
+!!!      if(timestats.ge.1) time_stat=time_stat+mytime()
+      if(timestats.ge.1) time_cflq=time_cflq+mytime()
  
       end subroutine calcksquick
 
@@ -2969,13 +2996,13 @@
         endif
       enddo
 
-      if( idopbl .and. horizturb.eq.0 )then
+      if( cm1setup.eq.2 .and. idopbl .and. horizturb.eq.0 )then
         fhmax=0.0
         imaxh=0
         jmaxh=0
         kmaxh=0
       endif
-      if( idopbl .and. ipbl.ne.2 )then
+      if( cm1setup.eq.2 .and. idopbl .and. ipbl.ne.2 )then
         fvmax=0.0
         imaxv=0
         jmaxv=0
@@ -3722,6 +3749,7 @@
       time_hifrq=0.0
       time_ercyl=0.0
       time_tavg=0.0
+      time_cuprm=0.0
 #ifdef MPI
       time_mpu1=0.0
       time_mpv1=0.0

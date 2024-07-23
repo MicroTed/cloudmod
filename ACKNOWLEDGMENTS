@@ -1,6 +1,6 @@
 
-CM1 Numerical Model, Release 21.0  (cm1r21.0)
-20 April 2022
+CM1 Numerical Model, Release 21.1  (cm1r21.1)
+24 March 2024
 
 Acknowledgments:
 
@@ -16,6 +16,9 @@ Xiaoming Shi, Martin Singh, Daniel Stern, Jerry Straka, Mark Straka, Gregory
 Thompson, Lou Wicker, Bob Wilhelmson.  
 
 Some code in CM1 was adapted from other numerical models, including:
+
+ - The Model for Prediction Across Scales - Atmosphere (MPAS-A)
+   (wsm6,ysu,tiedtke)
 
 - The Weather Research and Forecasting (WRF) Model
   (land-surface model, surface layer model, ocean mixed-layer model, 

@@ -7885,7 +7885,7 @@ contains
       contains
 
 ! **************************************************************************
-      subroutine rrtmg_lw_ini(cpdair)
+      subroutine rrtmg_lw_ini(cpdair,grv)
 ! **************************************************************************
 !
 !  Original version:       Michael J. Iacono; July, 1998
@@ -7905,6 +7905,7 @@ contains
       real(kind=rb), intent(in) :: cpdair     ! Specific heat capacity of dry air
                                               ! at constant pressure at 273 K
                                               ! (J kg-1 K-1)
+      real(kind=rb), intent(in) :: grv        ! Gravitational accel. (m/s2) from host model
 
 ! ------- Local -------
 
@@ -7931,7 +7932,7 @@ contains
 !jm not thread safe      hvrini = '$Revision: 1.3 $'
 
 ! Initialize model data
-      call lwdatinit(cpdair)
+      call lwdatinit(cpdair,grv)
       call lwcmbdat               ! g-point interval reduction data
       call lwcldpr                ! cloud optical properties
       call lwatmref               ! reference MLS profile
@@ -8035,7 +8036,7 @@ contains
       end subroutine rrtmg_lw_ini
 
 !***************************************************************************
-      subroutine lwdatinit(cpdair)
+      subroutine lwdatinit(cpdair,grv)
 !***************************************************************************
 
 ! --------- Modules ----------
@@ -8051,6 +8052,7 @@ contains
       real(kind=rb), intent(in) :: cpdair      ! Specific heat capacity of dry air
                                                ! at constant pressure at 273 K
                                                ! (J kg-1 K-1)
+      real(kind=rb), intent(in) :: grv        ! Gravitational accel. (m/s2) from host model
 
 ! Longwave spectral band limits (wavenumbers)
       wavenum1(:) = (/ 10._rb, 350._rb, 500._rb, 630._rb, 700._rb, 820._rb, &
@@ -8085,7 +8087,9 @@ contains
 
 ! Fundamental physical constants from NIST 2002
 
-      grav = 9.8066_rb                        ! Acceleration of gravity
+    ! GHB, 230727: set to CM1 default value
+!!!      grav = 9.8066_rb                        ! Acceleration of gravity
+      grav = grv                              ! Acceleration of gravity
                                               ! (m s-2)
       planck = 6.62606876e-27_rb              ! Planck constant
                                               ! (ergs s; g cm2 s-1)
@@ -11438,7 +11442,7 @@ contains
 !------------------------------------------------------------------
 MODULE module_ra_rrtmg_lw
 
-use module_model_constants, only : cp
+use module_model_constants, only : cp , grv => g
 use module_wrf_error
 #if (HWRF == 1)
    USE module_state_description, ONLY : FER_MP_HIRES, FER_MP_HIRES_ADVECT, ETAMP_HWRF 
@@ -11620,7 +11624,7 @@ CONTAINS
 !  Ozone
    REAL, DIMENSION( ims:ime, jms:jme , kms:kme )                 , &
          OPTIONAL                                               , &
-         INTENT(IN   ) :: O33D
+         INTENT(INout) :: O33D
    INTEGER, OPTIONAL, INTENT(IN ) :: o3input
 
       real, parameter :: thresh=1.e-9
@@ -12402,6 +12406,13 @@ CONTAINS
          enddo
         endif
 
+! output o3 for o3input=0
+        IF (o3input.eq.0 .and. present(o33d)) THEN
+            DO K=kts,kte
+               O33D(i,j,k)=o3vmr(ncol,k)
+            ENDDO
+        ENDIF
+
 ! Set surface emissivity in each RRTMG longwave band
          do nb = 1, nbndlw
             emis(ncol, nb) = emiss(i,j)
@@ -12860,13 +12871,15 @@ CONTAINS
    REAL, DIMENSION( kts:kte+2 ),INTENT(IN   )    ::      Plev
 
 ! LOCAL VAR
-   INTEGER :: K, JJ
+   INTEGER :: K, JJ, kk
+
+   integer, parameter :: usecode = 2
 
    REAL    ::  PRLEVH(kts:kte+2),PPWRKH(32),                     &
                O3WRK(31),PPWRK(31),O3SUM(31),PPSUM(31),          &
                O3WIN(31),PPWIN(31),O3ANN(31),PPANN(31)                                                       
 
-   REAL    ::  PB1, PB2, PT1, PT2
+   REAL    ::  PB1, PB2, PT1, PT2, frac
 
    DATA O3SUM  /5.297E-8,5.852E-8,6.579E-8,7.505E-8,             &                    
         8.577E-8,9.895E-8,1.175E-7,1.399E-7,1.677E-7,2.003E-7,   &                 
@@ -12930,6 +12943,7 @@ CONTAINS
       PPWRKH(K)=(PPWRK(K)+PPWRK(K-1))/2.                                   
    ENDDO
    PPWRKH(32)=0.                                                          
+ if( usecode .eq. 1 )then
    DO K=kts,kte+1
       DO 25 JJ=1,31                                                        
          IF((-(PRLEVH(K)-PPWRKH(JJ))).GE.0.)THEN                            
@@ -12957,6 +12971,39 @@ CONTAINS
       O3PROF(K)=O3PROF(K)/(PRLEVH(K)-PRLEVH(K+1))                      
 
    ENDDO
+
+ elseif( usecode .eq. 2 )then
+
+     ! GHB, 231213: new code to interpolate to pressure levels
+
+     !    ppwrkh = pressure on scalar levels(?)
+     !    o3wrk = o3 averaged over summer and winter (?)
+    do k=kts,kte+1
+      if( plev(k).gt.ppwrkh(1) )then
+        kk = 1
+        frac = (plev(k)-ppwrkh(kk))/(ppwrkh(kk+1)-ppwrkh(kk))
+        o3prof(k) = o3wrk(kk) + (o3wrk(kk+1)-o3wrk(kk))*frac
+      elseif( plev(k).lt.ppwrkh(31) )then
+        kk = 31
+        frac = (plev(k)-ppwrkh(kk))/(ppwrkh(kk)-ppwrkh(kk-1))
+        o3prof(k) = o3wrk(kk) + (o3wrk(kk)-o3wrk(kk-1))*frac
+      else
+        kk = 1
+        do while( ppwrkh(kk).gt.plev(k) .and. kk.lt.31 )
+          kk = kk+1
+        enddo
+        frac = (plev(k)-ppwrkh(kk-1))/(ppwrkh(kk)-ppwrkh(kk-1))
+        o3prof(k) = o3wrk(kk-1) + (o3wrk(kk)-o3wrk(kk-1))*frac
+        if( frac.lt.-0.0001 .or. frac.gt.1.0001 )then
+          print *,'  frac = ',frac
+          stop 1231
+        endif
+      endif
+    enddo
+
+ else
+    stop 23070
+ endif
 !                                                                                
    END SUBROUTINE O3DATA
 
@@ -12964,7 +13011,7 @@ CONTAINS
 
 !====================================================================
    SUBROUTINE rrtmg_lwinit(                                         &
-                       p_top, allowed_to_read ,                     &
+                       p_top, allowed_to_read , myid,               &
                        ids, ide, jds, jde, kds, kde,                &
                        ims, ime, jms, jme, kms, kme,                &
                        its, ite, jts, jte, kts, kte                 )
@@ -12977,6 +13024,7 @@ CONTAINS
                                      ims, ime, jms, jme, kms, kme,  &
                                      its, ite, jts, jte, kts, kte
    REAL, INTENT(IN)               :: p_top 
+   integer, intent(in) :: myid
 
 ! Steven Cavallo.  Added for buffer layer adjustment.   December 2010.
    NLAYERS = kme + nint(p_top*0.01/deltap)- 1 ! Model levels plus new levels.
@@ -12985,12 +13033,14 @@ CONTAINS
 
 ! Read in absorption coefficients and other data
    IF ( allowed_to_read ) THEN
+     if(myid.eq.0) print *,'  calling rrtmg_lwlookuptable '
      CALL rrtmg_lwlookuptable
    ENDIF
 
 ! Perform g-point reduction and other initializations
 ! Specific heat of dry air (cp) used in flux to heating rate conversion factor.
-   call rrtmg_lw_ini(cp)
+   if(myid.eq.0) print *,'  calling rrtmg_lw_ini, cp,grv = ',cp,grv
+   call rrtmg_lw_ini(cp,grv)
 
    END SUBROUTINE rrtmg_lwinit
 

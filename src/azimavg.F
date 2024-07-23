@@ -3,7 +3,7 @@
   implicit none
 
   private
-  public :: azimavg,getpsmth,getpcent,change_uvmove,update_adapt_move,getrangle
+  public :: azimavg,getpsmth,getpcent,update_adapt_move,getrangle
 
   integer, parameter :: varmax = 1000
 
@@ -18,7 +18,7 @@
                    icrs,icenter,jcenter,xcenter,ycenter,domainlocx,domainlocy, &
                    xh,rxh,arh1,arh2,uh,ruh,xf,rxf,arf1,arf2,uf,ruf,            &
                    yh,vh,rvh,yf,vf,rvf,                                        &
-                   xfref,yfref,rds,sigma,rdsf,sigmaf,                          &
+                   xfref,yfref,xhref,yhref,rds,sigma,rdsf,sigmaf,              &
                    tauh,taus,zh,mh,rmh,c1,c2,tauf,zf,mf,rmf,                   &
                    rho0s,pi0s,prs0s,rth0s,                                     &
                    pi0,rho0,prs0,thv0,th0,rth0,qv0,qc0,u0,v0,                  &
@@ -34,13 +34,14 @@
                    q3d,qten,kmh,kmv,khh,khv,cme,csm,ce1,ce2,tkea,tke3d,tketen, &
                    nm,defv,defh,lenscl,dissten,                                &
                    thpten,qvpten,qcpten,qipten,upten,vpten,xkzh,xkzq,xkzm,     &
-                   rain,u10,v10,s10,br,brcr,hpbl,prate,                        &
+                   rain,raincv,u10,v10,s10,br,brcr,hpbl,prate,                 &
                    swten,lwten,cldfra,qke,qke_adv,el_pbl,edmf_a,               &
                    tdiag,qdiag,udiag,vdiag,wdiag,pdiag,out2d,out3d,getdbz,getvt, &
                    effc,effi,effs,effr,effg,effis,                             &
                    lwupt,lwdnt,lwupb,lwdnb,                                    &
                    swupt,swdnt,swupb,swdnb,lwcf,swcf,coszen,                   &
-                    ir, rr, angle,kmwk,                                        &
+                    ir, rr, angle,crref,kmwk,                                  &
+                   thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten,              &
                    dat1     ,dat2     ,dat3       ,                            &
                    sw31,sw32,se31,se32,ss31,ss32,sn31,sn32,flag)
         ! end_azimavg
@@ -69,8 +70,8 @@
     real, intent(in), dimension(ib:ie+1) :: xf,rxf,arf1,arf2,uf,ruf
     real, intent(in), dimension(jb:je) :: yh,vh,rvh
     real, intent(in), dimension(jb:je+1) :: yf,vf,rvf
-    real, intent(in), dimension(1-ngxy:nx+ngxy+1) :: xfref
-    real, intent(in), dimension(1-ngxy:ny+ngxy+1) :: yfref
+    real, intent(in), dimension(1-ngxy:nx+ngxy+1) :: xfref,xhref
+    real, intent(in), dimension(1-ngxy:ny+ngxy+1) :: yfref,yhref
     real, intent(in), dimension(kb:ke) :: rds,sigma
     real, intent(in), dimension(kb:ke+1) :: rdsf,sigmaf
     real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: tauh,taus,zh,mh,rmh,c1,c2
@@ -100,7 +101,7 @@
     real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1) :: nm,defv,defh,lenscl,dissten
     real, intent(in), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: thpten,qvpten,qcpten,qipten,upten,vpten
     real, intent(in), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: xkzh,xkzq,xkzm
-    real, intent(in), dimension(ib:ie,jb:je,nrain) :: rain
+    real, intent(in), dimension(ib:ie,jb:je,nrain) :: rain,raincv
     real, intent(in), dimension(ibl:iel,jbl:jel) :: u10,v10,s10,br,brcr,hpbl
     real, intent(in), dimension(ib:ie,jb:je) :: prate
     real, intent(in), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,cldfra
@@ -121,7 +122,9 @@
     real, intent(in), dimension(ibr:ier,jbr:jer) :: lwcf,swcf,coszen
     integer, intent(inout), dimension(ib:ie,jb:je) :: ir
     real, intent(inout), dimension(ib:ie,jb:je) :: rr,angle
+    real, intent(in), dimension(icrs) :: crref
     real, intent(in), dimension(ib2pt:ie2pt,jb2pt:je2pt,kb2pt:ke2pt) :: kmwk
+    real, intent(in), dimension(ibcu:iecu,jbcu:jecu,kbcu:kecu) :: thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten
     real, intent(inout), dimension(d3is,d3js) :: dat1
     real, intent(inout), dimension(d2is,d2js) :: dat2
     real, intent(inout), dimension(d3is,d3js,0:d3n-1) :: dat3
@@ -194,7 +197,7 @@
           call getcenter(nstep,mtime,rddr,xh,yh,zh,xfref,yfref,ugr,utmp,vgr,vtmp,pp3d,  &
                          nwritea,icenter,jcenter,xcenter,ycenter,domainlocx,domainlocy)
 
-          call   getrangle(xh,yh,xcenter,ycenter, ir, rr, angle)
+          call   getrangle(xh,yh,xcenter,ycenter, ir, rr, angle,icrs,crref,xhref,xfref)
 
     !---------------------------------------------------------------------------
     ! open file:
@@ -275,7 +278,8 @@
       ravg = 0.0
 
       do i=1,icrs
-        ravg(i) = 0.5*ddr + (i-1)*ddr
+!!!        ravg(i) = 0.5*ddr + (i-1)*ddr
+        ravg(i) = xhref( nx/2 + i )
       enddo
 
   !-----------------------------------------------------------------------------
@@ -388,6 +392,32 @@
       varlvls(nvar) = 0
 
       call     getavg2d(rain(ib,jb,2),icrs,savg2d,ir,rr,navg,area,ruh,rvh)
+      call write2d(icrs,savg2d,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+    IF( imoist.eq.1 .and. cuparam.ge.1 )THEN
+      nvar = nvar+1
+      varname(nvar) = 'raincv'
+      vardesc(nvar) = 'accumulated surface rainfall (convective, param.)'
+      varunit(nvar) = 'cm'
+      varlvls(nvar) = 0
+
+      call     getavg2d(raincv(ib,jb,1),icrs,savg2d,ir,rr,navg,area,ruh,rvh)
+      call write2d(icrs,savg2d,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+    IF( imoist.eq.1 .and. nrain.eq.2 .and. cuparam.ge.1 )THEN
+      nvar = nvar+1
+      varname(nvar) = 'raincv2'
+      vardesc(nvar) = 'translated surface rainfall (convective, param.)'
+      varunit(nvar) = 'cm'
+      varlvls(nvar) = 0
+
+      call     getavg2d(raincv(ib,jb,2),icrs,savg2d,ir,rr,navg,area,ruh,rvh)
       call write2d(icrs,savg2d,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
     ENDIF
 
@@ -543,6 +573,21 @@
       varlvls(nvar) = 0
 
       call     getavg2d(s10,icrs,savg2d,ir,rr,navg,area,ruh,rvh)
+      call write2d(icrs,savg2d,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+
+      !c-c-c-c-c-c-c-c-c-c
+
+      nvar = nvar+1
+      varname(nvar) = 's10max'
+    if( imove.eq.1 )then
+      vardesc(nvar) = 'max diagnostic 10m horiz wind speed (ground-rel.)'
+    else
+      vardesc(nvar) = 'max diagnostic 10m horiz wind speed'
+    endif
+      varunit(nvar) = 'm/s'
+      varlvls(nvar) = 0
+
+      call     getmax2d(s10,icrs,savg2d,ir,rr,navg,area,ruh,rvh)
       call write2d(icrs,savg2d,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
 
       !c-c-c-c-c-c-c-c-c-c
@@ -854,7 +899,7 @@
       do i=1,icrs
         if( uavg(i,1).lt.ucrit )then
           k = 1
-          do while( uavg(i,k).lt.ucrit .and. k.le.nk )
+          do while( uavg(i,k).lt.ucrit .and. k.lt.nk )
             k = k+1
           enddo
           savg2d(i) = zh(1,1,k-1)+(zh(1,1,k)-zh(1,1,k-1))  &
@@ -2201,14 +2246,14 @@
 
         !--------!
 
-        nvar = nvar+1
-        varname(nvar) = 'xkzq'
-        vardesc(nvar) = 'eddy diffusivity for moisture (from YSU)'
-        varunit(nvar) = 'm^2/s'
-        vargrid(nvar) = 'w'
-
-        call getavg3d(xkzq(ibb,jbb,kbb),icrs,savg,ir,rr,navg,area,ruh,rvh)
-        call write3d(icrs,savg,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+!        nvar = nvar+1
+!        varname(nvar) = 'xkzq'
+!        vardesc(nvar) = 'eddy diffusivity for moisture (from YSU)'
+!        varunit(nvar) = 'm^2/s'
+!        vargrid(nvar) = 'w'
+!
+!        call getavg3d(xkzq(ibb,jbb,kbb),icrs,savg,ir,rr,navg,area,ruh,rvh)
+!        call write3d(icrs,savg,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
 
         !--------!
 
@@ -2521,6 +2566,81 @@
 
       !c-c-c-c-c-c-c-c-c-c
 
+      IF( cuparam.ge.1 )THEN
+
+        !--------!
+
+        nvar = nvar+1
+        varname(nvar) = 'thcuten'
+        vardesc(nvar) = 'thcuten'
+        varunit(nvar) = 'K/s'
+        vargrid(nvar) = 's'
+
+        call getavg3d(thcuten(ibcu,jbcu,kbcu),icrs,savg,ir,rr,navg,area,ruh,rvh)
+        call write3d(icrs,savg,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+
+        !--------!
+
+        nvar = nvar+1
+        varname(nvar) = 'qvcuten'
+        vardesc(nvar) = 'qvcuten'
+        varunit(nvar) = 'g/g/s'
+        vargrid(nvar) = 's'
+
+        call getavg3d(qvcuten(ibcu,jbcu,kbcu),icrs,savg,ir,rr,navg,area,ruh,rvh)
+        call write3d(icrs,savg,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+
+        !--------!
+
+        nvar = nvar+1
+        varname(nvar) = 'qccuten'
+        vardesc(nvar) = 'qccuten'
+        varunit(nvar) = 'g/g/s'
+        vargrid(nvar) = 's'
+
+        call getavg3d(qccuten(ibcu,jbcu,kbcu),icrs,savg,ir,rr,navg,area,ruh,rvh)
+        call write3d(icrs,savg,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+
+        !--------!
+
+        nvar = nvar+1
+        varname(nvar) = 'qicuten'
+        vardesc(nvar) = 'qicuten'
+        varunit(nvar) = 'g/g/s'
+        vargrid(nvar) = 's'
+
+        call getavg3d(qicuten(ibcu,jbcu,kbcu),icrs,savg,ir,rr,navg,area,ruh,rvh)
+        call write3d(icrs,savg,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+
+        !--------!
+
+        nvar = nvar+1
+        varname(nvar) = 'ucuten'
+        vardesc(nvar) = 'ucuten'
+        varunit(nvar) = 'm/s/s'
+        vargrid(nvar) = 's'
+
+        call getavg3d(ucuten(ibcu,jbcu,kbcu),icrs,savg,ir,rr,navg,area,ruh,rvh)
+        call write3d(icrs,savg,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+
+        !--------!
+
+        nvar = nvar+1
+        varname(nvar) = 'vcuten'
+        vardesc(nvar) = 'vcuten'
+        varunit(nvar) = 'm/s/s'
+        vargrid(nvar) = 's'
+
+        call getavg3d(vcuten(ibcu,jbcu,kbcu),icrs,savg,ir,rr,navg,area,ruh,rvh)
+        call write3d(icrs,savg,arecs,arecw,nvar,varname,vardesc,varunit,vargrid)
+
+        !--------!
+
+      ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+
       IF( pdcomp )THEN
 
         nvar = nvar+1
@@ -2745,9 +2865,9 @@
           endif
           open(unit=66,file=string)
           if( nfile.eq.1 )then
-            string = 'cm1out_azimavg_%t6_s.dat'
+            string = 'cm1out_azimavg_00%y4_s.dat'
           elseif( nfile.eq.2 )then
-            string = 'cm1out_azimavg_%t6_w.dat'
+            string = 'cm1out_azimavg_00%y4_w.dat'
           endif
           write(66,101) string
           write(66,102)
@@ -2765,7 +2885,11 @@
             endif
           endif
           write(66,104) grads_undef
-          write(66,105) icrs,outunitconv*0.5*ddr,outunitconv*ddr
+!!!          write(66,105) icrs,outunitconv*0.5*ddr,outunitconv*ddr
+          write(66,115) icrs
+          do i=1,icrs
+            write(66,217) outunitconv*ravg(i)
+          enddo
           write(66,106)
           if( nfile.eq.1 )then
             write(66,107) nk
@@ -2827,6 +2951,7 @@
  104    format('undef ',f10.1)
 ! 105    format('xdef ',i6,' linear ',f13.6,1x,f13.6)
  105    format('xdef ',i6,' linear ',es14.6e2,1x,es14.6e2)
+ 115    format('xdef ',i6,' levels')
  106    format('ydef 1 linear 0 1')
  107    format('zdef ',i6,' levels')
 ! 217    format(2x,f13.6)
@@ -3069,6 +3194,54 @@
     enddo
 
     end subroutine getmax3d
+
+
+    !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+    !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+    !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+
+    subroutine getmax2d(s2d,icrs,savg2d,ir,rr,navg,area,ruh,rvh)
+    use input
+    use constants , only : grads_undef
+#ifdef MPI
+    use mpi
+#endif
+    implicit none
+
+    real, intent(in), dimension(ib:ie,jb:je) :: s2d
+    integer, intent(in) :: icrs
+    double precision, dimension(icrs) :: savg2d
+    integer, intent(in), dimension(ib:ie,jb:je) :: ir
+    real, intent(in), dimension(ib:ie,jb:je) :: rr
+    integer, intent(in), dimension(icrs) :: navg
+    double precision, intent(in), dimension(icrs) :: area
+    real, intent(in), dimension(ib:ie) :: ruh
+    real, intent(in), dimension(jb:je) :: rvh
+
+    integer :: i,j,k
+
+    savg2d = -1.0e30
+
+    do j=1,nj
+    do i=1,ni
+      if( ir(i,j).ge.1 .and. ir(i,j).le.icrs )then
+        savg2d(ir(i,j)) = max( savg2d(ir(i,j)) , s2d(i,j) )
+      endif
+    enddo
+    enddo
+
+#ifdef MPI
+    call MPI_ALLREDUCE(MPI_IN_PLACE,savg2d,icrs,MPI_DOUBLE_PRECISION,MPI_MAX,MPI_COMM_WORLD,ierr)
+#endif
+
+    do i=1,icrs
+      if( navg(i).eq.0 )then
+        savg2d(i) = grads_undef
+      endif
+    enddo
+
+    end subroutine getmax2d
 
 
     !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -3566,7 +3739,7 @@
       !   (set ninc=1 to search every gridpoint)
       !   (set ninc=2 to search every other gridpoint)
       !   (set ninc=3 to search every third gridpoint)
-      ninc  =  1
+      ninc  =  2
 !!!      ninc  =  4
 
 !    if( nstep.eq.0 )then
@@ -3997,7 +4170,7 @@
     !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 
-      subroutine getpcent(xh,yh,pp3d,icenter,jcenter,xcenter,ycenter)
+      subroutine getpcent(xh,yh,xfref,yfref,pp3d,icenter,jcenter,xcenter,ycenter,psmth)
 
       use input
       use constants
@@ -4010,15 +4183,25 @@
 
       real, intent(in), dimension(ib:ie) :: xh
       real, intent(in), dimension(jb:je) :: yh
+      real, intent(in), dimension(1-ngxy:nx+ngxy+1) :: xfref
+      real, intent(in), dimension(1-ngxy:ny+ngxy+1) :: yfref
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: pp3d
       integer, intent(inout) :: icenter,jcenter
       real, intent(inout) :: xcenter,ycenter
+      real, intent(in), dimension(ib:ie,jb:je) :: psmth
 
       integer :: i,j
       real :: ppmin,ppmax,pcent,pminx,pmaxx,pminy,pmaxy
+      real :: aa,minval
+      double precision :: cx,cy,ca
 
-#ifdef MPI
-#endif
+      integer, parameter :: type = 2    ! 1 = center of pcent
+                                        ! 2 = centroid of pcent
+
+      real, parameter :: radmax = 300000.0   ! max radius (m) over which pcent is calculated
+                                             ! (for type=2 only)
+
+  !---------------------------------------------------------------------
 
       ppmin =  1.0e30
       ppmax = -1.0e30
@@ -4036,6 +4219,10 @@
 #endif
 
       pcent = 0.5*(ppmin+ppmax)
+
+  !---------------------------------------------------------------------
+
+    IF( type.eq.1 )THEN
 
       pminx =  1.0e30
       pmaxx = -1.0e30
@@ -4063,6 +4250,82 @@
 
       xcenter = 0.5*(pminx+pmaxx)
       ycenter = 0.5*(pminy+pmaxy)
+
+    ENDIF
+
+  !---------------------------------------------------------------------
+
+    IF( type.eq.2 )THEN
+
+      if(myid.eq.0) print *,'  ... centroid ... '
+
+!!!      do j=1,nj
+!!!      do i=1,ni
+!!!        out2d(i,j,1) = 0.0
+!!!      enddo
+!!!      enddo
+
+      ca = 0.0
+      cx = 0.0
+      cy = 0.0
+
+      do j=1,nj
+      do i=1,ni
+!!!        if( pp3d(i,j,1).lt.pcent )then
+        if( sqrt( (xh(i)-centerx)**2 + (yh(j)-centery)**2 ) .lt. radmax )then
+!!!          aa = (dx*ruh(i))*(dy*rvh(j))
+          aa = psmth(i,j)
+          ca = ca + aa
+          cx = cx + aa*xh(i)
+          cy = cy + aa*yh(j)
+!!!          out2d(i,j,1) = 1.0
+        endif
+      enddo
+      enddo
+
+#ifdef MPI
+      call MPI_ALLREDUCE(mpi_in_place,ca,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
+      call MPI_ALLREDUCE(mpi_in_place,cx,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
+      call MPI_ALLREDUCE(mpi_in_place,cy,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
+#endif
+
+      if( abs(ca).gt.smeps )then
+        cx = cx/ca
+        cy = cy/ca
+      else
+        stop 19999
+        cx = centerx
+        cy = centery
+      endif
+
+      minval =  1.0e30
+      do i=1,nx+1
+        if( abs(xfref(i)-cx).lt.minval )then
+          minval = abs(xfref(i)-cx)
+          icenter = i
+        endif
+      enddo
+
+      minval =  1.0e30
+      do j=1,ny+1
+        if( abs(yfref(j)-cy).lt.minval )then
+          minval = abs(yfref(j)-cy)
+          jcenter = j
+        endif
+      enddo
+
+      if(myid.eq.0)then
+        print *,'  cx,cy = ',cx,cy
+        print *,'  xf,yf = ',xfref(icenter),yfref(jcenter)
+        print *,'  i,j   = ',icenter,jcenter
+      endif
+
+      xcenter = cx
+      ycenter = cy
+
+    ENDIF
+
+  !---------------------------------------------------------------------
 
       end subroutine getpcent
 
@@ -4139,7 +4402,7 @@
       double precision, intent(in) :: domainlocx,domainlocy
 
       integer :: k
-      real :: oldumove,oldvmove
+      real :: oldumove,oldvmove,term2
 
       !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       !cc   Adaptive domain-moving option for TCs  ccccccccccccccccccccccccccc
@@ -4160,8 +4423,22 @@
           oldvmove = vmove
 
           ! 220313: increased timescale from 1.0 to 1.5 times adapt_move_frq
-          umove = -(centerx-xcenter)/(1.5*adapt_move_frq)
-          vmove = -(centery-ycenter)/(1.5*adapt_move_frq)
+!!!          umove = -(centerx-xcenter)/(1.5*adapt_move_frq)
+!!!          vmove = -(centery-ycenter)/(1.5*adapt_move_frq)
+
+          term2 = 0.5
+
+          umove = oldumove -term2*(centerx-xcenter)/(adapt_move_frq)  &
+                           +(1.0-term2)*(umovem2-umovem1)
+
+          vmove = oldvmove -term2*(centery-ycenter)/(adapt_move_frq)  &
+                           +(1.0-term2)*(vmovem2-vmovem1)
+
+          umovem2 = umovem1
+          vmovem2 = vmovem1
+
+          umovem1 = oldumove
+          vmovem1 = oldvmove
 
           if( myid.eq.0 ) print *,'  adjusting umove,vmove:',umove,vmove
 
@@ -4256,7 +4533,7 @@
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 
-      subroutine getrangle(xh,yh,xcenter,ycenter, ir, rr, angle)
+      subroutine getrangle(xh,yh,xcenter,ycenter, ir, rr, angle,icrs,crref,xhref,xfref)
       use input
       use constants
       implicit none
@@ -4266,9 +4543,13 @@
       real, intent(inout) :: xcenter,ycenter
       integer, intent(inout), dimension(ib:ie,jb:je) :: ir
       real, intent(inout), dimension(ib:ie,jb:je) :: rr,angle
+      integer, intent(in) :: icrs
+      real, intent(in), dimension(icrs) :: crref
+      real, intent(in), dimension(1-ngxy:nx+ngxy+1) :: xhref,xfref
 
-      integer :: i,j,nn
+      integer :: i,j,nn,ii,iimin
       real :: xsave,ysave,rddr,rrtmp
+      real :: diff,diffmin
 
       xsave = xcenter
       ysave = ycenter
@@ -4278,7 +4559,7 @@
       angle = 0.0
       rddr = 1.0/ddr
 
-    do nn = 1 , 9
+    do nn = 1 , 1
 
       if( nn.eq.1 )then
         xcenter = xsave
@@ -4322,7 +4603,6 @@
         rrtmp = sqrt( (xh(i)-xcenter)**2 + (yh(j)-ycenter)**2 )
         if( rrtmp.lt.rr(i,j) )then
           rr(i,j) = rrtmp
-          ir(i,j) = 1 + int( rr(i,j)*rddr )
           if( (xh(i)-xcenter).ge.0.0 )then
             angle(i,j) =      asin( (yh(j)-ycenter)/max(smeps,rr(i,j)) )
           else
@@ -4336,6 +4616,22 @@
 
       xcenter = xsave
       ycenter = ysave
+
+      do j=1,nj
+      do i=1,ni
+        rrtmp = sqrt( (xh(i)-xcenter)**2 + (yh(j)-ycenter)**2 )
+        diffmin = 1.0e30
+        do ii=1,icrs
+          diff = rrtmp-crref(ii)
+          if( abs(diff).lt.diffmin )then
+            diffmin = abs(diff)
+            iimin = ii
+          endif
+        enddo
+!!!        ir(i,j) = iimin
+        if( rr(i,j).lt.xfref(nx/2+icrs+1) )   ir(i,j) = iimin
+      enddo
+      enddo
 
       end subroutine getrangle
 

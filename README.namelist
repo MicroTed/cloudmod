@@ -1,8 +1,8 @@
 
  User's Guide to namelist.input file (which is located in the "run" directory)
 
- CM1 Numerical Model, Release 21.0  (cm1r21.0) 
- Last updated:  20 April 2022
+ CM1 Numerical Model, Release 21.1  (cm1r21.1) 
+ Last updated:  24 March 2024
 
  Entries with "--- NEW ---" are new (or modified) for cm1r21
 
@@ -140,7 +140,7 @@
               diffusivity terms
             - NOTE:  user must set the parameters in "param7" section below
 
-               ---  NEW ---
+               --- NEW ---
       4 = LES within mesoscale model
             - runs LES model within an inner fine mesh; runs mesoscale model 
               with PBL parameterization beyond.  See param17 section for 
@@ -190,6 +190,7 @@
     8  =  Convection Permitting Model (CPM) simulation of Radiative Convective 
           Equilibrium (RCE)
           - Based on Bretherton et al (2005, JAS)
+          - NOTE: No diurnal cycle.  (Solar constant is fixed at 650.83 W/m2)
           - See namelist.input in run/config_files/cpm_RadConvEquil 
 
     9  =  Stable boundary layer using Large Eddy Simulation (LES)
@@ -470,13 +471,20 @@
 
              6 = Rotunno-Emanuel (1987) simple water-only scheme
 
-            (Note: options 26,27,28 use namelist nssl2mom_params, see below)
+             7 = WSM6        --- NEW ---
+
+            (Note: options 26,27,28 use namelist nssl2mom_params, see below and 
+                   README.NSSLmp
+                   3-moment option can be activated with nssl_3moment = .true.)
              26 = NSSL 2-moment scheme (graupel-only, no hail); 
                   graupel density predicted
              27 = NSSL 2-moment scheme (graupel and hail); 
                   graupel and hail densities predicted
              28 = NSSL single-moment scheme (graupel-only, similar to ptype=4);
                   fixed graupel density (rho_qh)
+             Ice density prediction can be turned off with nssl_density_on  (logical flag, default .true.) 
+                 (ptype 26 or 27)
+
 
             (Note: P3 = Predicted Particle Property bulk microphysics scheme)
              50 = P3 1-ice category, 1-moment cloud water
@@ -486,6 +494,14 @@
 
              55 = Jensen's ISHMAEL (Ice-Spheroids Habit Model with Aspect-ratio Evolution)
 
+ nssl_3moment - logical (default = .false.) Works with ptype 26 and 27 to turn on 
+              the reflectivity moments for rain and graupel (ptype=26/27) and for 
+              hail (ptype=27) Includes option for bin-emulating melting 
+              (Mansell et al. 2020; see README.NSSLmp)
+
+ nssl_density_on  - logical flag (default .true.) to toggle graupel/hail density 
+                 prediction (ptype 26 or 27)
+
  ihail - Use hail or graupel for large ice category when ptype=2,5.
           (Goddard-LFO and Morrison schemes only)
              1 = hail
@@ -494,6 +510,11 @@
  iautoc - Include autoconversion of qc to qr when ptype = 2?  (0=no, 1=yes)
             (Goddard-LFO scheme only)
 
+               --- NEW ---
+ cuparam - Convection parameterization:
+             0 = no convection parameterization (default)
+             1 = new Tiedtke convection parameterization
+
  icor - Include Coriolis acceleration?  (0=no,  1=yes)
         (If user chooses 1, then fcor must be set below)
         f-plane is assumed.
@@ -501,7 +522,7 @@
     NOTE: if icor=1, consider including a large-scale pressure gradient 
           acceleration term (see lspgrad below)
 
- --- NEW ---
+               --- NEW ---
  betaplane - Use beta plane (i.e., Coriolis term is a function of y)?  
              (0=no, 1=yes)
              Caution: not well tested.  May not work with some lateral
@@ -661,7 +682,7 @@
     [additional variables           3 = line of warm bubbles
      need to be set in              4 = initialization for moist benchmark
      init3d.F file]                 5 = cold blob
-                                    7 = Rotunno-Emanuel tropical cyclone
+                                    7 = tropical cyclone (modified Rankine by default)
     See relevant code in            8 = line thermal with random perturbations
     init3d.F file for               9 = forced convergence (Loftus et al 2008)
     more details.                  10 = momentum forcing (Morrison et al 2015)
@@ -791,17 +812,17 @@
         Note: typical value of ndcnst (nt_c) for maritime environments:  100 cm-3
               typical value of ndcnst (nt_c) for continental environments:  300 cm-3
 
- ---  NEW  ---
+ --- NEW  ---
  nt_c - same as ndcnst, but for Thompson microphysics scheme
 
      (NOTE: for other microphysics schemes, you will have 
             to change this value manually in the code)
 
- ---  NEW  ---
+ --- NEW  ---
  csound - speed of sound (m/s) for psolver=6,7
      (Note: should be roughly 5-10 times larger than maximum flow velocity)
 
- ---  NEW  ---
+ --- NEW  ---
  cstar - propagation speed (m/s) of outward-propagating waves at open 
          boundaries (for irbc=1,2 only)
 
@@ -842,8 +863,9 @@
         -----
 
         -----
-        Note:  for the RRTMG code, only the Thompson (ptype=3) and Morrison 
-        (ptype=5) schemes are accurately coupled with the radiation calculations.
+        Note:  for the RRTMG code, only the Thompson (ptype=3), Morrison 
+        (ptype=5), NSSL (ptype=26/27), P3 (50-53), and Jensen ISHMAEL (55) schemes are 
+        accurately coupled with the radiation calculations.
         -----
 
  If radopt >= 1, set the following parameters:
@@ -1055,15 +1077,15 @@
 
  cnst_ust - value of surface friction velocity (u-star, m/s) if set_ust=1
 
- ---  NEW  ---
+ --- NEW  ---
  ramp_sgs - gradually turn on (ie, "ramp up") the subgrid-scale model for 
             LES  (0=no, 1=yes)   (for sgsmodel >=1 only)
 
- ---  NEW  ---
+ --- NEW  ---
  ramp_time - for ramp_sgs=1 only: this is the time over which the LES 
              subgrid-scale model is linearly ramped up. 
 
- ---  NEW  ---
+ --- NEW  ---
  t2p_avg - for two-part models (sgsmodel=3,4) use either:
               1 - spatial average (over entire domain at each model level)
               2 - time average (each grid point has a different time-avg)
@@ -1117,7 +1139,12 @@
  stretch_z - Use vertically stretched grid spacing?  
                0 = no
                1 = Wilhelmson and Chen
-               2 = Smooth geometric
+               2 = Smooth geometric (L. Wicker) Stretch factor, 
+                          dz(k+1) = stretch*dz(k)
+                   is determined iteratively. Max stretch factor 
+                   of 1.1 to limit finite difference errors. If an error
+                   is issued, either increase nz or adjust other parameters
+                   and try again.
                3 = Arbitrary, specified by user in input_grid_z file.
                    Note: this option specifies the heights of scalar
                    levels (also known as "half levels").
@@ -1136,13 +1163,15 @@
  ztop - Total depth of the domain (i.e., the height of the top of the
         domain) (m).
 
- str_bot - Level where stretching begins (m).
+ str_bot - Level where stretching begins (m). For stretch_z=2, this sets the
+           value of nbndlyr = Max(0,Int( str_bot/dz_bot + 0.01) - 1)
 
- str_top - Level where stretching ends (m).  (not used for stretch_z = 2)
+ str_top - Level where stretching ends (m).  (diagnosed iteratively for stretch_z = 2)
 
  dz_bot - Grid spacing at (and below) str_bot (m).
 
- dz_top - Grid spacing at (and above) str_top (m).
+ dz_top - Grid spacing at (and above) str_top (m). For stretch_z=2, this sets
+          the maximum dz (which might not be reached, depending on parameters)
 
 -------------------------------------------------------------------------
   param7 section -- Options relating to Direct Numerical Simulation (DNS)
@@ -1209,9 +1238,22 @@
 
                       1 = GrADS format
                       2 = netcdf
-                          (note: GrADS users might want to use the COARDS
-                           convention for netcdf output ... set coards = .true.
-                           in writeout_nc.F)
+
+          !---  IMPORTANT NOTE about large runs  ---!
+          ! NOTE:  output_format=2 (netcdf-format output files) tends
+                   to be inefficient in CM1 for large processor/core 
+                   counts, ie, when using >2,000 (roughly) cores.
+                   For many thousands of processors/cores, we recommend 
+                   using output_format=1 (also known as unformatted,
+                   direct-access binary format) and then converting the 
+                   subsequent output files to netcdf format (if desired) 
+                   using a conversion program; CDO (climate data operators)
+                   is useful to this end.  On NCAR's derecho, use the two
+                   following commands:
+                            module load cdo
+                            cdo -f nc4 import_binary cm1out_s.ctl cm1out_s.nc
+                  (see https://code.mpimet.mpg.de/projects/cdo for more info on CDO)
+
 
  output_filetype - Type of output file:
                       1 = all output goes into one file
@@ -1321,9 +1363,9 @@
  output_q        - liquid and solid water mixing ratios?
                    (and number concentrations for double-moment schemes)
 
- output_dbz      - reflectivity (dBZ)?  Only available for ptype=2,3,5
-                   (Goddard-LFO, Thompson, Morrison schemes, respectively)
-                                also outputs composite reflectivity (cref)
+ output_dbz      - reflectivity (dBZ)?  Only available for ptype=2,3,5,26-28,50-53,55
+                   (Goddard-LFO, Thompson, Morrison, NSSL, P3, Jensen ISHMAEL schemes,
+                       respectively) also outputs composite reflectivity (cref)
                                 (i.e., max reflectivity in the column)
 
  output_buoyancy - buoyancy (relative to model's base state)?
@@ -1416,8 +1458,8 @@
 
  restart_format - Specifies the format of the restart files:
 
-                      1 = binary
-                      2 = netcdf
+                      1 = binary  (default; highly recommended)
+                      2 = netcdf  (note: inefficient for large number of processors)
 
  restart_filetype - Type of restart file:
                     (since cm1r18.3:  very similar to output_filetype)
@@ -1645,12 +1687,16 @@
 -------------------------------------------------------------------------
   nssl2mom_params section - parameters/options for NSSL microphysics scheme
     (used only if ptype=26,27,28)
-    Default values are noted. 
+    Default values are noted. There is an additional internal namelist that
+    can be accessed for more options. See README.NSSLmp
   
+  ihlcnh       - Graupel -> hail conversion option (old default was 1, new default is 3)
   rho_qr       - Rain density (1000 kg m**-3)
   rho_qs       - Snow density (100 kg m**-3)
-  rho_qh       - Graupel/hail density (500 kg m**-3) 
-                 [Only for ptype=28 (single moment)]
+  rho_qh       - Graupel density (500 kg m**-3) 
+                 [Only for ptype=28 (single moment) or with nssl_density_on=.false.]
+  rho_qhl      - Hail density (800 kg m**-3) 
+                 [Only for ptype=28 (single moment) or with nssl_density_on=.false.]
   cnor         - Rain intercept (8.e5 m**-4) 
                  [Only for ptype=28 (single moment)]
   cnos         - Snow intercept (3.e6 m**-4) 
@@ -1666,19 +1712,22 @@
                  Value sets the concentration at MSL, and an initially
                  homogeneous number mixing ratio (ccn/1.225) is assumed throughout the depth of
                  the domain.
+  
+  irenuc (new option) : 2 = ccn field is UNactivated aerosol (previous default; old droplet activation)
+                        7 = ccn field is ACTVIATED aerosol (new default 2023) (new droplet activation)
 
   infall       - Two-moment sedimation options (default infall=4 recommended)
                           ! 0 -> uses number-wgt for N; NO correction applied 
                                  (results in excessive size sorting)
-                          ! 1 -> uses mass-weighted fallspeed for N ALWAYS 
+                          ! 1 -> uses mass-weighted fallspeed for N ALWAYS
                                  (prevents size sorting)
-                          ! 2 -> uses number-wgt for N and mass-weighted 
+                          ! 2 -> uses number-wgt for N and mass-weighted
                                  correction for N 
                                  (Method II in Mansell, 2010 JAS)
-                          ! 3 -> uses number-wgt for N and Z-weighted 
+                          ! 3 -> uses number-wgt for N and Z-weighted
                                  correction for N 
                                  (Method I in Mansell, 2010 JAS)
-                          ! 4 -> Hybrid of 2 and 3: Uses minimum N from each 
+                          ! 4 -> Hybrid of 2 and 3: Uses minimum N from each
                                  method (z-wgt and m-wgt corrections) 
                                  (Method I+II in Mansell, 2010 JAS)
   alphah       - Shape parameter for graupel (0.0)
@@ -1686,17 +1735,17 @@
   
   Less-used parameters (see code)
   imurain      - DSD function option for rain (1 - gamma of diameter)
-  icdx         - fall speed option for graupel (3)
-  icdxhl       - fall speed option for hail (3)
+  icdx         - fall speed option for graupel (default was 3, now is 6)
+  icdxhl       - fall speed option for hail (default was 3, now is 6)
 
   dfrz         - Minimum diameter of new frozen drops (graupel);
                  default 0.15e-3, but can be set larger (up to 0.5e-5) to produce
                  larger graupel
   hldnmn       - Minimum hail particle density (500 kg m**-3) (changed from 750 in r17)
   iehw,iehlw   - Graupel (iehw) and Hail (iehlw) droplet collection efficiency
-                 options
-  ehw0,ehlw0   - Maximim droplet collection efficiencies for graupel (ehw0=0.75)
-                 and hail (ehlw0=0.75) (changed from 1.0 and 1.0 in r17)
+                 options 
+  ehw0,ehlw0   - Maximim droplet collection efficiencies for graupel (default was ehw0=0.75, now 0.9)
+                 and hail (default was ehlw0=0.75, now 0.9)
   dmrauto      - Options for limiting rain autoconversion
 
 -------------------------------------------------------------------------
@@ -1750,7 +1799,7 @@
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param17 section:  options for cm1setup=4 only 
                     (ie, for LES-within-Mesoscale-Model framework)
@@ -1777,7 +1826,7 @@
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param18 section:  options for eddy recycling
                     (ie, turbulent fluctuations are nudged into the flow 
@@ -1809,7 +1858,7 @@
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param19 section:   Options related to large-scale (i.e., domain-average) nudging.
 
@@ -1856,7 +1905,7 @@
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param20 section:  options related to immersed boundaries 
 
@@ -1872,7 +1921,7 @@
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param21 section:  options related to idealized hurricane test cases
 

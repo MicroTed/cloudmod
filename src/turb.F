@@ -30,12 +30,13 @@
                    nm,defv,defh,lenscl,dissten,epst,epsd1,epsd2,radsw,radswnet,radlwin, &
                    thpten,qvpten,qcpten,qipten,upten,vpten,qnipten,qncpten,qrpten,qspten,qgpten, &
                    xkzh,xkzq,xkzm,                                   &
-                   tsq,qsq,cov,sh3d,el_pbl,qc_bl,qi_bl,cldfra_bl,            &
+                   tsq,qsq,cov,sh3d,sm3d,el_pbl,qc_bl,qi_bl,cldfra_bl,       &
                    qWT,qSHEAR,qBUOY,qDISS,dqke,qke_adv,qke,qke3d,            &
                    edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc,          &
                    sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D,                  &
                    vdfg,maxmf,nupdraft,ktop_plume,                           &
-                   lwten,swten,tdiag,                                &
+                   lwten,swten,thraten,tdiag,raincv,pratecv,                 &
+                   thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten,thften,qvften, &
                    lu_index,kpbl2d,psfc,u10,v10,s10,hfx,qfx,         &
                    xland,znt,rznt,ust,stau,tst,qst,z0t,z0q,          &
                    hpbl,wspd,phim,phih,psim,psih,psiq,gz1oz0,br,brcr, &
@@ -45,7 +46,7 @@
                    gsw,glw,chklowq,capg,snowc,snowh,qcg,dsxy,wstar,delta,prkpp,fm,fh,  &
                    charn,msang,scurx,scury,zkmax,cd_out,ch_out,wscale,wscaleu, &
                    zntmp,mznt,swspd,smois,taux,tauy,hpbl2d,evap2d,heat2d,  &
-                   mixht,akhs,akms,ct,snow,sice,thz0,qz0,uz0,vz0,u10e,v10e,th10,q10,tshltr,qshltr,pshltr,z0base,zntmyj,lowlyr,ivgtyp,tke_myj,el_myj,tmp_pbl,  &
+                   mixht,akhs,akms,ct,snow,sice,thz0,qz0,uz0,vz0,u10e,v10e,th10,q10,tshltr,qshltr,pshltr,z0base,zntmyj,lowlyr,ivgtyp,tke_myj,el_myj,tmp2d,tmp1d,  &
                    num_soil_layers,slab_zs,slab_dzs,tslb,tmn,        &
                    tml,t0ml,hml,h0ml,huml,hvml,tmoml,                &
                    cavg,uavg,vavg,savg,gamk,gamwall,kmw,ufw,vfw,u1b,v1b,l2p,s2p,s2b,t2pm1,t2pm2,t2pm3,t2pm4,u2pt,v2pt,kmwk,ufwk,vfwk, &
@@ -58,7 +59,7 @@
                    sw31,sw32,se31,se32,ss31,ss32,sn31,sn32,          &
                    kw1,kw2,ke1,ke2,ks1,ks2,kn1,kn2,reqk,             &
                    iamsat,out2d,out3d,rtime,update_sfc,dotbud,dotdwrite,restarted,  &
-                   dowriteout,doazimwrite)
+                   dowriteout,doazimwrite,dostat)
       ! end_sfc_and_turb
       use input
       use constants
@@ -67,20 +68,22 @@
       use misclibs , only : calcksquick
       use sfcphys_module
       use module_sf_sfclay
-      use module_sf_sfclayrev
       use module_sf_slab
       use module_sf_oml
-      use module_bl_ysu
       use module_bl_gfsedmf , only : bl_gfsedmf
       use module_sf_gfdl , only : sf_gfdl
       use cm1libs , only : rslf,rsif
       use module_sf_mynn , only : sfclay_mynn
-      use module_bl_mynn , only : mynn_bl_driver
+      use module_bl_mynn_wrapper, only : mynnedmf_wrapper_run
       use module_bl_myjpbl , only : myjpbl
       use module_sf_myjsfc , only : myjsfc
       use turbtend_module , only : turbsz,turbuz,turbvz
       use turbnba_module
       use ib_module
+
+      ! MMM phys:
+      use mmm_physics_wrapper_module, only : ysu_wrapper,sf_sfclayrev_wrapper,cu_ntiedtke_wrapper
+
 #ifdef MPI
       use mpi
 #endif
@@ -130,13 +133,16 @@
       real, intent(inout), dimension(ni,nj) :: radsw,radswnet,radlwin
       real, intent(inout), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: thpten,qvpten,qcpten,qipten,upten,vpten,qnipten,qncpten,qrpten,qspten,qgpten
       real, intent(inout), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: xkzh,xkzq,xkzm
-      real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: tsq,qsq,cov,sh3d,el_pbl,qc_bl,qi_bl,cldfra_bl, &
+      real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: tsq,qsq,cov,sh3d,sm3d,el_pbl,qc_bl,qi_bl,cldfra_bl, &
            qWT,qSHEAR,qBUOY,qDISS,dqke,qke_adv,qke,qke3d,edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc,  &
            sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
       real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn) :: vdfg,maxmf
       integer, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn) :: nupdraft,ktop_plume
-      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten
+      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,thraten
       real, intent(inout) , dimension(ibdt:iedt,jbdt:jedt,kbdt:kedt,ntdiag) :: tdiag
+      real, intent(inout), dimension(ib:ie,jb:je,nrain) :: raincv
+      real, intent(inout), dimension(ib:ie,jb:je) :: pratecv
+      real, intent(inout), dimension(ibcu:iecu,jbcu:jecu,kbcu:kecu) :: thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten,thften,qvften
       integer, intent(inout), dimension(ibl:iel,jbl:jel) :: lu_index,kpbl2d
       real, intent(inout), dimension(ibl:iel,jbl:jel) :: u10,v10,s10,hfx,qfx, &
                                       hpbl,wspd,phim,phih,psim,psih,psiq,gz1oz0,br,brcr, &
@@ -149,7 +155,8 @@
       real, intent(inout), dimension(ibmyj:iemyj,jbmyj:jemyj) :: mixht,akhs,akms,ct,snow,sice,thz0,qz0,uz0,vz0,u10e,v10e,th10,q10,tshltr,qshltr,pshltr,z0base,zntmyj
       integer, intent(inout), dimension(ibmyj:iemyj,jbmyj:jemyj) :: lowlyr,ivgtyp
       real, intent(inout), dimension(ibmyj:iemyj,jbmyj:jemyj,kbmyj:kemyj) :: tke_myj,el_myj
-      real, intent(inout), dimension(ibpbl:iepbl,kbpbl:kepbl,npbl) :: tmp_pbl
+      real, intent(inout), dimension(ibtmp:ietmp,kbtmp:ketmp  ,ntmp2d ) :: tmp2d
+      real, intent(inout), dimension(ibtmp:ietmp,ntmp1d) :: tmp1d
       integer, intent(in) :: num_soil_layers
       real, intent(in), dimension(num_soil_layers) :: slab_zs,slab_dzs
       real, intent(inout), dimension(ibl:iel,jbl:jel,num_soil_layers) :: tslb
@@ -182,14 +189,15 @@
       real, intent(in), dimension(ibta:ieta,jbta:jeta,nsfctavr) :: sfctimavg
 
       real, intent(in) :: rtime
-      logical, intent(in) :: update_sfc,dotbud,dotdwrite,restarted,dowriteout,doazimwrite
+      logical, intent(in) :: update_sfc,dotbud,dotdwrite,restarted,dowriteout,doazimwrite,dostat
 
 !-----------------------------------------------------------------------
 
       integer :: i,j,k,kk,k2,n,kval
-      integer :: isfflx,ifsnow,ysu_topdown_pblmix
+      integer :: isfflx,ifsnow
+      logical :: ysu_topdown_pblmix
       real :: ep1,ep2,rovg,dtmin,dz1
-      real :: SVP1,SVP2,SVP3,SVPT0,p1000mb,eomeg,stbolt,tem,tem1,tem2,tem3
+      real :: p1000mb,eomeg,stbolt,tem,tem1,tem2,tem3
       real :: pisfc,thgb,tskv,thx,thvx,dthvdz,govrth,za
 
       logical :: flag_qi
@@ -212,6 +220,13 @@
 
       ! mynn:
       logical :: FLAG_QC,FLAG_QNC,FLAG_QNI,FLAG_QNWFA,FLAG_QNIFA
+      logical :: restart,cycling
+
+      ! mmm physics:
+      character(len=80) :: errmsg
+      integer :: errflg
+      real :: rdt
+      integer, dimension(ibtmp:ietmp,1) :: int1d
 
 !-----------------------------------------------------------------------
 
@@ -230,6 +245,8 @@
         if(myid.eq.0.and.turbfac.lt.0.999) print *,'  turbfac = ',turbfac
 
         ! update turbulence model "constants":
+        !$omp parallel do default(shared)   &
+        !$omp private(i,j,k)
         do k=1,nk+1
         do j=1,nj
         do i=1,ni
@@ -379,10 +396,6 @@
         ! dum7 = pi
 
         isfflx = 1
-        SVP1=0.6112
-        SVP2=17.67
-        SVP3=29.65
-        SVPT0=273.15
         p1000mb      = 100000.
         EOMEG=7.2921E-5
         STBOLT=5.67051E-8
@@ -711,8 +724,11 @@
         ENDIF
 
 
+        sfcmod1:  &
         IF( (sfcmodel.eq.2) .or. (sfcmodel.eq.3) .or. (sfcmodel.eq.4) .or. (sfcmodel.eq.6) .or. (sfcmodel.eq.7) )THEN
           ! surface layer:
+
+        sfcmod2:  &
         if( sfcmodel.eq.2 )then
           call SFCLAY(dum1,dum2,dum4,divx,prs,dum5,      &
                        CP,G,ROVCP,RD,XLV,lv1,lv2,PSFC,CHS,CHS2,CQS2,CPMM, &
@@ -728,21 +744,100 @@
                        ib ,ie , jb ,je , kb ,ke ,                    &
                        1  ,ni , 1  ,nj , 1  ,nk ,                    &
                        ustm,ck,cka,cd,cda,isftcflx,iz0tlnd,z0t,z0q   )
+
         elseif( sfcmodel.eq.3 )then
-          call SFCLAYREV(dum1,dum2,dum4,divx,prs,dum5,   &
-                       CP,G,ROVCP,RD,XLV,lv1,lv2,PSFC,CHS,CHS2,CQS2,CPMM, &
-                       ZNT,UST,hpbl,MAVAIL,ZOL,MOL,REGIME,PSIM,PSIH, &
-                       FM,FH,                                        &
-                       XLAND,HFX,QFX,LH,TSK,FLHC,FLQC,QGH,QSFC,RMOL, &
-                       U10,V10,TH2,T2,Q2,rf(ib,jb,1),                &
-                       GZ1OZ0,WSPD,BR,ISFFLX,dsxy,                   &
-                       SVP1,SVP2,SVP3,SVPT0,EP1,EP2,                 &
-                       KARMAN,EOMEG,STBOLT,                          &
-                       P1000mb,                                      &
-                       1  ,ni+1 , 1  ,nj+1 , 1  ,nk+1 ,              &
-                       ib ,ie , jb ,je , kb ,ke ,                    &
-                       1  ,ni , 1  ,nj , 1  ,nk ,                    &
-                       ustm,ck,cka,cd,cda,isftcflx,iz0tlnd,tst,qst,psiq,z0t,z0q)
+
+        sfclayrev_j_loop:  &
+        do j=1,nj
+
+          do k=1,2
+          do i=1,ni
+            tmp2d(i,k,1) = dum1(i,j,k)  ! u3d
+            tmp2d(i,k,2) = dum2(i,j,k)  ! v3d
+            tmp2d(i,k,3) = dum4(i,j,k)  ! t3d
+            tmp2d(i,k,4) = divx(i,j,k)  ! qv3d
+            tmp2d(i,k,5) = prs(i,j,k)  ! p3d
+            tmp2d(i,k,6) = dum5(i,j,k)  ! dz8w
+          enddo
+          enddo
+
+          do i=1,ni
+            tmp1d(i,1) = dsxy(i,j)  ! dx
+            tmp1d(i,2) = 0.0        ! water_depth
+          enddo
+
+          call sf_sfclayrev_wrapper(               &
+                      ux=tmp2d(ibtmp,1,1),  &
+                      vx=tmp2d(ibtmp,1,2),  &
+                      t1d=tmp2d(ibtmp,1,3),  &
+                      qv1d=tmp2d(ibtmp,1,4),  &
+                      p1d=tmp2d(ibtmp,1,5),  &
+                      dz8w1d=tmp2d(ibtmp,1,6),  &
+                      cp=cp,  &
+                      g=g,  &
+                      rovcp=rovcp,  &
+                      r=rd,  &
+                      xlv=xlv,  &
+                      psfcpa=psfc(1,j),  &
+                      chs=chs(1,j),  &
+                      chs2=chs2(1,j),  &
+                      cqs2=cqs2(1,j),  &
+                      cpm=cpmm(1,j),      &
+                      pblh=hpbl(1,j),  &
+                      rmol=rmol(1,j), &
+                      znt=znt(1,j),  &
+                      ust=ust(1,j),  &
+                      mavail=mavail(1,j),  &
+                      zol=zol(1,j),  &
+                      mol=mol(1,j),  &
+                      regime=regime(1,j),  &
+                      psim=psim(1,j),  &
+                      psih=psih(1,j), &
+                      fm=fm(1,j),  &
+                      fh=fh(1,j),                                        &
+                      xland=xland(1,j),  &
+                      hfx=hfx(1,j),  &
+                      qfx=qfx(1,j),  &
+                      tsk=tsk(1,j),  &
+                      u10=u10(1,j),  &
+                      v10=v10(1,j),  &
+                      th2=th2(1,j),  &
+                      t2=t2(1,j),  &
+                      q2=q2(1,j),                            &
+                      flhc=flhc(1,j),  &
+                      flqc=flqc(1,j),  &
+                      qgh=qgh(1,j),  &
+                      qsfc=qsfc(1,j),  &
+                      lh=lh(1,j),  &
+                      gz1oz0=gz1oz0(1,j),  &
+                      wspd=wspd(1,j),  &
+                      br=br(1,j),  &
+                      isfflx=.true.,  &
+                      dx=tmp1d(ibtmp,1),                     &
+                      svp1=svp1,  &
+                      svp2=svp2,  &
+                      svp3=svp3,  &
+                      svpt0=svpt0,  &
+                      ep1=ep1,  &
+                      ep2=ep2,                 &
+                      karman=karman,  &
+                      p1000mb=p1000mb,                                &
+                      shalwater_z0=.false.,  &
+                      water_depth=tmp1d(ibtmp,2),     &
+                      isftcflx=isftcflx,  &
+                      iz0tlnd=iz0tlnd,          &
+                      scm_force_flux=.false.,  &
+                      ustm=ustm(1,j),  &
+                      ck=ck(1,j),  &
+                      cka=cka(1,j),  &
+                      cd=cd(1,j),  &
+                      cda=cda(1,j),  &
+                      its=1,  &
+                      ite=ni,  &
+                      errmsg=errmsg,  &
+                      errflg=errflg)
+        enddo  sfclayrev_j_loop
+
         elseif( sfcmodel.eq.4 )then
           cd_out = 0.0
           ch_out = 0.0
@@ -781,6 +876,7 @@
           enddo
 
         elseif( sfcmodel.eq.6 )then
+          ! 6 = MYNN sfclayer
 
 
         mynn_sf_j_loop:  &
@@ -788,52 +884,48 @@
 
           do k=1,2
           do i=1,ni
-            tmp_pbl(i,k, 1) = dum1(i,j,k)  ! u3d
-            tmp_pbl(i,k, 2) = dum2(i,j,k)  ! v3d
-            tmp_pbl(i,k, 6) = dum5(i,j,k)  ! dz8w
+            tmp2d(i,k, 1) = dum1(i,j,k)  ! u3d
+            tmp2d(i,k, 2) = dum2(i,j,k)  ! v3d
+            tmp2d(i,k, 6) = dum5(i,j,k)  ! dz8w
           enddo
           enddo
 
           k = 1
           do i=1,ni
-            tmp_pbl(i,k, 3) = dum4(i,j,k)  ! t3d
-            tmp_pbl(i,k, 4) = divx(i,j,k)  ! qv3d
-            tmp_pbl(i,k, 5) =  prs(i,j,k)  ! p3d
-            tmp_pbl(i,k, 7) = dum3(i,j,k)  ! th3d
-            tmp_pbl(i,k, 8) = thten1(i,j,k)  ! pi3d
-            tmp_pbl(i,k, 9) = sten(i,j,k)  ! qc3d
-            tmp_pbl(i,k,10) =  rho(i,j,k)  ! rho3d
+            tmp2d(i,k, 3) = dum4(i,j,k)  ! t3d
+            tmp2d(i,k, 4) = divx(i,j,k)  ! qv3d
+            tmp2d(i,k, 5) =  prs(i,j,k)  ! p3d
+            tmp2d(i,k, 7) = dum3(i,j,k)  ! th3d
+            tmp2d(i,k, 8) =  rho(i,j,k)  ! rho3d
           enddo
 
-          call SFCLAY_mynn(                                                                                     &
-                     U3D=tmp_pbl(ibpbl,kbpbl,1),                                                                &
-                     V3D=tmp_pbl(ibpbl,kbpbl,2),                                                                &
-                     T3D=tmp_pbl(ibpbl,kbpbl,3),                                                                &
-                     QV3D=tmp_pbl(ibpbl,kbpbl,4),                                                               &
-                     P3D=tmp_pbl(ibpbl,kbpbl,5),                                                                &
-                     dz8w=tmp_pbl(ibpbl,kbpbl,6),                                                               &
-                     CP=cp,G=g,ROVCP=rovcp,R=rd,XLV=xlv,PSFCPA=psfc(ib,j),                                      &
-                     CHS=chs(ib,j),CHS2=chs2(ib,j),CQS2=cqs2(ib,j),CPM=cpmm(ib,j),                              &
-                     ZNT=znt(ib,j),UST=ust(ib,j),PBLH=hpbl(ib,j),MAVAIL=mavail(ib,j),                           &
-                     ZOL=zol(ib,j),MOL=mol(ib,j),REGIME=regime(ib,j),PSIM=psim(ib,j),PSIH=psih(ib,j),           &
-                     XLAND=xland(ib,j),HFX=hfx(ib,j),QFX=qfx(ib,j),LH=lh(ib,j),TSK=tsk(ib,j),                   &
-                     FLHC=flhc(ib,j),FLQC=flqc(ib,j),QGH=qgh(ib,j),QSFC=qsfc(ib,j),RMOL=rmol(ib,j),             &
-                     U10=u10(ib,j),V10=v10(ib,j),TH2=th2(ib,j),T2=t2(ib,j),Q2=q2(ib,j),SNOWH=snowh(ib,j),       &
-                     GZ1OZ0=gz1oz0(ib,j),WSPD=wspd(ib,j),BR=br(ib,j),ISFFLX=isfflx,DX=dx,                       &
-                     SVP1=svp1,SVP2=svp2,SVP3=svp3,SVPT0=svpt0,EP1=ep1,EP2=ep2,                                 &
-                     KARMAN=karman,itimestep=nstep,ch=ch(ib,j),                                                 &
-                     th3d=tmp_pbl(ibpbl,kbpbl,7),                                                               &
-                     pi3d=tmp_pbl(ibpbl,kbpbl,8),                                                               &
-                     qc3d=tmp_pbl(ibpbl,kbpbl,9),                                                               &
-                     rho3d=tmp_pbl(ibpbl,kbpbl,10),                                                             &
-                     qcg=qcg(ib,j),                                                                             &
-                     spp_pbl=spp_pbl,                                                                           &
-                     ids=1  ,ide=ni+1 , jds= 1 ,jde=2    , kds=1  ,kde=nk+1 ,                                   &
-                     ims=ib ,ime=ie   , jms=1  ,jme=1    , kms=kb ,kme=ke ,                                     &
-                     its=1  ,ite=ni   , jts=1  ,jte=1    , kts=1  ,kte=nk  ,                                    &
-                     ustm=ustm(ib,j),ck=ck(ib,j),cka=cka(ib,j),cd=cd(ib,j),cda=cda(ib,j),                       &
+          call SFCLAY_mynn(                                                                          &
+                     U3D=tmp2d(ibtmp,kbtmp,1),                                                     &
+                     V3D=tmp2d(ibtmp,kbtmp,2),                                                     &
+                     T3D=tmp2d(ibtmp,kbtmp,3),                                                     &
+                     QV3D=tmp2d(ibtmp,kbtmp,4),                                                    &
+                     P3D=tmp2d(ibtmp,kbtmp,5),                                                     &
+                     dz8w=tmp2d(ibtmp,kbtmp,6),                                                    &
+                     th3d=tmp2d(ibtmp,kbtmp,7),                                                    &
+                     rho3d=tmp2d(ibtmp,kbtmp,8),                                                   &
+                     CP=cp,G=g,ROVCP=rovcp,R=rd,XLV=xlv,PSFCPA=psfc(1,j),                            &
+                     CHS=chs(1,j),CHS2=chs2(1,j),CQS2=cqs2(1,j),CPM=cpmm(1,j),                       &
+                     ZNT=znt(1,j),UST=ust(1,j),PBLH=hpbl(1,j),MAVAIL=mavail(1,j),                    &
+                     ZOL=zol(1,j),MOL=mol(1,j),REGIME=regime(1,j),PSIM=psim(1,j),PSIH=psih(1,j),     &
+                     XLAND=xland(1,j),HFX=hfx(1,j),QFX=qfx(1,j),LH=lh(1,j),TSK=tsk(1,j),             &
+                     FLHC=flhc(1,j),FLQC=flqc(1,j),QGH=qgh(1,j),QSFC=qsfc(1,j),RMOL=rmol(1,j),       &
+                     U10=u10(1,j),V10=v10(1,j),TH2=th2(1,j),T2=t2(1,j),Q2=q2(1,j),SNOWH=snowh(1,j),  &
+                     GZ1OZ0=gz1oz0(1,j),WSPD=wspd(1,j),BR=br(1,j),ISFFLX=isfflx,DX=dx,               &
+                     SVP1=svp1,SVP2=svp2,SVP3=svp3,SVPT0=svpt0,EP1=ep1,EP2=ep2,                      &
+                     KARMAN=karman,itimestep=nstep,                                                  &
+                     ch=ch(1,j),                                                                     &
+                     qcg=qcg(1,j),                                                                   &
+                     spp_pbl=0,                                                                      &
+                     ids=1  ,ide=ni+1 , jds=1  ,jde=2    , kds=1  ,kde=nk+1 ,                        &
+                     ims=1  ,ime=ni   , jms=1  ,jme=1    , kms=1  ,kme=nk ,                          &
+                     its=1  ,ite=ni   , jts=1  ,jte=1    , kts=1  ,kte=nk  ,                         &
+                     ustm=ustm(1,j),ck=ck(1,j),cka=cka(1,j),cd=cd(1,j),cda=cda(1,j),                 &
                      isftcflx=isftcflx,iz0tlnd=iz0tlnd)
-
         ENDDO  mynn_sf_j_loop
 
 
@@ -850,64 +942,66 @@
 
           do k=1,nk
           do i=1,ni
-            tmp_pbl(i,k, 1) = dz*rmh(i,j,k)  ! dz
-            tmp_pbl(i,k, 2) = prs(i,j,k)     ! pmid
-            tmp_pbl(i,k, 4) = (th0(i,j,k)+tha(i,j,k))  ! th
-            tmp_pbl(i,k, 5) = (th0(i,j,k)+tha(i,j,k))*(pi0(i,j,k)+ppi(i,j,k))  ! t
-            tmp_pbl(i,k, 6) = 0.0
-            tmp_pbl(i,k, 7) = 0.0
-            tmp_pbl(i,k, 8) = 0.5*(ugr(i,j,k)+ugr(i+1,j,k))  ! u
-            tmp_pbl(i,k, 9) = 0.5*(vgr(i,j,k)+vgr(i,j+1,k))  ! v
-            tmp_pbl(i,k,10) = tke_myj(i,j,k)  ! tke_myj
+            tmp2d(i,k, 1) = dz*rmh(i,j,k)  ! dz
+            tmp2d(i,k, 2) = prs(i,j,k)     ! pmid
+            tmp2d(i,k, 4) = (th0(i,j,k)+tha(i,j,k))  ! th
+            tmp2d(i,k, 5) = (th0(i,j,k)+tha(i,j,k))*(pi0(i,j,k)+ppi(i,j,k))  ! t
+            tmp2d(i,k, 6) = 0.0
+            tmp2d(i,k, 7) = 0.0
+            tmp2d(i,k, 8) = 0.5*(ugr(i,j,k)+ugr(i+1,j,k))  ! u
+            tmp2d(i,k, 9) = 0.5*(vgr(i,j,k)+vgr(i,j+1,k))  ! v
+            tmp2d(i,k,10) = tke_myj(i,j,k)  ! tke_myj
           enddo
           enddo
           ! pint:
           do k=2,nk
-            tmp_pbl(i,k,3) = c1(i,j,k)*prs(i,j,k-1)+c2(i,j,k)*prs(i,j,k)
+          do i=1,ni   ! cm1r21.1 bug fix (this loop was neglected before)
+            tmp2d(i,k,3) = c1(i,j,k)*prs(i,j,k-1)+c2(i,j,k)*prs(i,j,k)
+          enddo
           enddo
           do i=1,ni
-            tmp_pbl(i,1,3) = psfc(i,j)
-            tmp_pbl(i,nk+1,3) = cgt1*prs(i,j,nk)+cgt2*prs(i,j,nk-1)+cgt3*prs(i,j,nk-2)
+            tmp2d(i,1,3) = psfc(i,j)
+            tmp2d(i,nk+1,3) = cgt1*prs(i,j,nk)+cgt2*prs(i,j,nk-1)+cgt3*prs(i,j,nk-2)
           enddo
           if( imoist.eq.1 .and. nqv.ge.1 )then
             do k=1,nk
             do i=1,ni
-              tmp_pbl(i,k, 6) = qa(i,j,k,nqv)
+              tmp2d(i,k, 6) = qa(i,j,k,nqv)
             enddo
             enddo
           endif
           if( imoist.eq.1 .and. nqc.ge.1 )then
             do k=1,nk
             do i=1,ni
-              tmp_pbl(i,k, 7) = qa(i,j,k,nqc)
+              tmp2d(i,k, 7) = qa(i,j,k,nqc)
             enddo
             enddo
           endif
 
           call   MYJSFC(ITIMESTEP=nstep,  &
-                        HT=zs(ib,j),  &
-                        DZ=tmp_pbl(ibpbl,kbpbl,1),                               &
-                        PMID=tmp_pbl(ibpbl,kbpbl,2),  &
-                        PINT=tmp_pbl(ibpbl,kbpbl,3),  &
-                        TH=tmp_pbl(ibpbl,kbpbl,4),  &
-                        T=tmp_pbl(ibpbl,kbpbl,5),  &
-                        QV=tmp_pbl(ibpbl,kbpbl,6),  &
-                        QC=tmp_pbl(ibpbl,kbpbl,7),  &
-                        U=tmp_pbl(ibpbl,kbpbl,8),  &
-                        V=tmp_pbl(ibpbl,kbpbl,9),  &
-                        Q2=tmp_pbl(ibpbl,kbpbl,10)                    &
-                       ,TSK=tsk(ib,j),QSFC=qsfc(ib,j),THZ0=thz0(ib,j),QZ0=qz0(ib,j),UZ0=uz0(ib,j),VZ0=vz0(ib,j)                      &
-                       ,LOWLYR=lowlyr(ib,j),XLAND=xland(ib,j),IVGTYP=ivgtyp(ib,j),ISURBAN=0,IZ0TLND=iz0tlnd            &
-                       ,USTAR=ust(ib,j),ZNT=zntmyj(ib,j),Z0BASE=z0base(ib,j),PBLH=hpbl(ib,j),MAVAIL=mavail(ib,j),RMOL=rmol(ib,j)              &
-                       ,AKHS=akhs(ib,j),AKMS=akms(ib,j)                                      &
-                       ,RIB=br(ib,j)                                             &
-                       ,CHS=chs(ib,j),CHS2=chs2(ib,j),CQS2=cqs2(ib,j),HFX=hfx(ib,j),QFX=qfx(ib,j),FLX_LH=lh(ib,j),FLHC=flhc(ib,j),FLQC=flqc(ib,j)         &
-                       ,QGH=qgh(ib,j),CPM=cpmm(ib,j),CT=ct(ib,j)                                     &
-                       ,U10=u10(ib,j),V10=v10(ib,j),T02=t2(ib,j),TH02=th2(ib,j),TSHLTR=tshltr(ib,j),TH10=th10(ib,j),Q02=q2(ib,j),QSHLTR=qshltr(ib,j),Q10=q10(ib,j),PSHLTR=pshltr(ib,j)          &
-                       ,P1000mb=p1000mb,U10E=u10e(ib,j),V10E=v10e(ib,j),                             &
-                        psim=psim(ib,j),psih=psih(ib,j),fm=fm(ib,j),fhh=fh(ib,j),z0out=znt(ib,j),usemyjpbl=usemyjpbl,rhosfc=rf(ib,j,1),isftcflx=isftcflx,     &
-                     ids=1  ,ide=ni+1 , jds= 1 ,jde= 1   , kds=1  ,kde=nk+1 ,                                   &
-                     ims=ib ,ime=ie   , jms= 1 ,jme= 1   , kms=kb ,kme=ke ,                                     &
+                        HT=zs(1,j),  &
+                        DZ=tmp2d(ibtmp,kbtmp,1),                               &
+                        PMID=tmp2d(ibtmp,kbtmp,2),  &
+                        PINT=tmp2d(ibtmp,kbtmp,3),  &
+                        TH=tmp2d(ibtmp,kbtmp,4),  &
+                        T=tmp2d(ibtmp,kbtmp,5),  &
+                        QV=tmp2d(ibtmp,kbtmp,6),  &
+                        QC=tmp2d(ibtmp,kbtmp,7),  &
+                        U=tmp2d(ibtmp,kbtmp,8),  &
+                        V=tmp2d(ibtmp,kbtmp,9),  &
+                        Q2=tmp2d(ibtmp,kbtmp,10)                    &
+                       ,TSK=tsk(1,j),QSFC=qsfc(1,j),THZ0=thz0(1,j),QZ0=qz0(1,j),UZ0=uz0(1,j),VZ0=vz0(1,j)                      &
+                       ,LOWLYR=lowlyr(1,j),XLAND=xland(1,j),IVGTYP=ivgtyp(1,j),ISURBAN=0,IZ0TLND=iz0tlnd            &
+                       ,USTAR=ust(1,j),ZNT=zntmyj(1,j),Z0BASE=z0base(1,j),PBLH=hpbl(1,j),MAVAIL=mavail(1,j),RMOL=rmol(1,j)              &
+                       ,AKHS=akhs(1,j),AKMS=akms(1,j)                                      &
+                       ,RIB=br(1,j)                                             &
+                       ,CHS=chs(1,j),CHS2=chs2(1,j),CQS2=cqs2(1,j),HFX=hfx(1,j),QFX=qfx(1,j),FLX_LH=lh(1,j),FLHC=flhc(1,j),FLQC=flqc(1,j)         &
+                       ,QGH=qgh(1,j),CPM=cpmm(1,j),CT=ct(1,j)                                     &
+                       ,U10=u10(1,j),V10=v10(1,j),T02=t2(1,j),TH02=th2(1,j),TSHLTR=tshltr(1,j),TH10=th10(1,j),Q02=q2(1,j),QSHLTR=qshltr(1,j),Q10=q10(1,j),PSHLTR=pshltr(1,j)          &
+                       ,P1000mb=p1000mb,U10E=u10e(1,j),V10E=v10e(1,j),                             &
+                        psim=psim(1,j),psih=psih(1,j),fm=fm(1,j),fhh=fh(1,j),z0out=znt(1,j),usemyjpbl=usemyjpbl,rhosfc=rf(1,j,1),isftcflx=isftcflx,     &
+                     ids=1  ,ide=ni+1 , jds= 1 ,jde= 2   , kds=1  ,kde=nk+1 ,                                   &
+                     ims=1  ,ime=ni   , jms= 1 ,jme= 1   , kms=1  ,kme=nk+1 ,                                     &
                      its=1  ,ite=ni   , jts= 1 ,jte= 1   , kts=1  ,kte=nk  )
           do i=1,ni
             br(i,j) = max( -10.0 , br(i,j) )
@@ -915,7 +1009,8 @@
             gz1oz0(I,J)=ALOG(ppten(i,j,1)/znt(i,j))
           enddo
         enddo
-        endif
+
+        endif  sfcmod2
 
 
           ifsnow = 0
@@ -1024,7 +1119,7 @@
             enddo
           ENDIF
 
-        ENDIF
+        ENDIF  sfcmod1
 
       ENDIF  bbc3
       if(timestats.ge.1) time_sfcphys=time_sfcphys+mytime()
@@ -1298,7 +1393,7 @@
           ! TKE version:
           call   turbnba(nstep,uh,ruh,uf,ruf,vh,rvh,vf,rvf,mh,rmh,mf,rmf,zf,c1,c2,rho,rf,zntmp,ust,cm0,  &
                          dum1,dum2,dum3,dum4,dum5,dum6,            &
-                         dum7,dum8,thten,lenscl,ppten ,divx,cme,   &
+                         dum7,dum8,thten,lenscl,ppten ,dum9,cme,   &   ! cm1r21.1 bug fix: replace divx with dum9
                          m11,m12,m13,m22,m23,m33,                  &
                          ua ,va ,wa ,tkea ,nm,                     &
                          kw1,kw2,ke1,ke2,ks1,ks2,kn1,kn2,reqs_s,   &
@@ -1323,7 +1418,7 @@
         ! Smagorinsky version:
         call     turbnba2(nstep,uh,ruh,uf,ruf,vh,rvh,vf,rvf,mh,rmh,mf,rmf,zf,c1,c2,rho,rf,zntmp,ust,cm0,  &
                          dum1,dum2,dum3,dum4,dum5,dum6,            &
-                         dum7,dum8,thten,lenscl,ppten ,divx,cme,   &
+                         dum7,dum8,thten,lenscl,ppten ,dum9,cme,   &   ! cm1r21.1 bug fix: replace divx with dum9
                          m11,m12,m13,m22,m23,m33,                  &
                          ua ,va ,wa ,tkea ,nm,                     &
                          kw1,kw2,ke1,ke2,ks1,ks2,kn1,kn2,reqs_s,   &
@@ -1412,7 +1507,7 @@
             call t2pcodetavg(dt,rtime,xf,rxf,c1,c2,zh,mh,zf,mf,rf0,rr0,rho0,rrf0,u0,v0,            &
                          uavg,vavg,savg,l2p,kmw,ufw,vfw,gamwall,gamk,s2p,s2b,t2pm1,t2pm2,t2pm3,t2pm4,cavg,  &
                          ua,va,wa,t11,t12,t13,t22,t23,t33,dum1,dum2,dum3,dum4,                 &
-                         ust,zntmp,stau,mol,rho,rr,rf,kmh,kmv,                                 &
+                         ust,zntmp,stau,mol,s10,rho,rr,rf,kmh,kmv,                             &
                          ugr ,fsu  ,u2pt,vgr ,fsv  ,v2pt,uf,vf,arf1,arf2,kmwk,ufwk,vfwk,       &
                          u1,v1,s1,u1b,v1b,                                                     &
                          avgsfcu,avgsfcv,avgsfcs,avgsfcsu,avgsfcsv,                            &
@@ -1581,6 +1676,7 @@
     ENDIF  tau
 
     IF( ( idoles .and. sgsmodel.ge.1 ) .or. (cm1setup.eq.3.and.dotdwrite)  )THEN
+    IF( dodomaindiag .and. dotdwrite )then
 
       if( sgsmodel.ge.1 .or. sgsmodel.le.4 )then
               ! use tij arrays:
@@ -1597,11 +1693,10 @@
         call stopcm1
       endif
 
-          IF( dotdwrite )then
-            call getepsd(xh,rxh,uh,xf,rxf,uf,vh,vf,mh,c1,c2,mf,ua ,va ,wa ,  &
-                         dum1,dum2,epsd1,epsd2,rho0,rf0,rrf0,rru,rrv,rrw,dt)
-          ENDIF
+      call getepsd(xh,rxh,uh,xf,rxf,uf,vh,vf,mh,c1,c2,mf,ua ,va ,wa ,  &
+                   dum1,dum2,epsd1,epsd2,rho0,rf0,rrf0,rru,rrv,rrw,dt)
 
+    ENDIF
     ENDIF
 
 
@@ -1641,7 +1736,7 @@
             ! axisymmetric grid:
 
             !$omp parallel do default(shared)  &
-            !$omp private(i,j,k,tmp11,tmp22,tmp33,tmp12,tmp13,tmp23)
+            !$omp private(i,j,k,tmp11,tmp33,tmp12,tmp13,tmp23)
             do k=2,nk
             do j=1,nj
             do i=1,ni
@@ -1652,7 +1747,7 @@
               tmp13=0.5*( t13(i,j,k)**2 + t13(i+1,j,k)**2 )
               tmp23=      t23(i,j,k)**2
               dissten(i,j,k)= rcoef*( ( 2.0*( tmp33 ) + ( tmp13 + tmp23 )               &
-                                       +2.0*( tmp11 + tmp22 ) + tmp12 )/(rf(i,j,k)**2) )
+                                       +2.0*( tmp11 ) + tmp12 )/(rf(i,j,k)**2) )
             enddo
             enddo
             enddo
@@ -1664,18 +1759,10 @@
       if(timestats.ge.1) time_turb=time_turb+mytime()
 
 !-------------------------------------------------------------------
-!  PBL schemes:
+!  Variables for PBL and/or CuParam
 
-    doingpbl:  &
-    IF( idopbl .and. ipbl.ge.1 )THEN
-
-    dopbl:  &
-    IF( getpbl )THEN
-
-      !c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c!
-
-      pblopt:  &
-      if( use_pbl )then
+      get_vars:  &
+      IF( idopbl .or. cuparam.ge.1 )THEN
 
         !$omp parallel do default(shared)   &
         !$omp private(i,j,k)
@@ -1694,14 +1781,6 @@
             enddo
             enddo
           endif
-          IF(output_km.eq.1.or.output_kh.eq.1)THEN
-            do j=1,nj
-            do i=1,ni
-              thten1(i,j,k)=0.0
-              thten(i,j,k)=0.0
-            enddo
-            enddo
-          ENDIF
         ENDDO
 
         ! here, ppten stores qc:
@@ -1728,11 +1807,11 @@
           ENDDO
         endif
 
-        if( radopt.ge.1 )then
+        if( radopt.ge.1 .or. testcase.eq.4 .or. testcase.eq.5 )then
           do k=1,nk
           do j=1,nj
           do i=1,ni
-            dum9(i,j,k) = lwten(i,j,k)+swten(i,j,k)
+            dum9(i,j,k) = thraten(i,j,k)
           enddo
           enddo
           enddo
@@ -1757,35 +1836,29 @@
             dum3(i,j,k)=th0(i,j,k)+tha(i,j,k)
             dum7(i,j,k)=pi0(i,j,k)+ppi(i,j,k)
             dum4(i,j,k)=dum3(i,j,k)*dum7(i,j,k)
-          enddo
-          enddo
-          do k=1,nk
-          do i=1,ni
             dum5(i,j,k) = dz*rmh(i,j,k)
-          enddo
-          enddo
-          do k=2,nk
-          do i=1,ni
             dum6(i,j,k) = c1(i,j,k)*prs(i,j,k-1)+c2(i,j,k)*prs(i,j,k)
           enddo
           enddo
-          ! surface:
           do i=1,ni
+            ! surface:
             dum6(i,j,1) = psfc(i,j)
-          enddo
-          ! top of model:
-          do i=1,ni
+            ! top of model:
             dum6(i,j,nk+1)= cgt1*prs(i,j,nk)+cgt2*prs(i,j,nk-1)+cgt3*prs(i,j,nk-2)
           enddo
         ENDDO
 
-        ! dum1 = u at scalars
-        ! dum2 = v at scalars
-        ! dum3 = th
-        ! dum4 = t
-        ! dum5 = dz
-        ! dum6 = p3di (p8w)
-        ! dum7 = pi
+        ! dum1  = u (grnd-rel) at scalars
+        ! dum2  = v (grnd-rel) at scalars
+        ! dum3  = th
+        ! dum4  = t
+        ! dum5  = dz  (at scalar levels)
+        ! dum6  = p3di (p8w, ie at w levels)
+        ! dum7  = pi
+        ! dum8  = qi
+        ! dum9  = total radiative theta tendency
+        ! ppten = qc
+        ! divx  = qv
 
         if( sfcmodel.eq.4 )then
           do j=1,nj
@@ -1801,32 +1874,177 @@
           flag_qi = .false.
         endif
 
+        if(timestats.ge.1) time_misc=time_misc+mytime()
+
+      ENDIF  get_vars
+
+!-------------------------------------------------------------------
+!  PBL schemes:
+
+    doingpbl:  &
+    IF( idopbl .and. ipbl.ge.1 )THEN
+
+    dopbl:  &
+    IF( getpbl )THEN
+
+      !c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c!
+
+      pblopt:  &
+      if( use_pbl )then
+
       doysu:  &
       if(ipbl.eq.1)then
         ! YSU PBL:
 
-        ysu_topdown_pblmix = 0
-        call ysu(u3d=dum1,v3d=dum2,th3d=dum3,t3d=dum4,qv3d=divx,                    &
-                  qc3d=ppten,qi3d=dum8,p3d=prs,p3di=dum6,pi3d=dum7,                 &
-                  rublten=upten,rvblten=vpten,rthblten=thpten,                      &
-                  rqvblten=qvpten,rqcblten=qcpten,rqiblten=qipten,flag_qi=flag_qi,  &
-                  cp=cp,g=g,rovcp=rovcp,rd=rd,rovg=rovg,ep1=ep1,ep2=ep2,            &
-                  karman=karman,xlv=xlv,lv1=lv1,lv2=lv2,rv=rv,                      &
-                  dz8w=dum5 ,psfc=psfc,                                             &
-                  znt=zntmp,ust=ust,hpbl=hpbl,psim=fm,psih=fh,                      &
-                  xland=xland,hfx=hfx,qfx=qfx,wspd=wspd,br=br,brcr=brcr,            &
-                  dt=dt,kpbl2d=kpbl2d,                                              &
-                  exch_h=thten1,exch_m=thten,                                       &
-                  xkzh=xkzh,xkzq=xkzq,xkzm=xkzm,                                    &
-                  wstar=wstar,delta=delta,prkpp=prkpp,                              &
-                  u10=u10,v10=v10,stau=stau,                                        &
-                  uoce=huml,voce=hvml,                                              &
-                  rthraten=dum9,ysu_topdown_pblmix=ysu_topdown_pblmix,              &
-                  iamsat=iamsat,                                                    &
-                  ids=1  ,ide=ni+1 , jds= 1 ,jde=nj+1 , kds=1  ,kde=nk+1 ,          &
-                  ims=ib ,ime=ie   , jms=jb ,jme=je   , kms=kb ,kme=ke ,            &
-                  its=1  ,ite=ni   , jts=1  ,jte=nj   , kts=1  ,kte=nk ,            &
-                  regime=regime)
+        ysu_topdown_pblmix = .false.
+
+        !$omp parallel do default(shared)   &
+        !$omp private(i,j,k,tmp2d)
+        ysu_j_loop:  &
+        DO j=1,nj
+
+        tmp2d = 0.0
+
+        do k=1,nk
+        do i=1,ni
+          tmp2d(i,k, 1) =  dum1(i,j,k)  ! u
+          tmp2d(i,k, 2) =  dum2(i,j,k)  ! v
+          tmp2d(i,k, 3) =  dum4(i,j,k)  ! T
+          tmp2d(i,k, 4) =  divx(i,j,k)  ! qv
+          tmp2d(i,k, 5) = ppten(i,j,k)  ! qc
+          tmp2d(i,k, 6) =  dum8(i,j,k)  ! qi
+          tmp2d(i,k, 7) =   prs(i,j,k)  ! p3d
+          tmp2d(i,k, 9) =  dum7(i,j,k)  ! pi3d
+          tmp2d(i,k,10) =  dum5(i,j,k)  ! dz8w
+          tmp2d(i,k,11) =  dum9(i,j,k)  ! rthraten
+        enddo
+        enddo
+
+        do k=1,nk+1
+        do i=1,ni
+          tmp2d(i,k,8) =  dum6(i,j,k)  ! p3di
+        enddo
+        enddo
+
+        tmp1d = 0.0
+
+        do i=1,ni
+          tmp1d(i,1) =  1.0              ! ctopo
+          tmp1d(i,2) =  1.0              ! ctopo2
+          tmp1d(i,3) =  0.0              ! uoce
+          tmp1d(i,4) =  0.0              ! voce
+          tmp1d(i,5) =  0.0              ! frcurb
+        enddo
+
+      ! cm1r21.1: using ysu from MMM-physics !
+
+        call ysu_wrapper(                                          &
+                  ux=tmp2d(ibtmp,kbtmp,1),                        &
+                  vx=tmp2d(ibtmp,kbtmp,2),                        &
+                  tx=tmp2d(ibtmp,kbtmp,3),                        &
+                  qvx=tmp2d(ibtmp,kbtmp,4),                       &
+                  qcx=tmp2d(ibtmp,kbtmp,5),                       &
+                  qix=tmp2d(ibtmp,kbtmp,6),                       &
+                  nmix=1,                                         &
+                  qmix=tmp2d(ibtmp,kbtmp,23),                     &
+                  p2d=tmp2d(ibtmp,kbtmp,7),                       &
+                  p2di=tmp2d(ibtmp,kbtmp,8),                      &
+                  pi2d=tmp2d(ibtmp,kbtmp,9),                      &
+                  f_qc=.true.,                                    &
+                  f_qi=.true.,                                    &
+                  utnp=tmp2d(ibtmp,kbtmp,12),                     &
+                  vtnp=tmp2d(ibtmp,kbtmp,13),                     &
+                  ttnp=tmp2d(ibtmp,kbtmp,14),                     &
+                  qvtnp=tmp2d(ibtmp,kbtmp,15),                    &
+                  qctnp=tmp2d(ibtmp,kbtmp,16),                    &
+                  qitnp=tmp2d(ibtmp,kbtmp,17),                    &
+                  qmixtnp=tmp2d(ibtmp,kbtmp,24),                  &
+                  cp=cp,                                          &
+                  g=g,                                            &
+                  rovcp=rovcp,                                    &
+                  rd=rd,                                          &
+                  rovg=rovg,                                      &
+                  ep1=ep1,                                        &
+                  ep2=ep2,                                        &
+                  karman=karman,                                  &
+                  xlv=xlv,                                        &
+                  rv=rv,                                          &
+                  dz8w2d=tmp2d(ibtmp,kbtmp,10),                   &
+                  psfcpa=psfc(1,j),                               &
+                  znt=zntmp(1,j),                                 &
+                  ust=ust(1,j),                                   &
+                  hpbl=hpbl(1,j),                                 &
+                  psim=fm(1,j),                                   &
+                  psih=fh(1,j),                                   &
+                  xland=xland(1,j),                               &
+                  hfx=hfx(1,j),                                   &
+                  qfx=qfx(1,j),                                   &
+                  wspd=wspd(1,j),                                 &
+                  br=br(1,j),                                     &
+                  dt=dt,                                          &
+                  kpbl1d=kpbl2d(1,j),                             &
+                  exch_hx=tmp2d(ibtmp,kbtmp,18),                  &
+                  exch_mx=tmp2d(ibtmp,kbtmp,19),                  &
+                  wstar=wstar(1,j),                               &
+                  delta=delta(1,j),                               &
+                  u10=u10(1,j),                                   &
+                  v10=v10(1,j),                                   &
+                  uox=tmp1d(ibtmp,3),                             &
+                  vox=tmp1d(ibtmp,4),                             &
+                  rthraten=tmp2d(ibtmp,kbtmp,11),                 &
+                  ysu_topdown_pblmix=ysu_topdown_pblmix,          &
+                  ctopo=tmp1d(ibtmp,1),                           &
+                  ctopo2=tmp1d(ibtmp,2),                          &
+                  a_u=tmp2d(ibtmp,kbtmp,31), &
+                  a_v=tmp2d(ibtmp,kbtmp,32), &
+                  a_t=tmp2d(ibtmp,kbtmp,33), &
+                  a_q=tmp2d(ibtmp,kbtmp,34), &
+                  a_e=tmp2d(ibtmp,kbtmp,35), &
+                  b_u=tmp2d(ibtmp,kbtmp,36), &
+                  b_v=tmp2d(ibtmp,kbtmp,37), &
+                  b_t=tmp2d(ibtmp,kbtmp,38), &
+                  b_q=tmp2d(ibtmp,kbtmp,39), &
+                  b_e=tmp2d(ibtmp,kbtmp,40), &
+                  sfk=tmp2d(ibtmp,kbtmp,41), &
+                  vlk=tmp2d(ibtmp,kbtmp,42), &
+                  dlu=tmp2d(ibtmp,kbtmp,43), &
+                  dlg=tmp2d(ibtmp,kbtmp,44), &
+                  frcurb=tmp1d(ibtmp,5), &
+                  flag_bep = .false. ,                            &
+                  its=1, ite=ni,                                  &
+                  kts=1, kte=nk,                                  &
+                  errmsg=errmsg ,                                 &
+                  errflg=errflg )
+
+        do k=1,nk
+        do i=1,ni
+          upten(i,j,k) = tmp2d(i,k,12)
+          vpten(i,j,k) = tmp2d(i,k,13)
+          thpten(i,j,k) = tmp2d(i,k,14)
+          qvpten(i,j,k) = tmp2d(i,k,15)
+          qcpten(i,j,k) = tmp2d(i,k,16)
+          qipten(i,j,k) = tmp2d(i,k,17)
+        enddo
+        enddo
+
+        IF( dotbud .and. td_diss.ge.1 )THEN
+          do k=1,nk
+          do i=1,ni
+            tdiag(i,j,k,td_diss) = tmp2d(i,k,22)
+          enddo
+          enddo
+        ENDIF
+
+        IF( output_km.eq.1 .or. output_kh.eq.1 .or. dodomaindiag .or. dostat )THEN
+          do k=1,nk
+          do i=1,ni
+            xkzh(i,j,k) = tmp2d(i,k,18)
+            xkzm(i,j,k) = tmp2d(i,k,19)
+          enddo
+          enddo
+        ENDIF
+
+        ENDDO  ysu_j_loop
 
         if( cm1setup.eq.4 )then
           !$omp parallel do default(shared)   &
@@ -1837,26 +2055,13 @@
             ! zero-out diffusivities in LES subdomain:
             if( cm0(i,j).gt.cmemin )then
               xkzh(i,j,k) = 0.0
-              xkzq(i,j,k) = 0.0
+!!!              xkzq(i,j,k) = 0.0
               xkzm(i,j,k) = 0.0
             endif
           enddo
           enddo
           enddo
         endif
-
-        IF( output_km.eq.1 .or. output_kh.eq.1 .or. dodomaindiag )THEN
-!$omp parallel do default(shared)   &
-!$omp private(i,j,k)
-          do k=1,nk+1
-          do j=1,nj
-          do i=1,ni
-            khv(i,j,k) = thten1(i,j,k)
-            kmv(i,j,k) = thten(i,j,k)
-          enddo
-          enddo
-          enddo
-        ENDIF
 
       endif  doysu
 
@@ -1874,8 +2079,8 @@
           do k=1,nk
           do j=1,nj
           do i=1,ni
-            dum7(i,j,k) = khv(i,j,k  )*mf(i,j,k  )*rf(i,j,k  )*mh(i,j,k)*rr(i,j,k)
-            dum8(i,j,k) = khv(i,j,k+1)*mf(i,j,k+1)*rf(i,j,k+1)*mh(i,j,k)*rr(i,j,k)
+            thten(i,j,k)  = khv(i,j,k  )*mf(i,j,k  )*rf(i,j,k  )*mh(i,j,k)*rr(i,j,k)
+            thten1(i,j,k) = khv(i,j,k+1)*mf(i,j,k+1)*rf(i,j,k+1)*mh(i,j,k)*rr(i,j,k)
           enddo
           enddo
           enddo
@@ -1892,23 +2097,23 @@
         enddo
 
         call     turbsz(1,dt,dosfcflx,thflux,mh,mf,  &
-                       thpten,dum1,dum2,dum3,rho,rr,rf,sadv,khv,dum7,dum8,1)
+                       thpten,dum1,dum2,dum3,rho,rr,rf,sadv,khv,thten,thten1,1)
         if( imoist.eq.1 )  &
         call     turbsz(1,dt,dosfcflx,qvflux,mh,mf,  &
-                       qvpten,dum1,dum2,dum3,rho,rr,rf,qa(ib,jb,kb,nqv),khv,dum7,dum8,2)
+                       qvpten,dum1,dum2,dum3,rho,rr,rf,qa(ib,jb,kb,nqv),khv,thten,thten1,2)
         if( imoist.eq.1 .and. nqc.ge.1 )  &
         call     turbsz(0,dt,dosfcflx,qvflux,mh,mf,  &
-                       qcpten,dum1,dum2,dum3,rho,rr,rf,qa(ib,jb,kb,nqc),khv,dum7,dum8,0)
+                       qcpten,dum1,dum2,dum3,rho,rr,rf,qa(ib,jb,kb,nqc),khv,thten,thten1,0)
         if( imoist.eq.1 .and. nqi.ge.1 )  &
         call     turbsz(0,dt,dosfcflx,qvflux,mh,mf,  &
-                       qipten,dum1,dum2,dum3,rho,rr,rf,qa(ib,jb,kb,nqi),khv,dum7,dum8,0)
+                       qipten,dum1,dum2,dum3,rho,rr,rf,qa(ib,jb,kb,nqi),khv,thten,thten1,0)
         call     turbuz(dt,xh,ruh,xf,rxf,arf1,arf2,uf,vh,mh,mf,rmf,rho,rf,  &
                        zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gxu,     &
-                       upten,dum1,dum2,dum3,dum7,ua,wa,t11,t12,t13,t22,kmv, &
+                       upten,dum1,dum2,dum3,thten,thten1,ua,wa,t11,t12,t13,t22,kmv, &
                        kmw,ufw,u1b,u2pt,ufwk)
         call     turbvz(dt,xh,rxh,arh1,arh2,uh,xf,rvh,vf,mh,mf,rho,rr,rf,   &
                        zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gyv,  &
-                       vpten,dum1,dum2,dum3,dum7,va,wa,t12,t22,t23,kmv, &
+                       vpten,dum1,dum2,dum3,thten,thten1,va,wa,t12,t22,t23,kmv, &
                        kmw,vfw,v1b,v2pt,vfwk)
 
       endif  dobr09
@@ -1985,15 +2190,8 @@
 
       domynn:  &
       if( ipbl.eq.4 .or. ipbl.eq.5 )then
+      if( .not. restarted )then  ! do not call mynn on a restart
         ! MYNN PBL:
-
-        do k=1,nk
-        do j=1,nj
-        do i=1,ni
-          thten(i,j,k) = 0.5*(wa(i,j,k)+wa(i,j,k+1))
-        enddo
-        enddo
-        enddo
 
         IF( imoist.eq.1 )THEN
           if( nnci.ge.1 )then
@@ -2055,201 +2253,259 @@
       mynn_j_loop:  &
       DO j=1,nj
 
+        tmp1d = 0.0
+        tmp2d = 0.0
+
         IF( nstep.eq.0 )THEN
           initflag=1
-          if( myid.eq.0 .and. j.eq.1 ) print *,'  mynn_bl_driver initflag = ',initflag
+          if( myid.eq.0 .and. j.eq.1 ) print *,'  initflag = ',initflag
         ELSE
           initflag=0
         ENDIF
 
-        tmp_pbl = 0.0
+        if( restarted )then
+          restart = .true.
+        else
+          restart = .false.
+        endif
+
+        cycling = .false.
+
+        ! dum1  = u (grnd-rel) at scalars
+        ! dum2  = v (grnd-rel) at scalars
+        ! dum3  = th
+        ! dum4  = t
+        ! dum5  = dz  (at scalar levels)
+        ! dum6  = p3di (p8w, ie at w levels)
+        ! dum7  = pi
+        ! dum8  = qi
+        ! dum9  = total radiative theta tendency
+        ! ppten = qc
+        ! divx  = qv
+        ! sadv  = nnci
+        ! thterm = nncc
 
         do k=1,nk
         do i=1,ni
-          tmp_pbl(i,k, 1) =  dum1(i,j,k)  ! u
-          tmp_pbl(i,k, 2) =  dum2(i,j,k)  ! v
-          tmp_pbl(i,k, 3) = thten(i,j,k)  ! w
-          tmp_pbl(i,k, 4) =  dum3(i,j,k)  ! th
-          tmp_pbl(i,k, 7) =  dum5(i,j,k)  ! dz
-          tmp_pbl(i,k, 8) =  divx(i,j,k)  ! qv
-          tmp_pbl(i,k, 9) = ppten(i,j,k)  ! qc
-          tmp_pbl(i,k,10) =  dum8(i,j,k)  ! qi
-          tmp_pbl(i,k,11) = thterm(i,j,k) ! qnc
-          tmp_pbl(i,k,12) =  sadv(i,j,k)  ! qni
-          tmp_pbl(i,k,13) =   prs(i,j,k)  ! p
-          tmp_pbl(i,k,14) =  dum7(i,j,k)  ! exner
-          tmp_pbl(i,k,15) =   rho(i,j,k)  ! rho
-          tmp_pbl(i,k,16) =  dum4(i,j,k)  ! t3d
-          tmp_pbl(i,k,17) =   qke(i,j,k)
-          tmp_pbl(i,k,18) =   qke3d(i,j,k)
-          tmp_pbl(i,k,19) =   tsq(i,j,k)
-          tmp_pbl(i,k,20) =   qsq(i,j,k)
-          tmp_pbl(i,k,21) =   cov(i,j,k)
-          tmp_pbl(i,k,22) =  xkzh(i,j,k)
-          tmp_pbl(i,k,23) =  xkzm(i,j,k)
-          tmp_pbl(i,k,24) =  upten(i,j,k)
-          tmp_pbl(i,k,25) =  vpten(i,j,k)
-          tmp_pbl(i,k,26) =  thpten(i,j,k)
-          tmp_pbl(i,k,27) =  qvpten(i,j,k)
-          tmp_pbl(i,k,28) =  qcpten(i,j,k)
-          tmp_pbl(i,k,29) =  qipten(i,j,k)
-          tmp_pbl(i,k,30) =  qncpten(i,j,k)
-          tmp_pbl(i,k,31) =  qnipten(i,j,k)
-          tmp_pbl(i,k,34) =  el_pbl(i,j,k)
-          tmp_pbl(i,k,35) =  dqke(i,j,k)
-          tmp_pbl(i,k,36) =  qWT(i,j,k)
-          tmp_pbl(i,k,37) =  qSHEAR(i,j,k)
-          tmp_pbl(i,k,38) =  qBUOY(i,j,k)
-          tmp_pbl(i,k,39) =  qDISS(i,j,k)
-          tmp_pbl(i,k,40) =  dum9(i,j,k)
-          tmp_pbl(i,k,41) =  sh3d(i,j,k)
-          tmp_pbl(i,k,42) =  qc_bl(i,j,k)
-          tmp_pbl(i,k,43) =  qi_bl(i,j,k)
-          tmp_pbl(i,k,44) =  cldfra_bl(i,j,k)
+          tmp2d(i,k, 1) = dum5(i,j,k)    ! dz
+          tmp2d(i,k, 2) = dum1(i,j,k)    ! u
+          tmp2d(i,k, 3) = dum2(i,j,k)    ! v
+          tmp2d(i,k, 4) = 0.5*(wa(i,j,k)+wa(i,j,k+1))  ! w
+          tmp2d(i,k, 5) = dum3(i,j,k)    ! th
+          tmp2d(i,k, 6) = divx(i,j,k)    ! qv
+          tmp2d(i,k, 7) = ppten(i,j,k)   ! qc
+          tmp2d(i,k, 8) = dum8(i,j,k)    ! qi
+          tmp2d(i,k, 9) = 0.0            ! qnc
+          tmp2d(i,k,10) = 0.0            ! qni
+          tmp2d(i,k,11) = 0.0            ! qnwfa
+          tmp2d(i,k,12) = 0.0            ! qnifa
+          tmp2d(i,k,13) = 0.0            ! qnbca
+          tmp2d(i,k,14) = prs(i,j,k)     ! p
+          tmp2d(i,k,15) = dum7(i,j,k)    ! exner
+          tmp2d(i,k,16) = rho(i,j,k)     ! rho
+          tmp2d(i,k,17) = dum4(i,j,k)    ! t3d
+          tmp2d(i,k,18) = qke(i,j,k)
+          tmp2d(i,k,19) = qke3d(i,j,k)   ! qke updated after advection
+          tmp2d(i,k,20) = sh3d(i,j,k)
+          tmp2d(i,k,21) = sm3d(i,j,k)
+          tmp2d(i,k,22) = tsq(i,j,k)
+          tmp2d(i,k,23) = qsq(i,j,k)
+          tmp2d(i,k,24) = cov(i,j,k)
+          tmp2d(i,k,25) = 0.0            ! uten
+          tmp2d(i,k,26) = 0.0            ! vten
+          tmp2d(i,k,27) = 0.0            ! thten
+          tmp2d(i,k,28) = 0.0            ! qvten
+          tmp2d(i,k,29) = 0.0            ! qcten
+          tmp2d(i,k,30) = 0.0            ! qiten
+          tmp2d(i,k,31) = 0.0            ! qncten
+          tmp2d(i,k,32) = 0.0            ! qniten
+          tmp2d(i,k,33) = 0.0            ! qnwfablten
+          tmp2d(i,k,34) = 0.0            ! qnifablten
+          tmp2d(i,k,35) = 0.0            ! qnbcablten
+          tmp2d(i,k,36) = 0.0            ! exch_h
+          tmp2d(i,k,37) = 0.0            ! exch_m
+          tmp2d(i,k,38) = el_pbl(i,j,k)
+          tmp2d(i,k,39) = dqke(i,j,k)
+          tmp2d(i,k,40) = qwt(i,j,k)
+          tmp2d(i,k,41) = qshear(i,j,k)
+          tmp2d(i,k,42) = qbuoy(i,j,k)
+          tmp2d(i,k,43) = qdiss(i,j,k)
+          tmp2d(i,k,44) = qc_bl(i,j,k)
+          tmp2d(i,k,45) = qi_bl(i,j,k)
+          tmp2d(i,k,46) = cldfra_bl(i,j,k)
+          tmp2d(i,k,47) = edmf_a(i,j,k)
+          tmp2d(i,k,48) = edmf_w(i,j,k)
+          tmp2d(i,k,49) = edmf_qt(i,j,k)
+          tmp2d(i,k,50) = edmf_thl(i,j,k)
+          tmp2d(i,k,51) = edmf_ent(i,j,k)
+          tmp2d(i,k,52) = edmf_qc(i,j,k)
+          tmp2d(i,k,53) = sub_thl3d(i,j,k)
+          tmp2d(i,k,54) = sub_sqv3d(i,j,k)
+          tmp2d(i,k,55) = det_thl3d(i,j,k)
+          tmp2d(i,k,56) = det_sqv3d(i,j,k)
+          tmp2d(i,k,57) = dum9(i,j,k)    ! rthraten
+          tmp2d(i,k,58) = 0.0            ! pattern_spp_pbl
         enddo
         enddo
 
-      call mynn_bl_driver(               &
-        initflag=initflag,               &
-        restart=.false.,                 &
-        cycling=.false.,                 &
-        grav_settling=grav_settling,     &
-        delt=dt,                         &
-        dz=tmp_pbl(ibpbl,kbpbl,7),       &
-        dx=dx,                           &
-        znt=zntmp(ib,j),                 &
-        u=tmp_pbl(ibpbl,kbpbl,1),        &
-        v=tmp_pbl(ibpbl,kbpbl,2),        &
-        w=tmp_pbl(ibpbl,kbpbl,3),        &
-        th=tmp_pbl(ibpbl,kbpbl,4),       &
-        qv=tmp_pbl(ibpbl,kbpbl,8),       &
-        qc=tmp_pbl(ibpbl,kbpbl,9),       &
-        qi=tmp_pbl(ibpbl,kbpbl,10),      &
-        qnc=tmp_pbl(ibpbl,kbpbl,11),     &
-        qni=tmp_pbl(ibpbl,kbpbl,12),     &
-        p=tmp_pbl(ibpbl,kbpbl,13),       &
-        exner=tmp_pbl(ibpbl,kbpbl,14),   &
-        rho=tmp_pbl(ibpbl,kbpbl,15),     &
-        T3D=tmp_pbl(ibpbl,kbpbl,16),     &
-        xland=xland(ib,j),               &
-        ts=tsk(ib,j),                    &
-        qsfc=qsfc(ib,j),                 &
-        qcg=qcg(ib,j),                   &
-        ps=psfc(ib,j),                   &
-        ust=ust(ib,j),                   &
-        ch=ch(ib,j),                     &
-        hfx=hfx(ib,j),                   &
-        qfx=qfx(ib,j),                   &
-        rmol=rmol(ib,j),                 &
-        wspd=wspd(ib,j),                 &
-        uoce=huml(ib,j),                 &
-        voce=hvml(ib,j),                 &
-        vdfg=vdfg(ib,j),                 &
-        Qke=tmp_pbl(ibpbl,kbpbl,17),         &
-        qke_adv=tmp_pbl(ibpbl,kbpbl,18),     &
-        bl_mynn_tkeadvect=bl_mynn_tkeadvect, &  ! GHB: Note that qke_adv is really qke updated after advection (200812)
-        Tsq=tmp_pbl(ibpbl,kbpbl,19),         &
-        Qsq=tmp_pbl(ibpbl,kbpbl,20),         &
-        Cov=tmp_pbl(ibpbl,kbpbl,21),         &
-        RUBLTEN=tmp_pbl(ibpbl,kbpbl,24),     &
-        RVBLTEN=tmp_pbl(ibpbl,kbpbl,25),     &
-        RTHBLTEN=tmp_pbl(ibpbl,kbpbl,26),    &
-        RQVBLTEN=tmp_pbl(ibpbl,kbpbl,27),    &
-        RQCBLTEN=tmp_pbl(ibpbl,kbpbl,28),    &
-        RQIBLTEN=tmp_pbl(ibpbl,kbpbl,29),    &
-        RQNCBLTEN=tmp_pbl(ibpbl,kbpbl,30),   &
-        RQNIBLTEN=tmp_pbl(ibpbl,kbpbl,31),   &
-        RQNWFABLTEN=tmp_pbl(ibpbl,kbpbl,56), &
-        RQNIFABLTEN=tmp_pbl(ibpbl,kbpbl,57), &
-        exch_h=tmp_pbl(ibpbl,kbpbl,22),      &
-        exch_m=tmp_pbl(ibpbl,kbpbl,23),      &
-        Pblh=hpbl(ib,j),                     &
-        kpbl=kpbl2d(ib,j),                   &
-        el_pbl=tmp_pbl(ibpbl,kbpbl,34),      &
-        dqke=tmp_pbl(ibpbl,kbpbl,35),        &
-        qWT=tmp_pbl(ibpbl,kbpbl,36),         &
-        qSHEAR=tmp_pbl(ibpbl,kbpbl,37),      &
-        qBUOY=tmp_pbl(ibpbl,kbpbl,38),       &
-        qDISS=tmp_pbl(ibpbl,kbpbl,39),       &
-        wstar=wstar(ib,j),                   &
-        delta=delta(ib,j),                   &
-        bl_mynn_tkebudget=bl_mynn_tkebudget, &
+        do i=1,ni
+          tmp1d(i, 1) = 0.0    ! uoce
+          tmp1d(i, 2) = 0.0    ! voce
+        enddo
+
+      call mynnedmf_wrapper_run(                 &
+        initflag=initflag,  &
+        restart=restart,  &
+        cycling=cycling,                &
+        delt=dt,  &
+        dz=tmp2d(ibtmp,kbtmp, 1),  &
+        dxc=dx,  &
+        znt=znt(1,j),                         &
+        u=tmp2d(ibtmp,kbtmp, 2),  &
+        v=tmp2d(ibtmp,kbtmp, 3),  &
+        w=tmp2d(ibtmp,kbtmp, 4),  &
+        th=tmp2d(ibtmp,kbtmp, 5),                                &
+        qv=tmp2d(ibtmp,kbtmp, 6),  &
+        qc=tmp2d(ibtmp,kbtmp, 7),  &
+        qi=tmp2d(ibtmp,kbtmp, 8),  &
+        qnc=tmp2d(ibtmp,kbtmp, 9),  &
+        qni=tmp2d(ibtmp,kbtmp,10),  &
+        qnwfa=tmp2d(ibtmp,kbtmp,11),  &
+        qnifa=tmp2d(ibtmp,kbtmp,12),  &
+        qnbca=tmp2d(ibtmp,kbtmp,13),      &
+!     &  ozone,                                   &
+        p=tmp2d(ibtmp,kbtmp,14),  &
+        exner=tmp2d(ibtmp,kbtmp,15),  &
+        rho=tmp2d(ibtmp,kbtmp,16),  &
+        t3d=tmp2d(ibtmp,kbtmp,17),                         &
+        xland=xland(1,j),  &
+        ts=tsk(1,j),  &
+        qsfc=qsfc(1,j),  &
+        ps=psfc(1,j),                        &
+        ust=ust(1,j),  &
+        ch=ch(1,j),  &
+        hfx=hfx(1,j),  &
+        qfx=qfx(1,j),  &
+        rmol=rmol(1,j),  &
+        wspd=wspd(1,j),                &
+        uoce=tmp1d(1,1),  &
+        voce=tmp1d(1,2),                               &
+        qke=tmp2d(ibtmp,kbtmp,18),  &
+        qke_adv=tmp2d(ibtmp,kbtmp,19),  &
+        sh3d=tmp2d(ibtmp,kbtmp,20),  &
+        sm3d=tmp2d(ibtmp,kbtmp,21),                   &
+!--- chem/smoke
+!#if (WRF_CHEM == 1)
+!        mix_chem,chem3d,vd3d,nchem,kdvel,        &
+!        ndvel,num_vert_mix,                      &
+!!     &  frp_mean,emis_ant_no,enh_mix,            & !to be included soon
+!#endif
+!--- end chem/smoke 
+        Tsq=tmp2d(ibtmp,kbtmp,22),  &
+        Qsq=tmp2d(ibtmp,kbtmp,23),  &
+        Cov=tmp2d(ibtmp,kbtmp,24),                             &
+        rublten=tmp2d(ibtmp,kbtmp,25),  &
+        rvblten=tmp2d(ibtmp,kbtmp,26),  &
+        rthblten=tmp2d(ibtmp,kbtmp,27),                &
+        rqvblten=tmp2d(ibtmp,kbtmp,28),  &
+        rqcblten=tmp2d(ibtmp,kbtmp,29),  &
+        rqiblten=tmp2d(ibtmp,kbtmp,30),              &
+        rqncblten=tmp2d(ibtmp,kbtmp,31),  &
+        rqniblten=tmp2d(ibtmp,kbtmp,32),                     &
+        rqnwfablten=tmp2d(ibtmp,kbtmp,33),  &
+        rqnifablten=tmp2d(ibtmp,kbtmp,34),  &
+        rqnbcablten=tmp2d(ibtmp,kbtmp,35),     &
+!     &  ro3blten,                                &
+        exch_h=tmp2d(ibtmp,kbtmp,36),  &
+        exch_m=tmp2d(ibtmp,kbtmp,37),  &
+        pblh=hpbl(1,j),  &
+        kpbl=kpbl2d(1,j),  &
+        el_pbl=tmp2d(ibtmp,kbtmp,38),          &
+        dqke=tmp2d(ibtmp,kbtmp,39),  &
+        qwt=tmp2d(ibtmp,kbtmp,40),  &
+        qshear=tmp2d(ibtmp,kbtmp,41),  &
+        qbuoy=tmp2d(ibtmp,kbtmp,42),  &
+        qdiss=tmp2d(ibtmp,kbtmp,43),             &
+        qc_bl=tmp2d(ibtmp,kbtmp,44),  &
+        qi_bl=tmp2d(ibtmp,kbtmp,45),  &
+        cldfra_bl=tmp2d(ibtmp,kbtmp,46),                   &
+        edmf_a=tmp2d(ibtmp,kbtmp,47),  &
+        edmf_w=tmp2d(ibtmp,kbtmp,48),  &
+        edmf_qt=tmp2d(ibtmp,kbtmp,49),                   &
+        edmf_thl=tmp2d(ibtmp,kbtmp,50),  &
+        edmf_ent=tmp2d(ibtmp,kbtmp,51),  &
+        edmf_qc=tmp2d(ibtmp,kbtmp,52),               &
+        sub_thl3d=tmp2d(ibtmp,kbtmp,53),  &
+        sub_sqv3d=tmp2d(ibtmp,kbtmp,54),                     &
+        det_thl3d=tmp2d(ibtmp,kbtmp,55),  &
+        det_sqv3d=tmp2d(ibtmp,kbtmp,56),                     &
+        nupdraft=nupdraft(1,j),  &
+        maxMF=maxmf(1,j),  &
+        ktop_plume=ktop_plume(1,j),               &
+        rthraten=tmp2d(ibtmp,kbtmp,57),                                &
+        dheat3d=tmp2d(ibtmp,kbtmp,59),         &
+        tke_budget=bl_mynn_tkebudget,         &
+        bl_mynn_tkeadvect=bl_mynn_tkeadvect,   &
         bl_mynn_cloudpdf=bl_mynn_cloudpdf,   &
-        Sh3D=tmp_pbl(ibpbl,kbpbl,41),        &
-        bl_mynn_mixlength=bl_mynn_mixlength, &
-        icloud_bl=icloud_bl,                 &
-        qc_bl=tmp_pbl(ibpbl,kbpbl,42),       &
-        qi_bl=tmp_pbl(ibpbl,kbpbl,43),       &
-        cldfra_bl=tmp_pbl(ibpbl,kbpbl,44),   &
-        bl_mynn_edmf=bl_mynn_edmf,           &
+        bl_mynn_mixlength=bl_mynn_mixlength,   &
+        icloud_bl=icloud_bl,          &
+        bl_mynn_edmf=bl_mynn_edmf,        &
         bl_mynn_edmf_mom=bl_mynn_edmf_mom,   &
-        bl_mynn_edmf_tke=bl_mynn_edmf_tke,   &
-        bl_mynn_mixscalars=bl_mynn_mixscalars,   &
-        bl_mynn_output=bl_mynn_output,           &
-        bl_mynn_cloudmix=bl_mynn_cloudmix,       &
-        bl_mynn_mixqt=bl_mynn_mixqt,             &
-        edmf_a=tmp_pbl(ibpbl,kbpbl,45),          &
-        edmf_w=tmp_pbl(ibpbl,kbpbl,46),          &
-        edmf_qt=tmp_pbl(ibpbl,kbpbl,47),         &
-        edmf_thl=tmp_pbl(ibpbl,kbpbl,48),        &
-        edmf_ent=tmp_pbl(ibpbl,kbpbl,49),        &
-        edmf_qc=tmp_pbl(ibpbl,kbpbl,50),         &
-        sub_thl3D=tmp_pbl(ibpbl,kbpbl,51),       &
-        sub_sqv3D=tmp_pbl(ibpbl,kbpbl,52),       &
-        det_thl3D=tmp_pbl(ibpbl,kbpbl,53),       &
-        det_sqv3D=tmp_pbl(ibpbl,kbpbl,54),       &
-        nupdraft=nupdraft(ib,j),                 &
-        maxMF=maxmf(ib,j),                       &
-        ktop_plume=ktop_plume(ib,j),             &
-        spp_pbl=spp_pbl,                         &
-        pattern_spp_pbl=tmp_pbl(ibpbl,kbpbl,55),    &
-        RTHRATEN=tmp_pbl(ibpbl,kbpbl,40),           &
-        FLAG_QC=FLAG_QC,                            &
-        FLAG_QI=FLAG_QI,                            &
-        FLAG_QNC=FLAG_QNC,                          &
-        FLAG_QNI=FLAG_QNI,                          &
-        FLAG_QNWFA=FLAG_QNWFA,                      &
-        FLAG_QNIFA=FLAG_QNIFA,                      &
-        ids=1  ,ide=ni+1 , jds=1  ,jde=2    , kds=1  ,kde=nk+1 ,  &
-        ims=ib ,ime=ie   , jms=1  ,jme=1    , kms=kb ,kme=ke ,    &
-        its=1  ,ite=ni   , jts=1  ,jte=1    , kts=1  ,kte=nk )
+        bl_mynn_edmf_tke=bl_mynn_edmf_tke,    &
+        bl_mynn_cloudmix=bl_mynn_cloudmix,   &
+        bl_mynn_mixqt=bl_mynn_mixqt,       &
+        bl_mynn_output=bl_mynn_output,     &
+        bl_mynn_closure=bl_mynn_closure,     &
+        bl_mynn_mixscalars=bl_mynn_mixscalars,                      &
+        spp_pbl=spp_pbl,  &
+        pattern_spp_pbl=tmp2d(ibtmp,kbtmp,58),                 &
+        flag_qc=flag_qc,  &
+        flag_qi=flag_qi,                         &
+        flag_qnc=flag_qnc,  &
+        flag_qni=flag_qni,                       &
+        flag_qnwfa=.false.,  &
+        flag_qnifa=.false.,  &
+        flag_qnbca=.false.,        &
+        ids=1,ide=ni+1,jds=1,jde=2,kds=1,kde=nk+1,   &
+        ims=1,ime=ni  ,jms=1,jme=1,kms=1,kme=nk  ,   &
+        its=1,ite=ni  ,jts=1,jte=1,kts=1,kte=nk      )
 
         do k=1,nk
         do i=1,ni
-          qke(i,j,k) = tmp_pbl(i,k,17)
-          tsq(i,j,k) = tmp_pbl(i,k,19)
-          qsq(i,j,k) = tmp_pbl(i,k,20)
-          cov(i,j,k) = tmp_pbl(i,k,21)
-          xkzh(i,j,k) = tmp_pbl(i,k,22)
-          xkzm(i,j,k) = tmp_pbl(i,k,23)
-          upten(i,j,k) = tmp_pbl(i,k,24)
-          vpten(i,j,k) = tmp_pbl(i,k,25)
-          thpten(i,j,k) = tmp_pbl(i,k,26)
-          qvpten(i,j,k) = tmp_pbl(i,k,27)
-          qcpten(i,j,k) = tmp_pbl(i,k,28)
-          qipten(i,j,k) = tmp_pbl(i,k,29)
-          qncpten(i,j,k)  = tmp_pbl(i,k,30)
-          qnipten(i,j,k) = tmp_pbl(i,k,31)
-          el_pbl(i,j,k) = tmp_pbl(i,k,34)
-          dqke(i,j,k)  = tmp_pbl(i,k,35)
-          qWT(i,j,k) = tmp_pbl(i,k,36)
-          qSHEAR(i,j,k)  = tmp_pbl(i,k,37)
-          qBUOY(i,j,k) = tmp_pbl(i,k,38)
-          qDISS(i,j,k)  = tmp_pbl(i,k,39)
-          sh3d(i,j,k) = tmp_pbl(i,k,41)
-          qc_bl(i,j,k) = tmp_pbl(i,k,42)
-          qi_bl(i,j,k) = tmp_pbl(i,k,43)
-          cldfra_bl(i,j,k) = tmp_pbl(i,k,44)
-          edmf_a(i,j,k) = tmp_pbl(i,k,45)
-          edmf_w(i,j,k) = tmp_pbl(i,k,46)
-          edmf_qt(i,j,k) = tmp_pbl(i,k,47)
-          edmf_thl(i,j,k) = tmp_pbl(i,k,48)
-          edmf_ent(i,j,k) = tmp_pbl(i,k,49)
-          edmf_qc(i,j,k) = tmp_pbl(i,k,50)
-          sub_thl3D(i,j,k) = tmp_pbl(i,k,51)
-          sub_sqv3D(i,j,k) = tmp_pbl(i,k,52)
-          det_thl3D(i,j,k) = tmp_pbl(i,k,53)
-          det_sqv3D(i,j,k) = tmp_pbl(i,k,54)
+          qke(i,j,k)       = tmp2d(i,k,18)
+          qke_adv(i,j,k)   = tmp2d(i,k,19)
+          sh3d(i,j,k)      = tmp2d(i,k,20)
+          sm3d(i,j,k)      = tmp2d(i,k,21)
+          tsq(i,j,k)       = tmp2d(i,k,22)
+          qsq(i,j,k)       = tmp2d(i,k,23)
+          cov(i,j,k)       = tmp2d(i,k,24)
+          upten(i,j,k)     = tmp2d(i,k,25)
+          vpten(i,j,k)     = tmp2d(i,k,26)
+          thpten(i,j,k)    = tmp2d(i,k,27)
+          qvpten(i,j,k)    = tmp2d(i,k,28)
+          qcpten(i,j,k)    = tmp2d(i,k,29)
+          qipten(i,j,k)    = tmp2d(i,k,30)
+          xkzh(i,j,k)      = tmp2d(i,k,36)
+          xkzm(i,j,k)      = tmp2d(i,k,37)
+          el_pbl(i,j,k)    = tmp2d(i,k,38)
+          dqke(i,j,k)      = tmp2d(i,k,39)
+          qwt(i,j,k)       = tmp2d(i,k,40)
+          qshear(i,j,k)    = tmp2d(i,k,41)
+          qbuoy(i,j,k)     = tmp2d(i,k,42)
+          qdiss(i,j,k)     = tmp2d(i,k,43)
+          qc_bl(i,j,k)     = tmp2d(i,k,44)
+          qi_bl(i,j,k)     = tmp2d(i,k,45)
+          cldfra_bl(i,j,k) = tmp2d(i,k,46)
+          edmf_a(i,j,k)    = tmp2d(i,k,47)
+          edmf_w(i,j,k)    = tmp2d(i,k,48)
+          edmf_qt(i,j,k)   = tmp2d(i,k,49)
+          edmf_thl(i,j,k)  = tmp2d(i,k,50)
+          edmf_ent(i,j,k)  = tmp2d(i,k,51)
+          edmf_qc(i,j,k)   = tmp2d(i,k,52)
+          sub_thl3d(i,j,k) = tmp2d(i,k,53)
+          sub_sqv3d(i,j,k) = tmp2d(i,k,54)
+          det_thl3d(i,j,k) = tmp2d(i,k,55)
+          det_sqv3d(i,j,k) = tmp2d(i,k,56)
         enddo
         enddo
 
@@ -2280,7 +2536,7 @@
           do j=1,nj
           do i=1,ni
             ! dissipative heating rate:
-            tdiag(i,j,k,td_diss) = thten1(i,j,k)
+            tdiag(i,j,k,td_diss) = tmp2d(i,k,59)
           enddo
           enddo
           enddo
@@ -2292,13 +2548,18 @@
           do j=1,nj
           do i=1,ni
             ! for budget, subtract dissip heating from PBL tendency:
-            tdiag(i,j,k,td_pbl) = thpten(i,j,k)-thten1(i,j,k)
+            tdiag(i,j,k,td_pbl) = thpten(i,j,k)-tmp2d(i,k,59)
           enddo
           enddo
           enddo
         ENDIF
       ! Diagnostics !
 
+      else
+        if(myid.eq.0) print *
+        if(myid.eq.0) print *,'  ... skipping mynn ... '
+        if(myid.eq.0) print *
+      endif
       endif  domynn
 
       !c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c-c!
@@ -2325,68 +2586,69 @@
 
       myjloop:  &
       do j=1,nj
+        tmp2d = 0.0
         do k=1,nk
         do i=1,ni
-          tmp_pbl(i,k, 1) = 0.0
-          tmp_pbl(i,k, 2) = 0.0
-          tmp_pbl(i,k, 3) = 0.0
-          tmp_pbl(i,k, 4) = tke_myj(i,j,k)
-          tmp_pbl(i,k, 5) = el_myj(i,j,k)
-          tmp_pbl(i,k, 6) = dum5(i,j,k)
-          tmp_pbl(i,k, 7) = prs(i,j,k)
-          tmp_pbl(i,k, 9) = dum3(i,j,k)
-          tmp_pbl(i,k,10) = dum4(i,j,k)
-          tmp_pbl(i,k,11) = dum7(i,j,k)
-          tmp_pbl(i,k,12) = divx(i,j,k)
-          tmp_pbl(i,k,13) = ppten(i,j,k)
-          tmp_pbl(i,k,14) = dum8(i,j,k)
-          tmp_pbl(i,k,15) = dum1(i,j,k)
-          tmp_pbl(i,k,16) = dum2(i,j,k)
-          tmp_pbl(i,k,17) = rho(i,j,k)
-          tmp_pbl(i,k,19) = upten(i,j,k)
-          tmp_pbl(i,k,20) = vpten(i,j,k)
-          tmp_pbl(i,k,21) = thpten(i,j,k)
-          tmp_pbl(i,k,22) = qvpten(i,j,k)
-          tmp_pbl(i,k,23) = qcpten(i,j,k)
-          tmp_pbl(i,k,24) = qipten(i,j,k)
-          tmp_pbl(i,k,25) = qspten(i,j,k)
-          tmp_pbl(i,k,26) = qrpten(i,j,k)
-          tmp_pbl(i,k,27) = qgpten(i,j,k)
+          tmp2d(i,k, 1) = 0.0
+          tmp2d(i,k, 2) = 0.0
+          tmp2d(i,k, 3) = 0.0
+          tmp2d(i,k, 4) = tke_myj(i,j,k)
+          tmp2d(i,k, 5) = el_myj(i,j,k)
+          tmp2d(i,k, 6) = dum5(i,j,k)
+          tmp2d(i,k, 7) = prs(i,j,k)
+          tmp2d(i,k, 9) = dum3(i,j,k)
+          tmp2d(i,k,10) = dum4(i,j,k)
+          tmp2d(i,k,11) = dum7(i,j,k)
+          tmp2d(i,k,12) = divx(i,j,k)
+          tmp2d(i,k,13) = ppten(i,j,k)
+          tmp2d(i,k,14) = dum8(i,j,k)
+          tmp2d(i,k,15) = dum1(i,j,k)
+          tmp2d(i,k,16) = dum2(i,j,k)
+          tmp2d(i,k,17) = rho(i,j,k)
+          tmp2d(i,k,19) = upten(i,j,k)
+          tmp2d(i,k,20) = vpten(i,j,k)
+          tmp2d(i,k,21) = thpten(i,j,k)
+          tmp2d(i,k,22) = qvpten(i,j,k)
+          tmp2d(i,k,23) = qcpten(i,j,k)
+          tmp2d(i,k,24) = qipten(i,j,k)
+          tmp2d(i,k,25) = qspten(i,j,k)
+          tmp2d(i,k,26) = qrpten(i,j,k)
+          tmp2d(i,k,27) = qgpten(i,j,k)
         enddo
         enddo
         do k=1,nk+1
         do i=1,ni
-          tmp_pbl(i,k, 8) = dum6(i,j,k)
-          tmp_pbl(i,k,18) = 0.0
-          tmp_pbl(i,k,28) = 0.0
+          tmp2d(i,k, 8) = dum6(i,j,k)
+          tmp2d(i,k,18) = 0.0
+          tmp2d(i,k,28) = 0.0
         enddo
         enddo
-        call     MYJPBL(dt=DT,STEPBL=1,HT=zs(ib,j),DZ=tmp_pbl(ibpbl,kbpbl,6)                     &
-                       ,PMID=tmp_pbl(ibpbl,kbpbl,7),PINT=tmp_pbl(ibpbl,kbpbl,8),TH=tmp_pbl(ibpbl,kbpbl,9),T=tmp_pbl(ibpbl,kbpbl,10),EXNER=tmp_pbl(ibpbl,kbpbl,11),QV=tmp_pbl(ibpbl,kbpbl,12),QCW=tmp_pbl(ibpbl,kbpbl,13),QCI=tmp_pbl(ibpbl,kbpbl,14),QCS=tmp_pbl(ibpbl,kbpbl,1),QCR=tmp_pbl(ibpbl,kbpbl,2),QCG=tmp_pbl(ibpbl,kbpbl,3)    &
-                       ,U=tmp_pbl(ibpbl,kbpbl,15),V=tmp_pbl(ibpbl,kbpbl,16),RHO=tmp_pbl(ibpbl,kbpbl,17),TSK=tsk(ib,j),QSFC=qsfc(ib,j),CHKLOWQ=chklowq(ib,j),THZ0=thz0(ib,j),QZ0=qz0(ib,j),UZ0=uz0(ib,j),VZ0=vz0(ib,j)      &
-                       ,LOWLYR=lowlyr(ib,j),XLAND=xland(ib,j),SICE=sice(ib,j),SNOW=snow(ib,j)                         &
-                       ,TKE_MYJ=tmp_pbl(ibpbl,kbpbl,4),EXCH_H=tmp_pbl(ibpbl,kbpbl,18),EXCH_M=tmp_pbl(ibpbl,kbpbl,28),USTAR=ust(ib,j),ZNT=znt(ib,j),EL_MYJ=tmp_pbl(ibpbl,kbpbl,5),PBLH=hpbl(ib,j),KPBL=kpbl2d(ib,j),CT=ct(ib,j)   &
-                       ,AKHS=akhs(ib,j),AKMS=akms(ib,j),ELFLX=lh(ib,j),MIXHT=mixht(ib,j)                          &
-                       ,RUBLTEN=tmp_pbl(ibpbl,kbpbl,19),RVBLTEN=tmp_pbl(ibpbl,kbpbl,20),RTHBLTEN=tmp_pbl(ibpbl,kbpbl,21),RQVBLTEN=tmp_pbl(ibpbl,kbpbl,22),RQCBLTEN=tmp_pbl(ibpbl,kbpbl,23)     &
-                       ,RQIBLTEN=tmp_pbl(ibpbl,kbpbl,24),RQSBLTEN=tmp_pbl(ibpbl,kbpbl,25),RQRBLTEN=tmp_pbl(ibpbl,kbpbl,26),RQGBLTEN=tmp_pbl(ibpbl,kbpbl,27),           &
-                  ids=1  ,ide=ni+1 , jds=1  ,jde=1    , kds=1  ,kde=nk+1 ,          &
-                  ims=ibpbl ,ime=iemyj   , jms=1  ,jme=1    , kms=kbpbl ,kme=kemyj ,            &
+        call     MYJPBL(dt=DT,STEPBL=1,HT=zs(1,j),DZ=tmp2d(ibtmp,kbtmp,6)                     &
+                       ,PMID=tmp2d(ibtmp,kbtmp,7),PINT=tmp2d(ibtmp,kbtmp,8),TH=tmp2d(ibtmp,kbtmp,9),T=tmp2d(ibtmp,kbtmp,10),EXNER=tmp2d(ibtmp,kbtmp,11),QV=tmp2d(ibtmp,kbtmp,12),QCW=tmp2d(ibtmp,kbtmp,13),QCI=tmp2d(ibtmp,kbtmp,14),QCS=tmp2d(ibtmp,kbtmp,1),QCR=tmp2d(ibtmp,kbtmp,2),QCG=tmp2d(ibtmp,kbtmp,3)    &
+                       ,U=tmp2d(ibtmp,kbtmp,15),V=tmp2d(ibtmp,kbtmp,16),RHO=tmp2d(ibtmp,kbtmp,17),TSK=tsk(1,j),QSFC=qsfc(1,j),CHKLOWQ=chklowq(1,j),THZ0=thz0(1,j),QZ0=qz0(1,j),UZ0=uz0(1,j),VZ0=vz0(1,j)      &
+                       ,LOWLYR=lowlyr(1,j),XLAND=xland(1,j),SICE=sice(1,j),SNOW=snow(1,j)                         &
+                       ,TKE_MYJ=tmp2d(ibtmp,kbtmp,4),EXCH_H=tmp2d(ibtmp,kbtmp,18),EXCH_M=tmp2d(ibtmp,kbtmp,28),USTAR=ust(1,j),ZNT=znt(1,j),EL_MYJ=tmp2d(ibtmp,kbtmp,5),PBLH=hpbl(1,j),KPBL=kpbl2d(1,j),CT=ct(1,j)   &
+                       ,AKHS=akhs(1,j),AKMS=akms(1,j),ELFLX=lh(1,j),MIXHT=mixht(1,j)                          &
+                       ,RUBLTEN=tmp2d(ibtmp,kbtmp,19),RVBLTEN=tmp2d(ibtmp,kbtmp,20),RTHBLTEN=tmp2d(ibtmp,kbtmp,21),RQVBLTEN=tmp2d(ibtmp,kbtmp,22),RQCBLTEN=tmp2d(ibtmp,kbtmp,23)     &
+                       ,RQIBLTEN=tmp2d(ibtmp,kbtmp,24),RQSBLTEN=tmp2d(ibtmp,kbtmp,25),RQRBLTEN=tmp2d(ibtmp,kbtmp,26),RQGBLTEN=tmp2d(ibtmp,kbtmp,27),           &
+                  ids=1  ,ide=ni+1 , jds=1  ,jde=2    , kds=1  ,kde=nk+1 ,          &
+                  ims=1 ,ime=ni      , jms=1  ,jme=1    , kms=1, kme=nk+1  ,            &
                   its=1  ,ite=ni   , jts=1  ,jte=1    , kts=1  ,kte=nk )
         do k=1,nk
         do i=1,ni
-          tke_myj(i,j,k) = tmp_pbl(i,k,4)
-          el_myj(i,j,k) = tmp_pbl(i,k,5)
-          xkzh(i,j,k+1) = tmp_pbl(i,k,18)
-          xkzm(i,j,k+1) = tmp_pbl(i,k,28)
-          upten(i,j,k) = tmp_pbl(i,k,19)
-          vpten(i,j,k) = tmp_pbl(i,k,20)
-          thpten(i,j,k) = tmp_pbl(i,k,21)
-          qvpten(i,j,k) = tmp_pbl(i,k,22)
-          qcpten(i,j,k) = tmp_pbl(i,k,23)
-          qipten(i,j,k) = tmp_pbl(i,k,24)
-          qspten(i,j,k) = tmp_pbl(i,k,25)
-          qrpten(i,j,k) = tmp_pbl(i,k,26)
-          qgpten(i,j,k) = tmp_pbl(i,k,27)
+          tke_myj(i,j,k) = tmp2d(i,k,4)
+          el_myj(i,j,k) = tmp2d(i,k,5)
+          xkzh(i,j,k+1) = tmp2d(i,k,18)
+          xkzm(i,j,k+1) = tmp2d(i,k,28)
+          upten(i,j,k) = tmp2d(i,k,19)
+          vpten(i,j,k) = tmp2d(i,k,20)
+          thpten(i,j,k) = tmp2d(i,k,21)
+          qvpten(i,j,k) = tmp2d(i,k,22)
+          qcpten(i,j,k) = tmp2d(i,k,23)
+          qipten(i,j,k) = tmp2d(i,k,24)
+          qspten(i,j,k) = tmp2d(i,k,25)
+          qrpten(i,j,k) = tmp2d(i,k,26)
+          qgpten(i,j,k) = tmp2d(i,k,27)
         enddo
         enddo
       enddo  myjloop
@@ -2455,38 +2717,38 @@
       if( ipbl.eq.1 )then
         ! Dissipative heating from ysu scheme:
 
-        IF( idiss.eq.1 .or. output_dissten.eq.1 )THEN
-          !$omp parallel do default(shared)  &
-          !$omp private(i,j)
-          do j=1,nj
+      IF( idiss.eq.1 .or. output_dissten.eq.1 )THEN
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k,tem1,tem2)
+        DO j=1,nj
+
           do i=1,ni
             ! assume t13,t23 are zero at top of domain:
-            !   dum3 = t13
-            !   dum4 = t23
-            dum3(i,j,nk+1) = 0.0
-            dum4(i,j,nk+1) = 0.0
+            !   thten = t13
+            !   thten1 = t23
+            thten(i,j,nk+1) = 0.0
+            thten1(i,j,nk+1) = 0.0
           enddo
-          enddo
-          !$omp parallel do default(shared)  &
-          !$omp private(i,j,k,tem1,tem2)
+
           do k=nk,2,-1
-          do j=1,nj
           do i=1,ni
             tem1 = dz*rmh(i,j,k)
             tem2 = rdz*mf(i,j,k)
             ! get stresses from u,v tendencies:
-            dum3(i,j,k) = dum3(i,j,k+1)-upten(i,j,k)*tem1
-            dum4(i,j,k) = dum4(i,j,k+1)-vpten(i,j,k)*tem1
+            thten(i,j,k) = thten(i,j,k+1)-upten(i,j,k)*tem1
+            thten1(i,j,k) = thten1(i,j,k+1)-vpten(i,j,k)*tem1
             ! NOTE:  dissten is defined at w points:
+            !  dum1 = u
+            !  dum2 = v
             dissten(i,j,k) = dissten(i,j,k)                                 &
-                          +( dum3(i,j,k)*( dum1(i,j,k)-dum1(i,j,k-1) )*tem2 &
-                            +dum4(i,j,k)*( dum2(i,j,k)-dum2(i,j,k-1) )*tem2 )
-          enddo
+                          +( thten(i,j,k)*( dum1(i,j,k)-dum1(i,j,k-1) )*tem2 &
+                            +thten1(i,j,k)*( dum2(i,j,k)-dum2(i,j,k-1) )*tem2 )
           enddo
           enddo
 
-        ENDIF
+        ENDDO
 
+      ENDIF
       endif  ysudiss
 
         if(timestats.ge.1) time_pbl=time_pbl+mytime()
@@ -2510,9 +2772,10 @@
           do k=1,nk
             upten(0,1,k) = -upten(1,1,k)
             upten(ni+1,1,k) = upten(ni,1,k)
-            do i=1,ni
+            do i=0,ni+1
               vpten(i,0,k) = vpten(i,1,k)
               vpten(i,2,k) = vpten(i,1,k)
+              vpten(i,3,k) = vpten(i,1,k)
             enddo
           enddo
         ENDIF
@@ -2524,7 +2787,185 @@
 
     ENDIF  doingpbl
 
+!-----------------------------------------------------------------------------
+!  Convective parameterization:
+
+    usingcp1:  &
+    IF( cuparam.eq.1 )THEN
+    if( .not. restarted )then  ! do not call tiedtke cu param on a restart
+
+      ! new Tiedtke cu param (from WRFv4.4)
+
+      rdt = 1.0/dt
+
+      ntiedtke_jloop:  &
+      DO j=1,nj
+
+        if( use_pbl .and. ipbl.ge.1 )then
+          ! add pbl tendency to advective tendency:
+          do k=1,nk
+          do i=1,ni
+            qvften(i,j,k)=qvften(i,j,k)+qvpten(i,j,k)
+            thften(i,j,k)=thften(i,j,k)+thpten(i,j,k)
+          enddo
+          enddo
+        endif
+
+        if( radopt.ge.1 .or. testcase.eq.4 .or. testcase.eq.5 )then
+          ! add radiative tendency to advective tendency:
+          do k=1,nk
+          do i=1,ni
+            thften(i,j,k)=thften(i,j,k)+dum9(i,j,k)
+          enddo
+          enddo
+        endif
+
+    ! from wrf module_cumulus_driver:
+!           RTHFTEN(i,k,j)=(RTHFTEN(i,k,j)+RTHRATEN(i,k,j) &
+!                               +RTHBLTEN(i,k,j))*pi(i,k,j)     ! GHB: so, appears to be a temp. tend.
+!           RQVFTEN(i,k,j)=RQVFTEN(i,k,j)+RQVBLTEN(i,k,j)
+
+        do k=1,nk
+          kk = nk+1-k
+          do i=1,ni
+            tmp2d(i,kk, 1) = 0.5*(ugr(i,j,k)+ugr(i+1,j,k))  ! u3d
+            tmp2d(i,kk, 2) = 0.5*(vgr(i,j,k)+vgr(i,j+1,k))  ! v3d
+            tmp2d(i,kk, 3) = dum4(i,j,k)                    ! t3d
+            tmp2d(i,kk, 4) = divx(i,j,k)                    ! qv3d
+            tmp2d(i,kk, 5) = ppten(i,j,k)                   ! qc3d
+            tmp2d(i,kk, 6) = dum8(i,j,k)                    ! qi3d
+            tmp2d(i,kk, 7) = qvften(i,j,k)                  ! qvften (total advective + PBL moisture tendency)
+            tmp2d(i,kk, 8) = thften(i,j,k)*dum7(i,j,k)      ! thften (total advective + PBL + radiative temperature tendency)
+            tmp2d(i,kk, 9) = zh(i,j,k)                      ! 
+            tmp2d(i,kk,11) = -0.5*g*rho(i,j,k)*(wa(i,j,k)+wa(i,j,k+1))
+            tmp2d(i,kk,12) = prs(i,j,k)
+            tmp2d(i,kk,15) = tmp2d(i,kk,1)
+            tmp2d(i,kk,16) = tmp2d(i,kk,2)
+            tmp2d(i,kk,17) = tmp2d(i,kk,3)
+            tmp2d(i,kk,18) = tmp2d(i,kk,4)
+            tmp2d(i,kk,19) = tmp2d(i,kk,5)
+            tmp2d(i,kk,20) = tmp2d(i,kk,6)
+          enddo
+        enddo
+
+        do k=1,nk+1
+          kk = nk+2-k
+          do i=1,ni
+            tmp2d(i,kk,10) = zf(i,j,k)
+            tmp2d(i,kk,13) = dum6(i,j,k)
+          enddo
+        enddo
+
+        do i=1,ni
+          int1d(i,1) = (abs(xland(i,j)-2.))
+          tmp1d(i,1) = 0.0
+        enddo
+
+        IF( axisymm.eq.1 .or. ny.eq.1 )THEN
+          do i=1,ni
+            tmp1d(i,2) = dx*ruh(i)
+          enddo
+        ELSEIF( nx.eq.1 )THEN
+          do i=1,ni
+            tmp1d(i,2) = dy*rvh(j)
+          enddo
+        ELSE
+          do i=1,ni
+            tmp1d(i,2) = max( dx*ruh(i) , dy*rvh(j) )
+          enddo
+        ENDIF
+
+        call     cu_ntiedtke_wrapper(pu=tmp2d(ibtmp,kbtmp,1),  &  ! u
+                                 pv=tmp2d(ibtmp,kbtmp,2),  &  ! v
+                                 pt=tmp2d(ibtmp,kbtmp,3),  &  ! T
+                                 pqv=tmp2d(ibtmp,kbtmp,4),  &  ! qv
+                                 pqc=tmp2d(ibtmp,kbtmp,5),  &  ! qc
+                                 pqi=tmp2d(ibtmp,kbtmp,6),  &  ! qi
+                                 pqvf=tmp2d(ibtmp,kbtmp,7),  &  ! qv tendency due to dynamics (kg/kg/s)
+                                 ptf=tmp2d(ibtmp,kbtmp,8),  &  ! T tendency due to dynamics (K/s)
+                                 poz=tmp2d(ibtmp,kbtmp,9),  &  ! 
+                                 pzz=tmp2d(ibtmp,kbtmp,10),  &  ! 
+                                 pomg=tmp2d(ibtmp,kbtmp,11), &  ! lagrangian_tendency_of_air_pressure (Pa/s)
+                                 pap=tmp2d(ibtmp,kbtmp,12),  &
+                                 paph=tmp2d(ibtmp,kbtmp,13),  &
+                                 evap=qfx(1,j),  &  ! kinematic surface upward latent heat flux (kg/kg m/s)
+                                 hfx=hfx(1,j),  &  ! kinematic surface upward sensible heat flux (K m/s)
+                                 zprecc=tmp1d(ibtmp,1),  &  ! deep convective rainfall amount on physics timestep (m)
+                                 lndj=int1d(ibtmp,1),  &
+                                 lq=ni,  &
+                                 km=nk,  &
+                                 km1=nkp1,  &
+                                 dt=dt,  &
+                                 dx=tmp1d(ibtmp,2),  &
+                                 errmsg=errmsg,  &
+                                 errflg=errflg)
+
+        do k=1,nk
+          kk = nk+1-k
+          do i=1,ni
+             ucuten(i,j,k) = (tmp2d(i,kk,1)-tmp2d(i,kk,15))*rdt
+             vcuten(i,j,k) = (tmp2d(i,kk,2)-tmp2d(i,kk,16))*rdt
+            thcuten(i,j,k) = (tmp2d(i,kk,3)-tmp2d(i,kk,17))*rdt
+            qvcuten(i,j,k) = (tmp2d(i,kk,4)-tmp2d(i,kk,18))*rdt
+            qccuten(i,j,k) = (tmp2d(i,kk,5)-tmp2d(i,kk,19))*rdt
+            qicuten(i,j,k) = (tmp2d(i,kk,6)-tmp2d(i,kk,20))*rdt
+          enddo
+        enddo
+
+        IF( cm1setup.eq.4 )THEN
+          ! do not apply cuparam in fine-mesh part of domain:
+          do n=1,nrain
+          do i=1,ni
+            if( abs( tmp1d(i,2) - sqrt( (dx_inner)**2 + (dy_inner)**2 ) ) .gt. 1.0 )then
+              raincv(i,j,n) = raincv(i,j,n) + tmp1d(i,1)
+            endif
+          enddo
+          enddo
+          ! zero-out Cu param tendencies inside fine mesh:
+          do k=1,nk
+          do i=1,ni
+            if( abs( tmp1d(i,2) - sqrt( (dx_inner)**2 + (dy_inner)**2 ) ) .le. 1.0 )then 
+              pratecv(i,j) = 0.0
+              thcuten(i,j,k) = 0.0
+              qvcuten(i,j,k) = 0.0
+              qccuten(i,j,k) = 0.0
+              qicuten(i,j,k) = 0.0
+               ucuten(i,j,k) = 0.0
+               vcuten(i,j,k) = 0.0
+            endif
+          enddo
+          enddo
+        ELSE
+          do n=1,nrain
+          do i=1,ni
+            raincv(i,j,n) = raincv(i,j,n) + tmp1d(i,1)
+          enddo
+          enddo
+        ENDIF
+
+
+      ENDDO  ntiedtke_jloop
+
+      if(timestats.ge.1) time_cuprm=time_cuprm+mytime()
+
+      call bcs(ucuten)
+      call bcs(vcuten)
+#ifdef MPI
+      call comm_1s_start(ucuten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_s)
+      call comm_1s_start(vcuten,vw1,vw2,ve1,ve2,vs1,vs2,vn1,vn2,reqs_p)
+      call comm_1s_end(ucuten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_s)
+      call comm_1s_end(vcuten,vw1,vw2,ve1,ve2,vs1,vs2,vn1,vn2,reqs_p)
+#endif
+
+    else
+      if(myid.eq.0) print *
+      if(myid.eq.0) print *,'  ... skipping tiedtke ... '
+      if(myid.eq.0) print *
+    endif
+    ENDIF  usingcp1
+
 !-------------------------------------------------------------------
+
 
 
       end subroutine sfc_and_turb
@@ -3321,7 +3762,7 @@
         ! Extrapolate:
         do j=0,nj+1
         do i=0,ni+1
-          kmh(i,j,1) = 2.0*kmh(i,j,2) - kmh(i,j,3)
+          kmh(i,j,1) = max( 0.0 , 2.0*kmh(i,j,2) - kmh(i,j,3) )
         enddo
         enddo
 
@@ -3691,6 +4132,8 @@
           ! lateral boundary conditions:
           if(wbc.eq.3.and.ibw.eq.1)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(j,k)
             do k=1,nk
             do j=1,nj+1
               t12(1,j,k) = t12(2,j,k)
@@ -3699,6 +4142,8 @@
           endif
           if(ebc.eq.3.and.ibe.eq.1)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(j,k)
             do k=1,nk
             do j=1,nj+1
               t12(ni+1,j,k) = t12(ni,j,k)
@@ -3709,6 +4154,8 @@
           !-----
           if(sbc.eq.3.and.ibs.eq.1)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(i,k)
             do k=1,nk
             do i=1,ni+1
               t12(i,1,k) = t12(i,2,k)
@@ -3717,6 +4164,8 @@
           endif
           if(nbc.eq.3.and.ibn.eq.1)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(i,k)
             do k=1,nk
             do i=1,ni+1
               t12(i,nj+1,k) = t12(i,nj,k)
@@ -3726,7 +4175,7 @@
           !-----
 
     !$omp parallel do default(shared)   &
-    !$omp private(i,j,k,tem)
+    !$omp private(i,j,k)
     do k=2,nk
       do j=1,nj+1
       do i=1,ni+1
@@ -3740,6 +4189,8 @@
             ! lateral boundary conditions:
             if(wbc.eq.3.and.ibw.eq.1)then
               ! free slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(j,k)
               do k=2,nk
               do j=1,nj
                 t13(1,j,k) = t13(2,j,k)
@@ -3748,6 +4199,8 @@
             endif
             if(ebc.eq.3.and.ibe.eq.1)then
               ! free slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(j,k)
               do k=2,nk
               do j=1,nj
                 t13(ni+1,j,k) = t13(ni,j,k)
@@ -3758,6 +4211,8 @@
             !-----
             if(sbc.eq.3.and.ibs.eq.1)then
               ! free slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(i,k)
               do k=2,nk
               do i=1,ni
                 t23(i,1,k) = t23(i,2,k)
@@ -3766,6 +4221,8 @@
             endif
             if(nbc.eq.3.and.ibn.eq.1)then
               ! free slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(i,k)
               do k=2,nk
               do i=1,ni
                 t23(i,nj+1,k) = t23(i,nj,k)
@@ -3801,6 +4258,8 @@
           j = 1
           if(wbc.eq.3)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(k)
             do k=1,nk
 !!!              t12(1,j,k) = t12(2,j,k)
               t12(1,j,k) = 0.0
@@ -3808,6 +4267,8 @@
           endif
           if(ebc.eq.3)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(k)
             do k=1,nk
               t12(ni+1,j,k) = t12(ni,j,k)
             enddo
@@ -3815,7 +4276,7 @@
           !-----
 
     !$omp parallel do default(shared)   &
-    !$omp private(i,j,k,tem)
+    !$omp private(i,j,k)
     DO k=2,nk
       do j=1,nj
       do i=1,ni+1
@@ -3832,53 +4293,84 @@
 !  open boundary conditions:
 
     IF( wbc.eq.2 .or. ebc.eq.2 .or. sbc.eq.2 .or. nbc.eq.2 )THEN
-      DO k=1,nk
         !-----
         IF( wbc.eq.2 .and. ibw.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(j,k)
+          do k=1,nk
           do j=0,nj+1
             t11(0,j,k) = t11(1,j,k)
           enddo
+          enddo
         ENDIF
         IF( ebc.eq.2 .and. ibe.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(j,k)
+          do k=1,nk
           do j=0,nj+1
             t11(ni+1,j,k) = t11(ni,j,k)
+          enddo
           enddo
         ENDIF
         !-----
         !ccccc
         !-----
         IF( sbc.eq.2 .and. ibs.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
           do i=0,ni+1
             t22(i,0,k) = t22(i,1,k)
           enddo
+          enddo
         ENDIF
         IF( nbc.eq.2 .and. ibn.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
           do i=0,ni+1
             t22(i,nj+1,k) = t22(i,nj,k)
+          enddo
           enddo
         ENDIF
         !-----
         !ccccc
         !-----
         IF( wbc.eq.2 .and. ibw.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(j,k)
+          do k=1,nk
           do j=1,nj+1
             t12(1,j,k) = t12(2,j,k)
           enddo
+          enddo
         ENDIF
         IF( ebc.eq.2 .and. ibe.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(j,k)
+          do k=1,nk
           do j=1,nj+1
             t12(ni+1,j,k) = t12(ni,j,k)
+          enddo
           enddo
         ENDIF
         !-----
         IF( sbc.eq.2 .and. ibs.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
           do i=1,ni+1
             t12(i,1,k) = t12(i,2,k)
           enddo
+          enddo
         ENDIF
         IF( nbc.eq.2 .and. ibn.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
           do i=1,ni+1
             t12(i,nj+1,k) = t12(i,nj,k)
+          enddo
           enddo
         ENDIF
         !-----
@@ -3886,22 +4378,37 @@
         !-----
         IF( sbc.eq.2 .and. ibs.eq.1 .and. &
             wbc.eq.2 .and. ibw.eq.1 )THEN
-          t12(1,1,k) = t12(2,2,k)
+          !$omp parallel do default(shared)   &
+          !$omp private(k)
+          do k=1,nk
+            t12(1,1,k) = t12(2,2,k)
+          enddo
         ENDIF
         IF( sbc.eq.2 .and. ibs.eq.1 .and. &
             ebc.eq.2 .and. ibe.eq.1 )THEN
-          t12(ni+1,1,k) = t12(ni,2,k)
+          !$omp parallel do default(shared)   &
+          !$omp private(k)
+          do k=1,nk
+            t12(ni+1,1,k) = t12(ni,2,k)
+          enddo
         ENDIF
         IF( nbc.eq.2 .and. ibn.eq.1 .and. &
             wbc.eq.2 .and. ibw.eq.1 )THEN
-          t12(1,nj+1,k) = t12(2,nj,k)
+          !$omp parallel do default(shared)   &
+          !$omp private(k)
+          do k=1,nk
+            t12(1,nj+1,k) = t12(2,nj,k)
+          enddo
         ENDIF
         IF( nbc.eq.2 .and. ibn.eq.1 .and. &
             ebc.eq.2 .and. ibe.eq.1 )THEN
-          t12(ni+1,nj+1,k) = t12(ni,nj,k)
+          !$omp parallel do default(shared)   &
+          !$omp private(k)
+          do k=1,nk
+            t12(ni+1,nj+1,k) = t12(ni,nj,k)
+          enddo
         ENDIF
         !-----
-      ENDDO
     ENDIF
 
 !--------------------------------------------------------------
@@ -3964,6 +4471,8 @@
       !--------------------------------------------------------!
       !-------- (this is where "drag" is set for tbc=3) -------!
 
+      !$omp parallel do default(shared)   &
+      !$omp private(i,j)
       do j=1,nj+1
       do i=1,ni+1
         t13(i,j,nk+1) = -0.25*( (ustt(i-1,j)**2)*(ut(i-1,j)/max(st(i-1,j),0.01))    &
@@ -4180,6 +4689,8 @@
 
     ENDIF
 
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j)
     do j=1,nj
     do i=1,ni
       stau(i,j) = sqrt( (0.5*(t13(i,j,1)+t13(i+1,j,1)))**2  &
@@ -4280,6 +4791,8 @@
           ! lateral boundary conditions:
           if(wbc.eq.3.and.ibw.eq.1)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(j,k)
             do k=1,nk
             do j=1,nj+1
               s12(1,j,k) = s12(2,j,k)
@@ -4288,6 +4801,8 @@
           elseif(wbc.eq.4.and.ibw.eq.1)then
             ! no slip b.c.
             i = 1
+            !$omp parallel do default(shared)   &
+            !$omp private(j,k)
             do k=1,nk
             do j=1,nj+1
               s12(1,j,k) = 2.0*va(1,j,k)*rdx*uf(1)   &
@@ -4297,6 +4812,8 @@
           endif
           if(ebc.eq.3.and.ibe.eq.1)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(j,k)
             do k=1,nk
             do j=1,nj+1
               s12(ni+1,j,k) = s12(ni,j,k)
@@ -4305,6 +4822,8 @@
           elseif(ebc.eq.4.and.ibe.eq.1)then
             ! no slip b.c.
             i = ni+1
+            !$omp parallel do default(shared)   &
+            !$omp private(j,k)
             do k=1,nk
             do j=1,nj+1
               s12(ni+1,j,k) = -2.0*va(ni,j,k)*rdx*uf(ni+1)   &
@@ -4316,6 +4835,8 @@
           !-----
           if(sbc.eq.3.and.ibs.eq.1)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(i,k)
             do k=1,nk
             do i=1,ni+1
               s12(i,1,k) = s12(i,2,k)
@@ -4324,6 +4845,8 @@
           elseif(sbc.eq.4.and.ibs.eq.1)then
             ! no slip b.c.
             j = 1
+            !$omp parallel do default(shared)   &
+            !$omp private(i,k)
             do k=1,nk
             do i=1,ni+1
               s12(i,1,k) = 2.0*ua(i,1,k)*rdy*vf(1)   &
@@ -4333,6 +4856,8 @@
           endif
           if(nbc.eq.3.and.ibn.eq.1)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(i,k)
             do k=1,nk
             do i=1,ni+1
               s12(i,nj+1,k) = s12(i,nj,k)
@@ -4341,6 +4866,8 @@
           elseif(nbc.eq.4.and.ibn.eq.1)then
             ! no slip b.c.
             j = nj+1
+            !$omp parallel do default(shared)   &
+            !$omp private(i,k)
             do k=1,nk
             do i=1,ni+1
               s12(i,nj+1,k) = -2.0*ua(i,nj,k)*rdy*vf(nj+1)   &
@@ -4351,7 +4878,7 @@
           !-----
 
     !$omp parallel do default(shared)   &
-    !$omp private(i,j,k,temz)
+    !$omp private(i,j,k)
     DO k=2,nk
 
       do j=1,nj+1
@@ -4371,6 +4898,8 @@
             ! lateral boundary conditions:
             if(wbc.eq.3.and.ibw.eq.1)then
               ! free slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(j,k)
               do k=2,nk
               do j=1,nj
                 s13(1,j,k) = s13(2,j,k)
@@ -4378,6 +4907,8 @@
               enddo
             elseif(wbc.eq.4.and.ibw.eq.1)then
               ! no slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(j,k)
               do k=2,nk
               do j=1,nj
                 s13(1,j,k) = 2.0*wa(1,j,k)*rdx*uf(1)
@@ -4386,6 +4917,8 @@
             endif
             if(ebc.eq.3.and.ibe.eq.1)then
               ! free slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(j,k)
               do k=2,nk
               do j=1,nj
                 s13(ni+1,j,k) = s13(ni,j,k)
@@ -4393,6 +4926,8 @@
               enddo
             elseif(ebc.eq.4.and.ibe.eq.1)then
               ! no slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(j,k)
               do k=2,nk
               do j=1,nj
                 s13(ni+1,j,k) = -2.0*wa(ni,j,k)*rdx*uf(ni+1)
@@ -4404,6 +4939,8 @@
             !-----
             if(sbc.eq.3.and.ibs.eq.1)then
               ! free slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(i,k)
               do k=2,nk
               do i=1,ni
                 s23(i,1,k) = s23(i,2,k)
@@ -4411,6 +4948,8 @@
               enddo
             elseif(sbc.eq.4.and.ibs.eq.1)then
               ! no slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(i,k)
               do k=2,nk
               do i=1,ni
                 s23(i,1,k) = 2.0*wa(i,1,k)*rdy*vf(1)
@@ -4419,6 +4958,8 @@
             endif
             if(nbc.eq.3.and.ibn.eq.1)then
               ! free slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(i,k)
               do k=2,nk
               do i=1,ni
                 s23(i,nj+1,k) = s23(i,nj,k)
@@ -4426,6 +4967,8 @@
               enddo
             elseif(nbc.eq.4.and.ibn.eq.1)then
               ! no slip b.c.
+              !$omp parallel do default(shared)   &
+              !$omp private(i,k)
               do k=2,nk
               do i=1,ni
                 s23(i,nj+1,k) = -2.0*wa(i,nj,k)*rdy*vf(nj+1)
@@ -4460,6 +5003,8 @@
           j = 1
           if(wbc.eq.3)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(k)
             do k=1,nk
 !!!              s12(1,j,k) = s12(2,j,k)
               s12(1,j,k) = 0.0
@@ -4467,6 +5012,8 @@
           elseif(wbc.eq.4)then
             ! no slip b.c.
             i = 1
+            !$omp parallel do default(shared)   &
+            !$omp private(k)
             do k=1,nk
               s12(1,j,k) = 2.0*va(1,j,k)*rdx*uf(1)   &
                         *0.5*(arf1(i)*rho(i-1,j,k)+arf2(i)*rho(i,j,k))
@@ -4474,12 +5021,16 @@
           endif
           if(ebc.eq.3)then
             ! free slip b.c.
+            !$omp parallel do default(shared)   &
+            !$omp private(k)
             do k=1,nk
               s12(ni+1,j,k) = s12(ni,j,k)
             enddo
           elseif(ebc.eq.4)then
             ! no slip b.c.
             i = ni+1
+            !$omp parallel do default(shared)   &
+            !$omp private(k)
             do k=1,nk
               s12(ni+1,j,k) = -2.0*va(ni,j,k)*rdx*uf(ni+1)   &
                         *0.5*(arf1(i)*rho(i-1,j,k)+arf2(i)*rho(i,j,k))
@@ -4620,53 +5171,84 @@
 !  open boundary conditions:
 
     IF( wbc.eq.2 .or. ebc.eq.2 .or. sbc.eq.2 .or. nbc.eq.2 )THEN
-      DO k=1,nk
         !-----
         IF( wbc.eq.2 .and. ibw.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(j,k)
+          do k=1,nk
           do j=0,nj+1
             s11(0,j,k) = s11(1,j,k)
           enddo
+          enddo
         ENDIF
         IF( ebc.eq.2 .and. ibe.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(j,k)
+          do k=1,nk
           do j=0,nj+1
             s11(ni+1,j,k) = s11(ni,j,k)
+          enddo
           enddo
         ENDIF
         !-----
         !ccccc
         !-----
         IF( sbc.eq.2 .and. ibs.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
           do i=0,ni+1
             s22(i,0,k) = s22(i,1,k)
           enddo
+          enddo
         ENDIF
         IF( nbc.eq.2 .and. ibn.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
           do i=0,ni+1
             s22(i,nj+1,k) = s22(i,nj,k)
+          enddo
           enddo
         ENDIF
         !-----
         !ccccc
         !-----
         IF( wbc.eq.2 .and. ibw.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(j,k)
+          do k=1,nk
           do j=1,nj+1
             s12(1,j,k) = s12(2,j,k)
           enddo
+          enddo
         ENDIF
         IF( ebc.eq.2 .and. ibe.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(j,k)
+          do k=1,nk
           do j=1,nj+1
             s12(ni+1,j,k) = s12(ni,j,k)
+          enddo
           enddo
         ENDIF
         !-----
         IF( sbc.eq.2 .and. ibs.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
           do i=1,ni+1
             s12(i,1,k) = s12(i,2,k)
           enddo
+          enddo
         ENDIF
         IF( nbc.eq.2 .and. ibn.eq.1 )THEN
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
           do i=1,ni+1
             s12(i,nj+1,k) = s12(i,nj,k)
+          enddo
           enddo
         ENDIF
         !-----
@@ -4674,22 +5256,37 @@
         !-----
         IF( sbc.eq.2 .and. ibs.eq.1 .and. &
             wbc.eq.2 .and. ibw.eq.1 )THEN
-          s12(1,1,k) = s12(2,2,k)
+          !$omp parallel do default(shared)   &
+          !$omp private(k)
+          do k=1,nk
+            s12(1,1,k) = s12(2,2,k)
+          enddo
         ENDIF
         IF( sbc.eq.2 .and. ibs.eq.1 .and. &
             ebc.eq.2 .and. ibe.eq.1 )THEN
-          s12(ni+1,1,k) = s12(ni,2,k)
+          !$omp parallel do default(shared)   &
+          !$omp private(k)
+          do k=1,nk
+            s12(ni+1,1,k) = s12(ni,2,k)
+          enddo
         ENDIF
         IF( nbc.eq.2 .and. ibn.eq.1 .and. &
             wbc.eq.2 .and. ibw.eq.1 )THEN
-          s12(1,nj+1,k) = s12(2,nj,k)
+          !$omp parallel do default(shared)   &
+          !$omp private(k)
+          do k=1,nk
+            s12(1,nj+1,k) = s12(2,nj,k)
+          enddo
         ENDIF
         IF( nbc.eq.2 .and. ibn.eq.1 .and. &
             ebc.eq.2 .and. ibe.eq.1 )THEN
-          s12(ni+1,nj+1,k) = s12(ni,nj,k)
+          !$omp parallel do default(shared)   &
+          !$omp private(k)
+          do k=1,nk
+            s12(ni+1,nj+1,k) = s12(ni,nj,k)
+          enddo
         ENDIF
         !-----
-      ENDDO
     ENDIF
 
 !----------------------------------------------------------------------
@@ -4789,7 +5386,7 @@
       ! axisymmetric domain:
 
 !$omp parallel do default(shared)   &
-!$omp private(i,j,k,tmp11,tmp22,tmp33,tmp12,tmp13,tmp23,rrf,r1,r2,r3,r4)
+!$omp private(i,j,k,tmp11,tmp33,tmp12,tmp13,tmp23,rrf,r1,r2,r3,r4)
       do k=2,nk
       do j=1,nj
       do i=1,ni
@@ -4952,8 +5549,10 @@
     icecheck:  &
     IF( iice.eq.1 )THEN
 
-      do k=2,nk
+      !$omp parallel do default(shared)   &
+      !$omp private(i,j,pavg,tavg,qtavg,qvs,lh,cpml,gamma,drdt,nml,nmi,ff,qvsl,qvsi,qvciavg,qv,ql,qi)
       do j=1,nj
+      do k=2,nk
       do i=1,ni
         t(i,j,k)=(th0(i,j,k)+th(i,j,k))*(pi0(i,j,k)+pp(i,j,k))
         thv(i,j,k)=(th0(i,j,k)+th(i,j,k))*(1.0+reps*qa(i,j,k,nqv))   &
@@ -5031,8 +5630,10 @@
     ELSE  icecheck
 
       ! liquid only:
-      do k=2,nk
+      !$omp parallel do default(shared)   &
+      !$omp private(i,j,pavg,tavg,qtavg,qvciavg,qvs,ql,qv,cpml,lh,drdt,gamma)
       do j=1,nj
+      do k=2,nk
       do i=1,ni
         t(i,j,k)=(th0(i,j,k)+th(i,j,k))*(pi0(i,j,k)+pp(i,j,k))
         thv(i,j,k)=(th0(i,j,k)+th(i,j,k))*(1.0+reps*qa(i,j,k,nqv))   &
@@ -5676,7 +6277,7 @@
       subroutine t2pcodetavg(dt,rtime,xf,rxf,c1,c2,zh,mh,zf,mf,rf0,rr0,rho0,rrf0,u0,v0,            &
                          uavg,vavg,savx,l2p,kmw,ufw,vfw,gamwall,gamk,s2p,s2b,t2pm1,t2pm2,t2pm3,t2pm4,cavg,  &
                          ua,va,wa,t11,t12,t13,t22,t23,t33,dum1,dum2,s13 ,wspa,                 &
-                         ust,zntmp,stau,mol,rho,rr,rf,kmh,kmv,                                 &
+                         ust,zntmp,stau,mol,s10,rho,rr,rf,kmh,kmv,                             &
                          ugr ,fsu  ,u2pt,vgr ,fsv  ,v2pt,uf,vf,arf1,arf2,kmwk,ufwk,vfwk,       &
                          u1,v1,s1,u1b,v1b,                                                     &
                          avgsfcu,avgsfcv,avgsfcs,avgsfcsu,avgsfcsv,                            &
@@ -5714,7 +6315,7 @@
       real, intent(inout), dimension(ib2pt:ie2pt,jb2pt:je2pt,kb2pt:ke2pt) :: kmwk,ufwk,vfwk
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: t11,t12,t13,t22,t23,t33
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2,s13,wspa
-      real, intent(in), dimension(ib:ie,jb:je) :: ust,zntmp
+      real, intent(in), dimension(ib:ie,jb:je) :: ust,zntmp,s10
       real, intent(inout), dimension(ib:ie,jb:je) :: stau
       real, intent(in), dimension(ibl:iel,jbl:jel) :: mol
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: rho,rr,rf
@@ -5809,6 +6410,13 @@
 
         ufwk(i,j,k+1) = kmwk(i,j,k+1)*(uup1-uu)*rdz*mf(i,j,k+1)
         vfwk(i,j,k+1) = kmwk(i,j,k+1)*(vvp1-vv)*rdz*mf(i,j,k+1)
+
+        ! GHB, 220824: set kmw to zero for very low wind speeds
+        if( s10(i,j).lt.0.1 )then
+          kmwk(i,j,k+1) = 0.0
+          ufwk(i,j,k+1) = 0.0
+          vfwk(i,j,k+1) = 0.0
+        endif
 
       enddo
       enddo
@@ -6097,9 +6705,9 @@
       real, intent(in), dimension(jb:je+1) :: vf
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: mh,c1,c2
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: mf
-      real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: ua
-      real, intent(inout), dimension(ib:ie,jb:je+1,kb:ke) :: va
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1) :: wa
+      real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: ua
+      real, intent(in), dimension(ib:ie,jb:je+1,kb:ke) :: va
+      real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: wa
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1) :: epsd1,epsd2
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: rho0,rf0,rrf0
@@ -6112,6 +6720,7 @@
       real :: ubar,vbar,wbar
       real :: tem
       real :: coef
+      logical :: doit
 
       real, parameter :: onedtwelve = 1.0/12.0
       real, parameter :: onedsixty  = 1.0/60.0
@@ -6146,10 +6755,20 @@
         ENDIF
       ENDDO
 
+      doit = .true.
+
     ELSE
       ! with terrain:
-      stop 45454
+
+      epsd1 = 0.0
+      epsd2 = 0.0
+
+      doit = .false.
+
     ENDIF
+
+  docalc:  &
+  IF( doit )THEN
 
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -6162,6 +6781,8 @@
 !  v-y:
 
   IF( hadvordrv.eq.5 )THEN
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,ubar,vbar)
     do k=1,nk
     do j=1,nj
     do i=1,ni
@@ -6182,6 +6803,8 @@
     enddo
   ELSEIF( idiff.ge.1 .and. difforder.eq.6 )THEN
     coef = kdiff6/64.0/dt
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k)
     do k=1,nk
     do j=1,nj
     do i=1,ni
@@ -6201,6 +6824,8 @@
     dum2 = 0.0
   ENDIF
 
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,tem)
     do k=2,nk
     do j=1,nj
     do i=1,ni
@@ -6217,6 +6842,8 @@
 !  v-x:
 
   IF( hadvordrv.eq.5 )THEN
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,ubar,vbar)
     do k=1,nk
     do j=1,nj+1
     do i=1,ni+1
@@ -6237,6 +6864,8 @@
     enddo
   ELSEIF( idiff.ge.1 .and. difforder.eq.6 )THEN
     coef = kdiff6/64.0/dt
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k)
     do k=1,nk
     do j=1,nj+1
     do i=1,ni+1
@@ -6256,6 +6885,8 @@
     dum2 = 0.0
   ENDIF
 
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,tem)
     do k=2,nk
     do j=1,nj
     do i=1,ni
@@ -6270,10 +6901,13 @@
 
 !----------
 !  w-x:
+!  w-y:
 
   IF( hadvordrv.eq.5 )THEN
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,ubar,vbar)
     do k=2,nk
-    do j=1,nj
+    do j=1,nj+1
     do i=1,ni+1
       ubar = c2(1,1,k)*rru(i,j,k)+c1(1,1,k)*rru(i,j,k-1)
       dum1(i,j,k) = (wa(i,j,k)-wa(i-1,j,k))*rdx*uf(i)*(  &
@@ -6281,32 +6915,6 @@
              *( 10.0*(wa(i  ,j,k)-wa(i-1,j,k))          &
                 -5.0*(wa(i+1,j,k)-wa(i-2,j,k))          &
                     +(wa(i+2,j,k)-wa(i-3,j,k)) )*onedsixty )
-    enddo
-    enddo
-    enddo
-  ELSEIF( idiff.ge.1 .and. difforder.eq.6 )THEN
-    coef = kdiff6/64.0/dt
-    do k=2,nk
-    do j=1,nj
-    do i=1,ni+1
-      dum1(i,j,k) = coef*(wa(i,j,k)-wa(i-1,j,k))*(    &
-                   ( 10.0*(wa(i  ,j,k)-wa(i-1,j,k))   &
-                     -5.0*(wa(i+1,j,k)-wa(i-2,j,k))   &
-                         +(wa(i+2,j,k)-wa(i-3,j,k)) ) )
-    enddo
-    enddo
-    enddo
-  ELSE
-    dum1 = 0.0
-  ENDIF
-
-!----------
-!  w-y:
-
-  IF( hadvordrv.eq.5 )THEN
-    do k=2,nk
-    do j=1,nj+1
-    do i=1,ni
       vbar = c2(1,1,k)*rrv(i,j,k)+c1(1,1,k)*rrv(i,j,k-1)
       dum2(i,j,k) = (wa(i,j,k)-wa(i,j-1,k))*rdy*vf(j)*(  &
                       vbar*sign(1.0,vbar)               &
@@ -6318,9 +6926,15 @@
     enddo
   ELSEIF( idiff.ge.1 .and. difforder.eq.6 )THEN
     coef = kdiff6/64.0/dt
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k)
     do k=2,nk
     do j=1,nj+1
-    do i=1,ni
+    do i=1,ni+1
+      dum1(i,j,k) = coef*(wa(i,j,k)-wa(i-1,j,k))*(    &
+                   ( 10.0*(wa(i  ,j,k)-wa(i-1,j,k))   &
+                     -5.0*(wa(i+1,j,k)-wa(i-2,j,k))   &
+                         +(wa(i+2,j,k)-wa(i-3,j,k)) ) )
       dum2(i,j,k) = coef*(wa(i,j,k)-wa(i,j-1,k))*(    &
                    ( 10.0*(wa(i,j  ,k)-wa(i,j-1,k))   &
                      -5.0*(wa(i,j+1,k)-wa(i,j-2,k))   &
@@ -6329,8 +6943,22 @@
     enddo
     enddo
   ELSE
+    dum1 = 0.0
     dum2 = 0.0
   ENDIF
+
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,tem)
+    do k=2,nk
+    do j=1,nj
+    do i=1,ni
+      tem = 0.5*( (dum1(i,j,k)+dum1(i+1,j,k)) &
+                 +(dum2(i,j,k)+dum2(i,j+1,k)) )
+      epsd1(i,j,k) = epsd1(i,j,k) + max( 0.0 , tem )
+      epsd2(i,j,k) = epsd2(i,j,k) + min( 0.0 , tem )
+    enddo
+    enddo
+    enddo
 
 !----------
 
@@ -6345,11 +6973,16 @@
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !  vertical terms:
 
+  dum1 = 0.0
+  dum2 = 0.0
+
 !----------
 ! u-z:
 
   IF( vadvordrv.eq.5 )THEN
 
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,wbar)
     do k=4,nk-2
     do j=1,nj
     do i=1,ni+1
@@ -6368,6 +7001,8 @@
     enddo
 
     k = 3
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj
     do i=1,ni+1
       wbar = 0.5*(rrw(i-1,j,k)+rrw(i,j,k))
@@ -6384,6 +7019,8 @@
     enddo
 
     k = nk-1
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj
     do i=1,ni+1
       wbar = 0.5*(rrw(i-1,j,k)+rrw(i,j,k))
@@ -6400,6 +7037,8 @@
     enddo
 
     k = 2
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj
     do i=1,ni+1
       wbar = 0.5*(rrw(i-1,j,k)+rrw(i,j,k))
@@ -6414,6 +7053,8 @@
     enddo
 
     k = nk
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj
     do i=1,ni+1
       wbar = 0.5*(rrw(i-1,j,k)+rrw(i,j,k))
@@ -6438,6 +7079,8 @@
 
   IF( vadvordrv.eq.5 )THEN
 
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,wbar)
     do k=4,nk-2
     do j=1,nj+1
     do i=1,ni
@@ -6456,6 +7099,8 @@
     enddo
 
     k = 3
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj+1
     do i=1,ni
       wbar = 0.5*(rrw(i,j-1,k)+rrw(i,j,k))
@@ -6472,6 +7117,8 @@
     enddo
 
     k = nk-1
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj+1
     do i=1,ni
       wbar = 0.5*(rrw(i,j-1,k)+rrw(i,j,k))
@@ -6488,6 +7135,8 @@
     enddo
 
     k = 2
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj+1
     do i=1,ni
       wbar = 0.5*(rrw(i,j-1,k)+rrw(i,j,k))
@@ -6502,6 +7151,8 @@
     enddo
 
     k = nk
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj+1
     do i=1,ni
       wbar = 0.5*(rrw(i,j-1,k)+rrw(i,j,k))
@@ -6523,11 +7174,13 @@
 
 !----------
 
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,tem)
     do k=2,nk
     do j=1,nj
     do i=1,ni
-      tem          = 0.5*( (dum1(i,j,k)+dum1(i+1,j,k)) &
-                          +(dum2(i,j,k)+dum2(i,j+1,k)) )
+      tem          = -0.5*( (dum1(i,j,k)+dum1(i+1,j,k)) &
+                           +(dum2(i,j,k)+dum2(i,j+1,k)) )
       epsd1(i,j,k) = epsd1(i,j,k) + max( 0.0 , tem )
       epsd2(i,j,k) = epsd2(i,j,k) + min( 0.0 , tem )
     enddo
@@ -6537,10 +7190,14 @@
 !----------
 ! w-z:
 
+  dum1 = 0.0
+
   acheck2:  IF( axisymm.eq.0 )THEN
 
   IF( vadvordrv.eq.5 )THEN
 
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,wbar)
     do k=3,nk-2
     do j=1,nj
     do i=1,ni
@@ -6559,6 +7216,8 @@
     enddo
 
     k = 2
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj
     do i=1,ni
       wbar = 0.5*(rrw(i,j,k)+rrw(i,j,k+1))
@@ -6575,6 +7234,8 @@
     enddo
 
     k = nk-1
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj
     do i=1,ni
       wbar = 0.5*(rrw(i,j,k)+rrw(i,j,k+1))
@@ -6591,6 +7252,8 @@
     enddo
 
     k = 1
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj
     do i=1,ni
       wbar = 0.5*(rrw(i,j,k)+rrw(i,j,k+1))
@@ -6605,6 +7268,8 @@
     enddo
 
     k = nk
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,wbar)
     do j=1,nj
     do i=1,ni
       wbar = 0.5*(rrw(i,j,k)+rrw(i,j,k+1))
@@ -6632,10 +7297,12 @@
 
 !----------
 
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k,tem)
     do k=2,nk
     do j=1,nj
     do i=1,ni
-      tem          =                (c1(1,1,k)*dum1(i,j,k-1)+c2(1,1,k)*dum1(i,j,k))
+      tem          =               -(c1(1,1,k)*dum1(i,j,k-1)+c2(1,1,k)*dum1(i,j,k))
       epsd1(i,j,k) = epsd1(i,j,k) + max( 0.0 , tem )
       epsd2(i,j,k) = epsd2(i,j,k) + min( 0.0 , tem )
       !-----
@@ -6647,6 +7314,8 @@
 
 !--------------------------------------------------------------
 !  finished
+
+  ENDIF  docalc
 
       if(timestats.ge.1) time_diag=time_diag+mytime()
 
@@ -6671,13 +7340,13 @@
       real, intent(in), dimension(jb:je+1) :: vf
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: mh,c1,c2
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: mf
-      real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: ua
-      real, intent(inout), dimension(ib:ie,jb:je+1,kb:ke) :: va
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1) :: wa
+      real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: ua
+      real, intent(in), dimension(ib:ie,jb:je+1,kb:ke) :: va
+      real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: wa
       real, intent(in),    dimension(ib:ie,jb:je,kb:ke) :: t11,t12,t13,t22,t23,t33,rf
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1) :: epst
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1), optional :: epstp,epstn
+      real, intent(inout), dimension(ib:ie,jb:je,kb:ke), optional :: epstp,epstn
 
       integer :: i,j,k
       real :: rrf,tem
@@ -6861,8 +7530,6 @@
     enddo
     enddo
     endif
-
-    if(timestats.ge.1) time_turb=time_turb+mytime()
 
 !--------------------------------------------------------------
 !  finished

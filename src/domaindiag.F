@@ -36,8 +36,8 @@
                    zs,gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy,gx,gxu,gy,gyv,        &
                    tsk,znt,ust,stau,tst,qst,z0t,z0q,thflux,qvflux,             &
                    cd,ch,cq,u1,v1,s1,xland,psfc,tlh,prate,ustt,ut,vt,st,       &
-                   dum1,dum2,dum3,dum4,dum5,dum6,th  ,ql  ,                    &
-                   divx,rho,rr,rf,prs,t11,t12,t13,t22,t23,t33,                 &
+                   dum1,dum2,dum3,dum4,dum5,dum6,th  ,ql  ,dum7,               &
+                   dum8,rho,rr,rf,prs,t11,t12,t13,t22,t23,t33,                 &
                    m11,m12,m13,m22,m23,m33,                                    &
                    rru,u3d,utk ,utmp ,                                         &
                    rrv,v3d,vtk ,vtmp ,                                         &
@@ -45,7 +45,7 @@
                    pp3d,sadv,ppten ,qice,th3d,thv  ,thl   ,buoy  ,phi2,        &
                    q3d,qten,kmh,kmv,khh,khv,cme,csm,ce1,ce2,tkea,tke3d,tketen, &
                    nm,defv,defh,lenscl,dissten,epst,epsd1,epsd2,pt3d,          &
-                   rain,hfx,qfx,u10,v10,s10,t2,q2,th2,mznt,                    &
+                   rain,raincv,hfx,qfx,u10,v10,s10,t2,q2,th2,mznt,             &
                    hpbl,wspd,zol,mol,rmol,br,brcr,phim,phih,psim,psih,         &
                    thpten,qvpten,qcpten,qipten,upten,vpten,qnipten,qncpten,xkzh,xkzq,xkzm, &
                    qsfc,o30,zir,swten,lwten,swtenc,lwtenc,cldfra,              &
@@ -53,7 +53,7 @@
                    lwupt,lwuptc,lwdnt,lwdntc,lwupb,lwupbc,lwdnb,lwdnbc,        &
                    swupt,swuptc,swdnt,swdntc,swupb,swupbc,swdnb,swdnbc,        &
                    lwcf,swcf,                                                  &
-                   tsq,qsq,cov,sh3d,el_pbl,qc_bl,qi_bl,cldfra_bl,              &
+                   tsq,qsq,cov,sh3d,sm3d,el_pbl,qc_bl,qi_bl,cldfra_bl,         &
                    qWT,qSHEAR,qBUOY,qDISS,dqke,qke_adv,qke,                    &
                    edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc,            &
                    vdfg,maxmf,nupdraft,ktop_plume,                             &
@@ -63,6 +63,7 @@
                    gamk,gamwall,kmw,ufw,vfw,u1b,v1b,l2p,s2p,s2b,t2pm1,t2pm2,t2pm3,t2pm4,kmwk,ufwk,vfwk, &
                    lsnudge_u,lsnudge_v,lsnudge_th,lsnudge_qv,                  &
                    domainlocx,domainlocy,                                      &
+                   thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten,              &
                    sw31,sw32,se31,se32,ss31,ss32,sn31,sn32,flag)
         ! end_domaindiag
     use input
@@ -114,8 +115,8 @@
     real, intent(in), dimension(itb:ite,jtb:jte,ktb:kte) :: gx,gxu,gy,gyv
     real, intent(in), dimension(ib:ie,jb:je) :: tsk,znt,ust,stau,tst,qst,z0t,z0q,thflux,qvflux,  &
                                                 cd,ch,cq,u1,v1,s1,xland,psfc,tlh,prate,ustt,ut,vt,st
-    real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2,dum3,dum4,dum5,dum6,th,ql
-    real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: divx,rho,rr,rf,prs
+    real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2,dum3,dum4,dum5,dum6,th,ql,dum7
+    real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum8,rho,rr,rf,prs
     real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: t11,t12,t13,t22,t23,t33
     real, intent(in), dimension(ibnba:ienba,jbnba:jenba,kbnba:kenba) :: m11,m12,m13,m22,m23,m33
     real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: rru,u3d,utk,utmp
@@ -130,7 +131,7 @@
     real, intent(inout), dimension(ibt:iet,jbt:jet,kbt:ket) :: tkea,tke3d,tketen
     real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1) :: nm,defv,defh,lenscl,dissten,epst,epsd1,epsd2
     real, intent(in), dimension(ibp:iep,jbp:jep,kbp:kep,npt) :: pt3d
-    real, intent(in), dimension(ib:ie,jb:je,nrain) :: rain
+    real, intent(in), dimension(ib:ie,jb:je,nrain) :: rain,raincv
     real, intent(in), dimension(ibl:iel,jbl:jel) :: hfx,qfx,u10,v10,s10,t2,q2,th2,mznt
     real, intent(in), dimension(ibl:iel,jbl:jel) :: hpbl,wspd,zol,mol,rmol,br,brcr,phim,phih,psim,psih,qsfc
     real, intent(in), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: thpten,qvpten,qcpten,qipten,upten,vpten
@@ -142,7 +143,7 @@
     real, intent(in), dimension(ibr:ier,jbr:jer) :: lwupt,lwuptc,lwdnt,lwdntc,lwupb,lwupbc,lwdnb,lwdnbc
     real, intent(in), dimension(ibr:ier,jbr:jer) :: swupt,swuptc,swdnt,swdntc,swupb,swupbc,swdnb,swdnbc
     real, intent(inout), dimension(ibr:ier,jbr:jer) :: lwcf,swcf
-    real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: tsq,qsq,cov,sh3d,el_pbl,qc_bl,qi_bl,cldfra_bl, &
+    real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: tsq,qsq,cov,sh3d,sm3d,el_pbl,qc_bl,qi_bl,cldfra_bl, &
                                                                 qnipten,qncpten,qWT,qSHEAR,qBUOY,qDISS,dqke,qke_adv,qke,  &
                                                                 edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc
     real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn) :: vdfg,maxmf
@@ -154,6 +155,7 @@
     real, intent(in), dimension(ib2pt:ie2pt,jb2pt:je2pt,kb2pt:ke2pt) :: kmwk,ufwk,vfwk
     real, intent(inout), dimension(lsnudge_maxlevels,lsnudge_nmax) :: lsnudge_u,lsnudge_v,lsnudge_th,lsnudge_qv
     double precision, intent(in) :: domainlocx,domainlocy
+    real, intent(in), dimension(ibcu:iecu,jbcu:jecu,kbcu:kecu) :: thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten
     real, intent(inout), dimension(cmp,jmp,kmp)   :: sw31,sw32,se31,se32
     real, intent(inout), dimension(imp,cmp,kmp)   :: ss31,ss32,sn31,sn32
     logical, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: flag
@@ -1276,6 +1278,21 @@
 
       !c-c-c-c-c-c-c-c-c-c
 
+    IF( imoist.eq.1 .and. cuparam.ge.1 )THEN
+
+      nvar = nvar+1
+      varname(nvar) = 'raincv'
+      vardesc(nvar) = 'domain-averaged accum. rain (convective, param.) at sfc'
+      varunit(nvar) = 'cm'
+      varlvls(nvar) = 0
+      vargrid(nvar) = '2'
+      call getavg2d(raincv(ib,jb,1),savg2d)
+      call write2d(savg2d,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
     IF( imoist.eq.1 )THEN
 
       nvar = nvar+1
@@ -2269,6 +2286,7 @@
         do j=1,nj
         do i=1,ni
           tx = 1.0e30
+          tlast = 1.1e30
           k = 1
           do while( tx.gt.273.15 .and. k.lt.nk )
             tlast = tx
@@ -3410,6 +3428,36 @@
 
       !c-c-c-c-c-c-c-c-c-c
 
+      IF( nout2d.ge.1 .and. ie2d.gt.1 .and. je2d.gt.1 )THEN
+      do n=1,nout2d
+
+        text1 = 'out2d   '
+        if(n.lt.10)then
+          write(text1(6:6),211) n
+        elseif(n.lt.100)then
+          write(text1(6:7),212) n
+        elseif(n.lt.1000)then
+          write(text1(6:8),213) n
+        else
+          print *,'  nout2d is too large '
+          call stopcm1
+        endif
+
+        nvar = nvar+1
+        varname(nvar) = text1
+        vardesc(nvar) = '2d output'
+        varunit(nvar) = 'unknown'
+        varlvls(nvar) = 0
+        vargrid(nvar) = '2'
+
+        call getavg2d(out2d(ib2d,jb2d,n),savg2d)
+        call write2d(savg2d,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+      enddo
+      ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
       IF( nout3d.ge.1 .and. ie3d.gt.1 .and. je3d.gt.1 .and. ke3d.gt.1 )THEN
       do n=1,nout3d
 
@@ -3603,12 +3651,12 @@
               ! use mij:
             call getepst(xh,rxh,uh,xf,rxf,uf,vh,vf,mh,c1,c2,mf,u3d,v3d,w3d,  &
                          m11,m12,m13,m22,m23,m33,rf,                         &
-                         dum1,dum2,rrw,wtk,wtmp)
+                         dum1,dum2,rrw,dum3,dum4)
           else
               ! use tij:
             call getepst(xh,rxh,uh,xf,rxf,uf,vh,vf,mh,c1,c2,mf,u3d,v3d,w3d,  &
                          t11,t12,t13,t22,t23,t33,rf,                         &
-                         dum1,dum2,rrw,wtk,wtmp)
+                         dum1,dum2,rrw,dum3,dum4)
           endif
 
       !...............
@@ -3619,7 +3667,7 @@
         varunit(nvar) = 'm2/s3'
         vargrid(nvar) = 'w'
 
-        call getavg3d(wtk(ib,jb,kb),savg)
+        call getavg3d(dum3(ib,jb,kb),savg)
         savg(1) = grads_undef
         savg(nk+1) = grads_undef
         call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
@@ -3632,7 +3680,7 @@
         varunit(nvar) = 'm2/s3'
         vargrid(nvar) = 'w'
 
-        call getavg3d(wtmp(ib,jb,kb),savg)
+        call getavg3d(dum4(ib,jb,kb),savg)
         savg(1) = grads_undef
         savg(nk+1) = grads_undef
         call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
@@ -3663,7 +3711,7 @@
             if(timestats.ge.1) time_diag = time_diag+mytime()
             call getepst(xh,rxh,uh,xf,rxf,uf,vh,vf,mh,c1,c2,mf,u3d,v3d,w3d,  &
                          dum1,dum2,dum3,dum4,dum5,dum6,rf,                         &
-                         sadv,ppten,rrw,wtk,wtmp)
+                         sadv,ppten,rrw,dum7,dum8)
 
       !...............
 
@@ -3686,7 +3734,7 @@
         varunit(nvar) = 'm2/s3'
         vargrid(nvar) = 'w'
 
-        call getavg3d(wtk(ib,jb,kb),savg)
+        call getavg3d(dum7(ib,jb,kb),savg)
         savg(1) = grads_undef
         savg(nk+1) = grads_undef
         call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
@@ -3699,7 +3747,7 @@
         varunit(nvar) = 'm2/s3'
         vargrid(nvar) = 'w'
 
-        call getavg3d(wtmp(ib,jb,kb),savg)
+        call getavg3d(dum8(ib,jb,kb),savg)
         savg(1) = grads_undef
         savg(nk+1) = grads_undef
         call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
@@ -3774,20 +3822,20 @@
         call getavg3d(dum1,savg)
         call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
 
-        nvar = nvar+1
-        varname(nvar) = 'xkzq'
-        vardesc(nvar) = 'eddy diffusivity for moisture (from YSU)'
-        varunit(nvar) = 'm2/s'
-        vargrid(nvar) = 'w'
-        do k=1,nk
-        do j=1,nj
-        do i=1,ni
-          dum1(i,j,k) = xkzq(i,j,k)
-        enddo
-        enddo
-        enddo
-        call getavg3d(dum1,savg)
-        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+!        nvar = nvar+1
+!        varname(nvar) = 'xkzq'
+!        vardesc(nvar) = 'eddy diffusivity for moisture (from YSU)'
+!        varunit(nvar) = 'm2/s'
+!        vargrid(nvar) = 'w'
+!        do k=1,nk
+!        do j=1,nj
+!        do i=1,ni
+!          dum1(i,j,k) = xkzq(i,j,k)
+!        enddo
+!        enddo
+!        enddo
+!        call getavg3d(dum1,savg)
+!        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
 
         nvar = nvar+1
         varname(nvar) = 'xkzm'
@@ -3902,6 +3950,13 @@
         vardesc(nvar) = 'Stability function for heat (MYNN)'
         varunit(nvar) = ' '
         call getavg3d(sh3d,savg)
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+        nvar = nvar+1
+        varname(nvar) = 'sm3d'
+        vardesc(nvar) = 'Stability function for momentum (MYNN)'
+        varunit(nvar) = ' '
+        call getavg3d(sm3d,savg)
         call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
 
         nvar = nvar+1
@@ -4618,6 +4673,19 @@
 
       !c-c-c-c-c-c-c-c-c-c
 
+      IF( radopt.ge.1 )THEN
+
+        nvar = nvar+1
+        varname(nvar) = 'o3'
+        vardesc(nvar) = 'ozone'
+        varunit(nvar) = 'unk'
+        call getavg3d(o30(ibr,jbr,kbr),savg)
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+      ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
       IF( testcase.eq.4 .or. testcase.eq.5 )THEN
 
         ! note:  o30 array stores frad
@@ -4648,6 +4716,54 @@
         enddo
 
         call getavg3d(dum1,savg)
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+      ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+      IF( cuparam.ge.1 )THEN
+
+        nvar = nvar+1
+        varname(nvar) = 'thcuten'
+        vardesc(nvar) = 'thcuten'
+        varunit(nvar) = 'K/s'
+        call getavg3d(thcuten(ibcu,jbcu,kbcu),savg)
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+        nvar = nvar+1
+        varname(nvar) = 'qvcuten'
+        vardesc(nvar) = 'qvcuten'
+        varunit(nvar) = 'g/g/s'
+        call getavg3d(qvcuten(ibcu,jbcu,kbcu),savg)
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+        nvar = nvar+1
+        varname(nvar) = 'qccuten'
+        vardesc(nvar) = 'qccuten'
+        varunit(nvar) = 'g/g/s'
+        call getavg3d(qccuten(ibcu,jbcu,kbcu),savg)
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+        nvar = nvar+1
+        varname(nvar) = 'qicuten'
+        vardesc(nvar) = 'qicuten'
+        varunit(nvar) = 'g/g/s'
+        call getavg3d(qicuten(ibcu,jbcu,kbcu),savg)
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+        nvar = nvar+1
+        varname(nvar) = 'ucuten'
+        vardesc(nvar) = 'ucuten'
+        varunit(nvar) = 'm/s/s'
+        call getavg3d(ucuten(ibcu,jbcu,kbcu),savg)
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+        nvar = nvar+1
+        varname(nvar) = 'vcuten'
+        vardesc(nvar) = 'vcuten'
+        varunit(nvar) = 'm/s/s'
+        call getavg3d(vcuten(ibcu,jbcu,kbcu),savg)
         call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
 
       ENDIF
@@ -6035,18 +6151,23 @@
     IF( idoles .and. iusetke )THEN
       !c-c-c-c-c-c-c-c-c-c
 
+        dum1 = 0.0
+
         nvar = nvar+1
         varname(nvar) = 'stkeb_shear'
         vardesc(nvar) = 'subgrid tke budget: shear term'
         varunit(nvar) = 'm2/s3'
         vargrid(nvar) = 'w'
 
-          do j=1,nj
-          do i=1,ni
-            dum1(i,j,1) = ust(i,j)*ust(i,j)*ust(i,j)/(karman*znt(i,j))
-          enddo
-          enddo
+!          do j=1,nj
+!          do i=1,ni
+!            dum1(i,j,1) = ust(i,j)*ust(i,j)*ust(i,j)/(karman*znt(i,j))
+!          enddo
+!          enddo
 
+        IF(tconfig.eq.1)THEN
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
           do k=2,nk
           do j=1,nj
           do i=1,ni
@@ -6054,6 +6175,18 @@
           enddo
           enddo
           enddo
+        ELSEIF(tconfig.eq.2)THEN
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+          do k=2,nk
+          do j=1,nj
+          do i=1,ni
+            dum1(i,j,k) = kmv(i,j,k)*max(0.0,defv(i,j,k))   &
+                         +kmh(i,j,k)*max(0.0,defh(i,j,k))
+          enddo
+          enddo
+          enddo
+        ENDIF
 
         call getavg3d(dum1,savg)
         call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
@@ -6066,11 +6199,11 @@
         varunit(nvar) = 'm2/s3'
         vargrid(nvar) = 'w'
 
-          do j=1,nj
-          do i=1,ni
-            dum1(i,j,1) = g*( thflux(i,j)*rth0s(i,j) + repsm1*qvflux(i,j) )
-          enddo
-          enddo
+!          do j=1,nj
+!          do i=1,ni
+!            dum1(i,j,1) = g*( thflux(i,j)*rth0s(i,j) + repsm1*qvflux(i,j) )
+!          enddo
+!          enddo
 
           do k=2,nk
           do j=1,nj
@@ -6091,14 +6224,14 @@
         varunit(nvar) = 'm2/s3'
         vargrid(nvar) = 'w'
 
-          do j=1,nj
-          do i=1,ni
-!!!            dum1(i,j,1) = -ust(i,j)*ust(i,j)*ust(i,j)/(karman*znt(i,j))  &
-!!!                          -g*( thflux(i,j)*rth0s(i,j) + repsm1*qvflux(i,j) )
-            dum1(i,j,1) = 0.0
-            dum1(i,j,nk+1) = 0.0
-          enddo
-          enddo
+!          do j=1,nj
+!          do i=1,ni
+!!!!            dum1(i,j,1) = -ust(i,j)*ust(i,j)*ust(i,j)/(karman*znt(i,j))  &
+!!!!                          -g*( thflux(i,j)*rth0s(i,j) + repsm1*qvflux(i,j) )
+!            dum1(i,j,1) = 0.0
+!            dum1(i,j,nk+1) = 0.0
+!          enddo
+!          enddo
 
           do k=2,nk
           do j=1,nj
@@ -8298,6 +8431,25 @@
 
       !c-c-c-c-c-c-c-c-c-c
 
+      if( wd_buoy.ge.1 )then
+
+        nvar = nvar+1
+        varname(nvar) = 'rtkeb_w_buoy'
+        vardesc(nvar) = 'resolved tke budget: buoyancy term'
+        varunit(nvar) = 'm2/s3'
+        vargrid(nvar) = 'w'
+
+        call rtkeb_addw(dum1,wtk,wdiag,wd_buoy,w_buoy)
+
+        call getavg3d(dum1,savg)
+        savg(1) = grads_undef
+        savg(nk+1) = grads_undef
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+      endif
+
+      !c-c-c-c-c-c-c-c-c-c
+
       if( ud_pgrad.ge.1 .and. vd_pgrad.ge.1 .and. wd_pgrad.ge.1)then
 
         nvar = nvar+1
@@ -8356,6 +8508,43 @@
         vargrid(nvar) = 'w'
         call write3d(wwb,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
         !......
+
+      endif
+
+      !c-c-c-c-c-c-c-c-c-c
+
+      if( ud_pgrad.ge.1 .and. vd_pgrad.ge.1 .and. wd_pgrad.ge.1)then
+
+        nvar = nvar+1
+        varname(nvar) = 'rtkeb_w_pgrad'
+        vardesc(nvar) = 'resolved tke budget: pressure term'
+        varunit(nvar) = 'm2/s3'
+        vargrid(nvar) = 'w'
+
+        tavg = 0.0
+
+        call rtkeb_addu(dum1,utk,udiag,ud_pgrad,u_pgrad)
+        call rtkeb_addv(dum2,vtk,vdiag,vd_pgrad,v_pgrad)
+        call rtkeb_addw(dum3,wtk,wdiag,wd_pgrad,w_pgrad)
+
+        dum4 = 0.0
+
+        do k=2,nk
+        do j=1,nj
+        do i=1,ni
+          dum4(i,j,k) = 0.25*( (dum1(i,j,k-1)+dum1(i+1,j,k-1))    &
+                              +(dum1(i,j,k  )+dum1(i+1,j,k  )) )  &
+                       +0.25*( (dum2(i,j,k-1)+dum2(i,j+1,k-1))    &
+                              +(dum2(i,j,k  )+dum2(i,j+1,k  )) )  &
+                       +dum3(i,j,k)
+        enddo
+        enddo
+        enddo
+
+        call getavg3d(dum4,savg)
+        savg(1) = grads_undef
+        savg(nk+1) = grads_undef
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
 
       endif
 
@@ -8448,6 +8637,59 @@
 
       !c-c-c-c-c-c-c-c-c-c
 
+      if( ud_hadv.ge.1 .and. vd_hadv.ge.1 .and. wd_hadv.ge.1 .and.  &
+          ud_vadv.ge.1 .and. vd_vadv.ge.1 .and. wd_vadv.ge.1 )then
+
+        nvar = nvar+1
+        varname(nvar) = 'rtkeb_w_adv'
+        vardesc(nvar) = 'resolved tke budget: advection term'
+        varunit(nvar) = 'm2/s3'
+        vargrid(nvar) = 'w'
+
+        call rtkeb_addu(dum1,utk,udiag,ud_hadv,u_hadv)
+        call rtkeb_addv(dum2,vtk,vdiag,vd_hadv,v_hadv)
+        call rtkeb_addw(dum3,wtk,wdiag,wd_hadv,w_hadv)
+
+        dum4 = 0.0
+
+        do k=2,nk
+        do j=1,nj
+        do i=1,ni
+          dum4(i,j,k) = 0.25*( (dum1(i,j,k-1)+dum1(i+1,j,k-1))    &
+                              +(dum1(i,j,k  )+dum1(i+1,j,k  )) )  &
+                       +0.25*( (dum2(i,j,k-1)+dum2(i,j+1,k-1))    &
+                              +(dum2(i,j,k  )+dum2(i,j+1,k  )) )  &
+                       +dum3(i,j,k)
+        enddo
+        enddo
+        enddo
+
+        call rtkeb_addu(dum1,utk,udiag,ud_vadv,u_vadv)
+        call rtkeb_addv(dum2,vtk,vdiag,vd_vadv,v_vadv)
+        call rtkeb_addw(dum3,wtk,wdiag,wd_vadv,w_vadv)
+
+        do k=2,nk
+        do j=1,nj
+        do i=1,ni
+          dum4(i,j,k) = dum4(i,j,k)                               &
+                      + 0.25*( (dum1(i,j,k-1)+dum1(i+1,j,k-1))    &
+                              +(dum1(i,j,k  )+dum1(i+1,j,k  )) )  &
+                       +0.25*( (dum2(i,j,k-1)+dum2(i,j+1,k-1))    &
+                              +(dum2(i,j,k  )+dum2(i,j+1,k  )) )  &
+                       +dum3(i,j,k)
+        enddo
+        enddo
+        enddo
+
+        call getavg3d(dum4,savg)
+        savg(1) = grads_undef
+        savg(nk+1) = grads_undef
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
+
+      endif
+
+      !c-c-c-c-c-c-c-c-c-c
+
       if( ud_hidiff.ge.1 .and. vd_hidiff.ge.1 .and. wd_hidiff.ge.1 .and.  &
           ud_vidiff.ge.1 .and. vd_vidiff.ge.1 .and. wd_vidiff.ge.1 )then
 
@@ -8530,6 +8772,60 @@
         vargrid(nvar) = 'w'
         call write3d(wwb,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
         !......
+
+      endif
+
+      !c-c-c-c-c-c-c-c-c-c
+
+      if( ud_hidiff.ge.1 .and. vd_hidiff.ge.1 .and. wd_hidiff.ge.1 .and.  &
+          ud_vidiff.ge.1 .and. vd_vidiff.ge.1 .and. wd_vidiff.ge.1 )then
+
+        nvar = nvar+1
+        varname(nvar) = 'rtkeb_w_idiff'
+        vardesc(nvar) = 'resolved tke budget: implicit diffusion'
+        varunit(nvar) = 'm2/s3'
+        vargrid(nvar) = 'w'
+
+        call rtkeb_addu(dum1,utk,udiag,ud_hidiff,u_hidiff)
+        call rtkeb_addv(dum2,vtk,vdiag,vd_hidiff,v_hidiff)
+        call rtkeb_addw(dum3,wtk,wdiag,wd_hidiff,w_hidiff)
+
+        dum4 = 0.0
+
+        do k=2,nk
+        do j=1,nj
+        do i=1,ni
+          dum4(i,j,k) = dum4(i,j,k)                               &
+                      + 0.25*( (dum1(i,j,k-1)+dum1(i+1,j,k-1))    &
+                              +(dum1(i,j,k  )+dum1(i+1,j,k  )) )  &
+                       +0.25*( (dum2(i,j,k-1)+dum2(i,j+1,k-1))    &
+                              +(dum2(i,j,k  )+dum2(i,j+1,k  )) )  &
+                       +dum3(i,j,k)
+        enddo
+        enddo
+        enddo
+
+        call rtkeb_addu(dum1,utk,udiag,ud_vidiff,u_vidiff)
+        call rtkeb_addv(dum2,vtk,vdiag,vd_vidiff,v_vidiff)
+        call rtkeb_addw(dum3,wtk,wdiag,wd_vidiff,w_vidiff)
+
+        do k=2,nk
+        do j=1,nj
+        do i=1,ni
+          dum4(i,j,k) = dum4(i,j,k)                               &
+                      + 0.25*( (dum1(i,j,k-1)+dum1(i+1,j,k-1))    &
+                              +(dum1(i,j,k  )+dum1(i+1,j,k  )) )  &
+                       +0.25*( (dum2(i,j,k-1)+dum2(i,j+1,k-1))    &
+                              +(dum2(i,j,k  )+dum2(i,j+1,k  )) )  &
+                       +dum3(i,j,k)
+        enddo
+        enddo
+        enddo
+
+        call getavg3d(dum4,savg)
+        savg(1) = grads_undef
+        savg(nk+1) = grads_undef
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
 
       endif
 
@@ -8633,6 +8929,60 @@
         vargrid(nvar) = 'w'
         call write3d(wwb,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
         !......
+
+      endif
+
+      !c-c-c-c-c-c-c-c-c-c
+
+      if( ud_hturb.ge.1 .and. vd_hturb.ge.1 .and. wd_hturb.ge.1 .and.  &
+          ud_vturb.ge.1 .and. vd_vturb.ge.1 .and. wd_vturb.ge.1 )then
+
+        nvar = nvar+1
+        varname(nvar) = 'rtkeb_w_turb'
+        vardesc(nvar) = 'resolved tke budget: subgrid turbulence'
+        varunit(nvar) = 'm2/s3'
+        vargrid(nvar) = 'w'
+
+        dum4 = 0.0
+
+        call rtkeb_addu(dum1,utk,udiag,ud_hturb,u_hturb)
+        call rtkeb_addv(dum2,vtk,vdiag,vd_hturb,v_hturb)
+        call rtkeb_addw(dum3,wtk,wdiag,wd_hturb,w_hturb)
+
+        do k=2,nk
+        do j=1,nj
+        do i=1,ni
+          dum4(i,j,k) = dum4(i,j,k)                               &
+                      + 0.25*( (dum1(i,j,k-1)+dum1(i+1,j,k-1))    &
+                              +(dum1(i,j,k  )+dum1(i+1,j,k  )) )  &
+                       +0.25*( (dum2(i,j,k-1)+dum2(i,j+1,k-1))    &
+                              +(dum2(i,j,k  )+dum2(i,j+1,k  )) )  &
+                       +dum3(i,j,k)
+        enddo
+        enddo
+        enddo
+
+        call rtkeb_addu(dum1,utk,udiag,ud_vturb,u_vturb)
+        call rtkeb_addv(dum2,vtk,vdiag,vd_vturb,v_vturb)
+        call rtkeb_addw(dum3,wtk,wdiag,wd_vturb,w_vturb)
+
+        do k=2,nk
+        do j=1,nj
+        do i=1,ni
+          dum4(i,j,k) = dum4(i,j,k)                               &
+                      + 0.25*( (dum1(i,j,k-1)+dum1(i+1,j,k-1))    &
+                              +(dum1(i,j,k  )+dum1(i+1,j,k  )) )  &
+                       +0.25*( (dum2(i,j,k-1)+dum2(i,j+1,k-1))    &
+                              +(dum2(i,j,k  )+dum2(i,j+1,k  )) )  &
+                       +dum3(i,j,k)
+        enddo
+        enddo
+        enddo
+
+        call getavg3d(dum4,savg)
+        savg(1) = grads_undef
+        savg(nk+1) = grads_undef
+        call write3d(savg,trecs,trecw,vargrid,nvar,varname,vardesc,varunit)
 
       endif
 
@@ -9357,9 +9707,9 @@
             string(i:i) = ' '
           enddo
           if( nfile.eq.1 )then
-            string = 'cm1out_diag_%t6_s.dat'
+            string = 'cm1out_diag_00%y4_s.dat'
           elseif( nfile.eq.2 )then
-            string = 'cm1out_diag_%t6_w.dat'
+            string = 'cm1out_diag_00%y4_w.dat'
           endif
           write(66,101) string
           write(66,102)
@@ -10303,7 +10653,7 @@
 
     do k=1,nk
     do j=1,nj
-    do i=1,ni
+    do i=1,ni+1
 !!!      rtkeb(i,j,k) = rtkeb(i,j,k) + 0.25*( ( utk(i  ,j,k  )*(udiag(i  ,j,k  ,udn)-savg(k  ))  &
 !!!                                            +utk(i+1,j,k  )*(udiag(i+1,j,k  ,udn)-savg(k  )) ) &
 !!!                                          +( utk(i  ,j,k-1)*(udiag(i  ,j,k-1,udn)-savg(k-1))  &
@@ -10339,7 +10689,7 @@
     integer :: i,j,k
 
     do k=1,nk
-    do j=1,nj
+    do j=1,nj+1
     do i=1,ni
 !!!      rtkeb(i,j,k) = rtkeb(i,j,k) + 0.25*( ( vtk(i,j  ,k  )*(vdiag(i,j  ,k  ,vdn)-savg(k  ))  &
 !!!                                            +vtk(i,j+1,k  )*(vdiag(i,j+1,k  ,vdn)-savg(k  )) ) &
@@ -10374,7 +10724,7 @@
 
     integer :: i,j,k
 
-    do k=1,nk
+    do k=1,nk+1
     do j=1,nj
     do i=1,ni
 !!!      rtkeb(i,j,k) = rtkeb(i,j,k) + wtk(i,j,k)*(wdiag(i,j,k,wdn)-savg(k))

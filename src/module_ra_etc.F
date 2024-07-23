@@ -401,19 +401,21 @@ END SUBROUTINE flush
 
    implicit none
 
-   REAL    , PARAMETER :: r_d          = 287.
-   REAL    , PARAMETER :: cp           = 7.*r_d/2.
+    !  240213: use the same values as CM1
+
+   REAL    , PARAMETER :: r_d          = 287.04
+   REAL    , PARAMETER :: cp           = 1005.7
 
 
    ! needed for mynn:
    REAL    , PARAMETER ::  KARMAN=0.4
    REAL    , PARAMETER :: g = 9.81  ! acceleration due to gravity (m {s}^-2)
    REAL    , PARAMETER :: p1000mb      = 100000.
-   REAL    , PARAMETER :: r_v          = 461.6
+   REAL    , PARAMETER :: r_v          = 461.5
    REAL    , PARAMETER :: rcp          = r_d/cp
-   REAL    , PARAMETER :: XLS          = 2.85E6
-   REAL    , PARAMETER :: XLV          = 2.5E6
-   REAL    , PARAMETER :: XLF          = 3.50E5
+   REAL    , PARAMETER :: XLS          = 2.834E6
+   REAL    , PARAMETER :: XLV          = 2.501E6
+   REAL    , PARAMETER :: XLF          = XLS-XLV
    REAL    , PARAMETER ::  SVP1=0.6112
    REAL    , PARAMETER ::  SVP2=17.67
    REAL    , PARAMETER ::  SVP3=29.65

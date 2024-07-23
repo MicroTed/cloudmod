@@ -5,11 +5,11 @@
 
 !-----------------------------------------------------------------------------
 !
-!  CM1 Numerical Model, Release 21.0  (cm1r21.0)
-!  20 April 2022
+!  CM1 Numerical Model, Release 21.1  (cm1r21.1)
+!  24 March 2024
 !  https://www2.mmm.ucar.edu/people/bryan/cm1/
 !
-!  (c)2022 - University Corporation for Atmospheric Research 
+!  (c)2024 - University Corporation for Atmospheric Research 
 !
 !-----------------------------------------------------------------------------
 !  Quick Index:
@@ -84,7 +84,7 @@
                    wprof,ufrc,vfrc,thfrc,qvfrc,ug,vg,dvdr,           &
                    uavg,vavg,thavg,pavg,ulspg,vlspg,qavg,cavg,       &
                    pi0,rho0,prs0,thv0,th0,rth0,qv0,qc0,              &
-                   qi0,rr0,rf0,rrf0,                                 &
+                   qi0,rr0,rf0,rrf0,thrd,                            &
                    zs,gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy,gx,gxu,gy,gyv, &
                    znt,zntmp,ust,thflux,qvflux,cm0,                  &
                    radbcw,radbce,radbcs,radbcn,                      &
@@ -101,7 +101,8 @@
                    kmh,kmv,khh,khv,tkea,tke3d,tketen,                &
                    nm,defv,defh,lenscl,dissten,epst,epsd1,epsd2,     &
                    thpten,qvpten,qcpten,qipten,upten,vpten,qnipten,qncpten,o30,zir,  &
-                   swten,lwten,                                      &
+                   swten,lwten,thraten,                              &
+                   thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten,    &
                    pta,pt3d,ptten,                                   &
                    gamk,gamwall,kmw,ufw,vfw,u1b,v1b,u2pt,v2pt,ufwk,vfwk, &
                    tdiag,qdiag,udiag,vdiag,wdiag,kdiag,pdiag,        &
@@ -156,6 +157,7 @@
       double precision, intent(inout), dimension(kb:ke,3+numq) :: cavg
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: pi0,rho0,prs0,thv0,th0,rth0,qv0,qc0
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: qi0,rr0,rf0,rrf0
+      real, intent(in), dimension(ibb2:ibe2,jbb2:jbe2,kbb2:kbe2) :: thrd
       real, intent(in), dimension(ib:ie,jb:je) :: zs
       real, intent(in), dimension(itb:ite,jtb:jte) :: gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy
       real, intent(in), dimension(itb:ite,jtb:jte,ktb:kte) :: gx,gxu,gy,gyv
@@ -182,7 +184,8 @@
       real, intent(inout), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: thpten,qvpten,qcpten,qipten,upten,vpten,qnipten,qncpten
       real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: o30
       real, intent(inout), dimension(ibr:ier,jbr:jer) :: zir
-      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten
+      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,thraten
+      real, intent(in), dimension(ibcu:iecu,jbcu:jecu,kbcu:kecu) :: thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten
       real, intent(inout), dimension(ibp:iep,jbp:jep,kbp:kep,npt) :: pta,pt3d,ptten
       real, intent(in), dimension(kb:ke) :: gamk,gamwall,kmw,ufw,vfw,u1b,v1b
       real, intent(inout), dimension(ib2pt:ie2pt,jb2pt:je2pt,kb2pt:ke2pt) :: u2pt,v2pt
@@ -313,18 +316,34 @@
 
       IF( idoles .and. iusetke )THEN
 
-        !$omp parallel do default(shared)  &
-        !$omp private(i,j,k)
-        DO k=2,nk
-          !  Buoyancy, Dissipation, and mean-gradient (ie, shear) terms:
+        !  Buoyancy, Dissipation, and mean-gradient (ie, shear) terms:
+        !    cm1r21.1: switch back to shear-prod formulation from cm1r19 and earlier
+        IF(tconfig.eq.1)THEN
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+          do k=2,nk
           do j=1,nj
           do i=1,ni
             tketen(i,j,k) = -khv(i,j,k)*nm(i,j,k)  &
                             -dissten(i,j,k)  &
-                            +epst(i,j,k)
+                            +kmv(i,j,k)*max(0.0,(defv(i,j,k)+defh(i,j,k)))
           enddo
           enddo
-        ENDDO
+          enddo
+        ELSEIF(tconfig.eq.2)THEN
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+          do k=2,nk
+          do j=1,nj
+          do i=1,ni
+            tketen(i,j,k) = -khv(i,j,k)*nm(i,j,k)  &
+                            -dissten(i,j,k)  &
+                            +kmv(i,j,k)*max(0.0,defv(i,j,k))   &
+                            +kmh(i,j,k)*max(0.0,defh(i,j,k))
+          enddo
+          enddo
+          enddo
+        ENDIF
         if(timestats.ge.1) time_turb=time_turb+mytime()
 
         if( dotdwrite .and. kd_turb.ge.1 )then
@@ -897,7 +916,7 @@
 
       !---- Dissipative heating term:
 
-      IF(idiss.eq.1)THEN
+      IF( idiss.eq.1 )THEN
         IF( dotbud .and. td_diss.ge.1 )THEN
           !$omp parallel do default(shared)  &
           !$omp private(i,j,k)
@@ -1038,16 +1057,15 @@
         ! Radiation tendencies:
 
         ! Notes:
-        ! use sadv to store total potential temperature:
-        ! TEMPERATURE tendencies from radiation scheme
-        ! are stored in lwten and swten
+        ! TEMPERATURE tendencies from radiation scheme are stored in lwten and swten
+        ! since cm1r21.1: potential temp tendencies are stored in thraten
 
         !$omp parallel do default(shared)  &
         !$omp private(i,j,k)
         do k=1,nk
-        do j=0,nj+1
-        do i=0,ni+1
-          sadv(i,j,k)=th0(i,j,k)+tha(i,j,k)
+        do j=1,nj
+        do i=1,ni
+          thten1(i,j,k) = thten1(i,j,k) + thraten(i,j,k)
         enddo
         enddo
         enddo
@@ -1058,48 +1076,7 @@
           do k=1,nk
           do j=1,nj
           do i=1,ni
-            tdiag(i,j,k,td_rad) = thten1(i,j,k)
-          enddo
-          enddo
-          enddo
-        endif
-        IF( eqtset.eq.1 )THEN
-          ! traditional equation set:
-          !$omp parallel do default(shared)  &
-          !$omp private(i,j,k)
-          do k=1,nk
-          do j=1,nj
-          do i=1,ni
-            ! cm1r17:  swten and lwten now store TEMPERATURE tendencies:
-            thten1(i,j,k) = thten1(i,j,k) + (swten(i,j,k)+lwten(i,j,k))/(pi0(i,j,k)+ppi(i,j,k))
-          enddo
-          enddo
-          enddo
-        ELSEIF( eqtset.eq.2 )THEN
-          ! Bryan-Fritsch equation set:
-          rdt = 1.0/dt
-          !$omp parallel do default(shared)  &
-          !$omp private(i,j,k,tnew,pnew,thnew)
-          do k=1,nk
-          do j=1,nj
-          do i=1,ni
-            ! cm1r17:  swten and lwten now store TEMPERATURE tendencies:
-            ! NOTE:  sadv stores theta (see above)
-            tnew = sadv(i,j,k)*(pi0(i,j,k)+ppi(i,j,k)) + dt*(swten(i,j,k)+lwten(i,j,k))
-            pnew = rho(i,j,k)*(rd+rv*qa(i,j,k,nqv))*tnew
-            thnew = tnew/((pnew*rp00)**rovcp)
-            thten1(i,j,k) = thten1(i,j,k) + (thnew-sadv(i,j,k))*rdt
-          enddo
-          enddo
-          enddo
-        ENDIF
-        if( dotbud .and. td_rad.ge.1 )then
-          !$omp parallel do default(shared)  &
-          !$omp private(i,j,k)
-          do k=1,nk
-          do j=1,nj
-          do i=1,ni
-            tdiag(i,j,k,td_rad) = thten1(i,j,k)-tdiag(i,j,k,td_rad)
+            tdiag(i,j,k,td_rad) = thraten(i,j,k)
           enddo
           enddo
           enddo
@@ -1146,11 +1123,11 @@
 
           call turbu(dt,xh,ruh,xf,rxf,arf1,arf2,uf,vh,mh,mf,rmf,rho,rf,  &
                      zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gxu,     &
-                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,ua,uten1,wa,m11,m12,m13,m22,kmv,cm0, &
+                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,ua,uten1,wa,m11,m12,m13,m22,kmv,cm0, &
                      kmw,ufw,u1b,u2pt,ufwk,doubud,udiag)
           call turbv(dt,xh,rxh,arh1,arh2,uh,xf,rvh,vf,mh,mf,rho,rr,rf,   &
                      zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gyv,  &
-                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,va,vten1,wa,m12,m22,m23,kmv,cm0, &
+                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,va,vten1,wa,m12,m22,m23,kmv,cm0, &
                      kmw,vfw,v1b,v2pt,vfwk,dovbud,vdiag)
           call turbw(dt,xh,rxh,arh1,arh2,uh,xf,vh,mh,mf,rho,rf,gz,rgzu,rgzv,rds,sigma,   &
                      dum1,dum2,dum3,dum4,dum5,dum6,wa,wten1,m13,m23,m33,m22,kmh,cm0,  &
@@ -1162,11 +1139,11 @@
 
           call turbu(dt,xh,ruh,xf,rxf,arf1,arf2,uf,vh,mh,mf,rmf,rho,rf,  &
                      zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gxu,     &
-                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,ua,uten1,wa,t11,t12,t13,t22,rrw,cm0, &
+                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,ua,uten1,wa,t11,t12,t13,t22,rrw,cm0, &
                      kmw,ufw,u1b,u2pt,ufwk,doubud,udiag)
           call turbv(dt,xh,rxh,arh1,arh2,uh,xf,rvh,vf,mh,mf,rho,rr,rf,   &
                      zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gyv,  &
-                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,va,vten1,wa,t12,t22,t23,rrw,cm0, &
+                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,va,vten1,wa,t12,t22,t23,rrw,cm0, &
                      kmw,vfw,v1b,v2pt,vfwk,dovbud,vdiag)
           call turbw(dt,xh,rxh,arh1,arh2,uh,xf,vh,mh,mf,rho,rf,gz,rgzu,rgzv,rds,sigma,   &
                      dum1,dum2,dum3,dum4,dum5,dum6,wa,wten1,t13,t23,t33,t22,wten,cm0,  &
@@ -1177,11 +1154,11 @@
 
           call turbu(dt,xh,ruh,xf,rxf,arf1,arf2,uf,vh,mh,mf,rmf,rho,rf,  &
                      zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gxu,     &
-                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,ua,uten1,wa,t11,t12,t13,t22,kmv,cm0, &
+                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,ua,uten1,wa,t11,t12,t13,t22,kmv,cm0, &
                      kmw,ufw,u1b,u2pt,ufwk,doubud,udiag)
           call turbv(dt,xh,rxh,arh1,arh2,uh,xf,rvh,vf,mh,mf,rho,rr,rf,   &
                      zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gyv,  &
-                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,va,vten1,wa,t12,t22,t23,kmv,cm0, &
+                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,va,vten1,wa,t12,t22,t23,kmv,cm0, &
                      kmw,vfw,v1b,v2pt,vfwk,dovbud,vdiag)
           call turbw(dt,xh,rxh,arh1,arh2,uh,xf,vh,mh,mf,rho,rf,gz,rgzu,rgzv,rds,sigma,   &
                      dum1,dum2,dum3,dum4,dum5,dum6,wa,wten1,t13,t23,t33,t22,kmh,cm0,  &
@@ -1522,10 +1499,65 @@
                    ufrc,vfrc,thfrc,qvfrc,ug,vg,dvdr,                 &
                    uavg,vavg,thavg,qavg,cavg,                        &
                    ua,va,tha,qa,uten1,vten1,thten1,qten,             &
-                   o30 ,zir,ruh,ruf,rvh,rvf,mtime)
+                   o30 ,thraten,zir,ruh,ruf,rvh,rvf,mtime)
         if(timestats.ge.1) time_misc=time_misc+mytime()
 
       ENDIF
+
+!-----------------------------------------------------------------------------
+!  Convective parameterization:
+
+    IF( cuparam.ge.1 )THEN
+
+      !$omp parallel do default(shared)  &
+      !$omp private(i,j,k)
+      do k=1,nk
+      do j=1,nj+1
+      do i=1,ni+1
+        thten1(i,j,k) = thten1(i,j,k) + thcuten(i,j,k)
+          uten1(i,j,k) = uten1(i,j,k) + 0.5*(ucuten(i-1,j,k)+ucuten(i,j,k))
+          vten1(i,j,k) = vten1(i,j,k) + 0.5*(vcuten(i,j-1,k)+vcuten(i,j,k))
+      enddo
+      enddo
+      enddo
+
+      IF(imoist.eq.1)THEN
+        if(nqv.ge.1)then
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+          do k=1,nk
+          do j=1,nj
+          do i=1,ni
+            qten(i,j,k,nqv) = qten(i,j,k,nqv) + qvcuten(i,j,k)
+          enddo
+          enddo
+          enddo
+        endif
+        if(nqc.ge.1)then
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+          do k=1,nk
+          do j=1,nj
+          do i=1,ni
+            qten(i,j,k,nqc) = qten(i,j,k,nqc) + qccuten(i,j,k)
+          enddo
+          enddo
+          enddo
+        endif
+        if(nqi.ge.1)then
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+          do k=1,nk
+          do j=1,nj
+          do i=1,ni
+            qten(i,j,k,nqi) = qten(i,j,k,nqi) + qicuten(i,j,k)
+          enddo
+          enddo
+          enddo
+        endif
+      ENDIF
+
+    ENDIF
 
 !-------------------------------------------------------------------
 !   Eddy recycler
@@ -1657,6 +1689,7 @@
           endif
         enddo
       endif
+      if(timestats.ge.1) time_misc=time_misc+mytime()
     ENDIF
 
 
@@ -1687,7 +1720,7 @@
         tem = 0.0001*tsmall
         IF(imoist.eq.1)THEN
           !$omp parallel do default(shared)  &
-          !$omp private(i,j,k,tnew,pnew,pinew,thnew,qvnew)
+          !$omp private(i,j,k,pinew,thnew,qvnew)
           do k=1,nk
           do j=1,nj
           do i=1,ni
@@ -1722,7 +1755,7 @@
           endif
         ELSE
           !$omp parallel do default(shared)  &
-          !$omp private(i,j,k,tnew,pnew,pinew,thnew,qvnew)
+          !$omp private(i,j,k,pinew,thnew)
           do k=1,nk
           do j=1,nj
           do i=1,ni

@@ -824,7 +824,7 @@ SUBROUTINE MP_GRAUPEL(ITIMESTEP,                       &
 
    REAL :: DT,rdt,rpii
 
-   real, dimension(nk) :: PRE,EVPMS,EVPMG,PCC,FR,FI,FC,FS,FG,  &
+   real, dimension(1:nk) :: PRE,EVPMS,EVPMG,PCC,FR,FI,FC,FS,FG,  &
                           PRD,PRDS,PRDG,EPRD,EPRDS,EPRDG,MNUCCD, &
                           tbcond,tbevar,tbmelt,tbfrz,tbdep,tbsub,torig,qvorig
    real :: tem1,tem2,tfoo,thfoo,qvfoo,thorig
@@ -942,25 +942,26 @@ SUBROUTINE MP_GRAUPEL(ITIMESTEP,                       &
           DZ1D(k)       = DDZ(i,j,k)
 !!!          W1D(k)        = W(i,k,j)
           W1D(k)        = 0.5*( w(i,j,k) + w(i,j,k+1) )
+
+        PRE(k) = 0.0
+        EVPMS(k) = 0.0
+        EVPMG(k) = 0.0
+        PCC(k) = 0.0
+        FR(k) = 0.0
+        FI(k) = 0.0
+        FC(k) = 0.0
+        FS(k) = 0.0
+        FG(k) = 0.0
+
+        PRD(k) = 0.0
+        PRDS(k) = 0.0
+        PRDG(k) = 0.0
+        EPRD(k) = 0.0
+        EPRDS(k) = 0.0
+        EPRDG(k) = 0.0
+        MNUCCD(k) = 0.0
+
       end do
-
-      PRE = 0.0
-      EVPMS = 0.0
-      EVPMG = 0.0
-      PCC = 0.0
-      FR = 0.0
-      FI = 0.0
-      FC = 0.0
-      FS = 0.0
-      FG = 0.0
-
-      PRD = 0.0
-      PRDS = 0.0
-      PRDG = 0.0
-      EPRD = 0.0
-      EPRDS = 0.0
-      EPRDG = 0.0
-      MNUCCD = 0.0
 
       IF( dorad )THEN
       EFFC1D = 0.0
@@ -1096,71 +1097,140 @@ SUBROUTINE MP_GRAUPEL(ITIMESTEP,                       &
            bud4(j) = bud4(j) - tem2*min(PCC(K),0.0)
          enddo
 
+         tbuds:  &
          if( dotbud )then
+
+           eqs2:  &
            IF(eqtset.eq.2)THEN
+
+           if( td_cond.ge.1 )then
              do k=1,nk
                rpii = 1.0/pii(i,j,k)
                thorig = torig(k)*rpii
-
                tfoo = torig(k)+dt*max(tbcond(k),0.0)
                qvfoo = qvorig(k)-dt*max(PCC(k),0.0)
                thfoo = tfoo/( (rho(i,j,k)*(rd+rv*qvfoo)*tfoo*rp00)**rovcp )
                tdiag(i,j,k,td_cond) = (thfoo-thorig)*rdt
-
+             enddo
+           endif
+           if( td_evac.ge.1 )then
+             do k=1,nk
                tfoo = torig(k)+dt*min(tbcond(k),0.0)
                qvfoo = qvorig(k)-dt*min(PCC(k),0.0)
                thfoo = tfoo/( (rho(i,j,k)*(rd+rv*qvfoo)*tfoo*rp00)**rovcp )
                tdiag(i,j,k,td_evac) = (thfoo-thorig)*rdt
-
+             enddo
+           endif
+           if( td_evar.ge.1 )then
+             do k=1,nk
                tfoo = torig(k)+dt*tbevar(k)
                qvfoo = qvorig(k)+dt*( -PRE(K)-EVPMS(K)-EVPMG(K) )
                thfoo = tfoo/( (rho(i,j,k)*(rd+rv*qvfoo)*tfoo*rp00)**rovcp )
                tdiag(i,j,k,td_evar) = (thfoo-thorig)*rdt
-
+             enddo
+           endif
+           if( td_melt.ge.1 )then
+             do k=1,nk
                tfoo = torig(k)+dt*tbmelt(k)
                qvfoo = qvorig(k)
                thfoo = tfoo/( (rho(i,j,k)*(rd+rv*qvfoo)*tfoo*rp00)**rovcp )
                tdiag(i,j,k,td_melt) = (thfoo-thorig)*rdt
-
+             enddo
+           endif
+           if( td_frz .ge.1 )then
+             do k=1,nk
                tfoo = torig(k)+dt*tbfrz(k)
                qvfoo = qvorig(k)
                thfoo = tfoo/( (rho(i,j,k)*(rd+rv*qvfoo)*tfoo*rp00)**rovcp )
                tdiag(i,j,k,td_frz) = (thfoo-thorig)*rdt
-
+             enddo
+           endif
+           if( td_dep .ge.1 )then
+             do k=1,nk
                tfoo = torig(k)+dt*tbdep(k)
                qvfoo = qvorig(k)+dt*( -PRD(k)-PRDS(k)-PRDG(k)-MNUCCD(K) )
                thfoo = tfoo/( (rho(i,j,k)*(rd+rv*qvfoo)*tfoo*rp00)**rovcp )
                tdiag(i,j,k,td_dep) = (thfoo-thorig)*rdt
-
+             enddo
+           endif
+           if( td_subl.ge.1 )then
+             do k=1,nk
                tfoo = torig(k)+dt*tbsub(k)
                qvfoo = qvorig(k)+dt*( -EPRD(k)-EPRDS(k)-EPRDG(k) )
                thfoo = tfoo/( (rho(i,j,k)*(rd+rv*qvfoo)*tfoo*rp00)**rovcp )
                tdiag(i,j,k,td_subl) = (thfoo-thorig)*rdt
              enddo
-           ELSE
+           endif
 
+           ELSE  eqs2
+
+           if( td_cond.ge.1 )then
              do k=1,nk
-               rpii = 1.0/pii(i,j,k)
-               tdiag(i,j,k,td_cond) = max(tbcond(k),0.0)*rpii
-               tdiag(i,j,k,td_evac) = min(tbcond(k),0.0)*rpii
-               tdiag(i,j,k,td_evar) = tbevar(k)*rpii
-               tdiag(i,j,k,td_melt) = tbmelt(k)*rpii
-               tdiag(i,j,k,td_frz)  = tbfrz(k)*rpii
-               tdiag(i,j,k,td_subl)  = tbsub(k)*rpii
-               tdiag(i,j,k,td_dep)  = tbdep(k)*rpii
+               tdiag(i,j,k,td_cond) = max(tbcond(k),0.0)/pii(i,j,k)
              enddo
+           endif
+           if( td_evac.ge.1 )then
+             do k=1,nk
+               tdiag(i,j,k,td_evac) = min(tbcond(k),0.0)/pii(i,j,k)
+             enddo
+           endif
+           if( td_evar.ge.1 )then
+             do k=1,nk
+               tdiag(i,j,k,td_evar) = tbevar(k)/pii(i,j,k)
+             enddo
+           endif
+           if( td_melt.ge.1 )then
+             do k=1,nk
+               tdiag(i,j,k,td_melt) = tbmelt(k)/pii(i,j,k)
+             enddo
+           endif
+           if( td_frz .ge.1 )then
+             do k=1,nk
+               tdiag(i,j,k,td_frz)  = tbfrz(k)/pii(i,j,k)
+             enddo
+           endif
+           if( td_subl.ge.1 )then
+             do k=1,nk
+               tdiag(i,j,k,td_subl)  = tbsub(k)/pii(i,j,k)
+             enddo
+           endif
+           if( td_dep .ge.1 )then
+             do k=1,nk
+               tdiag(i,j,k,td_dep)  = tbdep(k)/pii(i,j,k)
+             enddo
+           endif
 
-           ENDIF
-         endif
+           ENDIF  eqs2
+         endif  tbuds
+
+         qbuds:  &
          if( doqbud )then
+         if( qd_cond.ge.1 )then
            do k=1,nk
              qdiag(i,j,k,qd_cond) = -max(PCC(k),0.0)
+           enddo
+         endif
+         if( qd_evac.ge.1 )then
+           do k=1,nk
              qdiag(i,j,k,qd_evac) = -min(PCC(k),0.0)
+           enddo
+         endif
+         if( qd_evar.ge.1 )then
+           do k=1,nk
              qdiag(i,j,k,qd_evar) = -PRE(K)-EVPMS(K)-EVPMG(K)
+           enddo
+         endif
+         if( qd_dep.ge.1 )then
+           do k=1,nk
              qdiag(i,j,k,qd_dep) = -PRD(k)-PRDS(k)-PRDG(k)-MNUCCD(K)
+           enddo
+         endif
+         if( qd_subl.ge.1 )then
+           do k=1,nk
              qdiag(i,j,k,qd_subl) = -EPRD(k)-EPRDS(k)-EPRDG(k)
            enddo
          endif
+         endif  qbuds
 
 !!!         if( nout3d.ge.1 )then
 !!!           do k=1,nk
@@ -1173,7 +1243,7 @@ SUBROUTINE MP_GRAUPEL(ITIMESTEP,                       &
 ! add reflectivity calculations
 ! only calculate if logical parameter dbz_tstep = .true.
 
-         if (dBZ_tstep) then
+         if (dBZ_tstep .and. qd_dbz.ge.1) then
           if(timestats.ge.1) time_microphy=time_microphy+mytime()
           call calc_refl10cm (qv1d, qr1d, qs1d, qg1d, t1d, p1d, dBZ,    &
                       1, nk, i, j, nr1d, ns1d, ng1d, rho1d)
@@ -1549,6 +1619,7 @@ END SUBROUTINE MP_GRAUPEL
 !---------------------------------!
 
 ! ATMOSPHERIC PARAMETERS THAT VARY IN TIME AND HEIGHT
+         kloop1:  &
          DO K = KTS,KTE
 
 ! LATENT HEAT OF VAPORATION
@@ -4285,7 +4356,7 @@ END SUBROUTINE MP_GRAUPEL
 
  200     CONTINUE
 
-        END DO
+         ENDDO  kloop1
 
 ! V1.3 move precip initialization to here
 ! INITIALIZE PRECIP AND SNOW RATES
@@ -4317,6 +4388,7 @@ END SUBROUTINE MP_GRAUPEL
       ENDDO
 
 ! v3 5/27/11
+      kloop2:  &
       DO K = KTE,KTS,-1
 
         DUMI(K) = QI3D(K)+QI3DTEN(K)*DT
@@ -4544,7 +4616,7 @@ END SUBROUTINE MP_GRAUPEL
       DUMG(k) = DUMG(K)*RHO(K)
       DUMFNG(k) = DUMFNG(K)*RHO(K)
 
-      END DO
+      ENDDO  kloop2
 
 ! V1.3, change so that sub-stepping is done
 ! individually for each species

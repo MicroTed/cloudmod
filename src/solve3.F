@@ -5,11 +5,11 @@
 
 !-----------------------------------------------------------------------------
 !
-!  CM1 Numerical Model, Release 21.0  (cm1r21.0)
-!  20 April 2022
+!  CM1 Numerical Model, Release 21.1  (cm1r21.1)
+!  24 March 2024
 !  https://www2.mmm.ucar.edu/people/bryan/cm1/
 !
-!  (c)2022 - University Corporation for Atmospheric Research 
+!  (c)2024 - University Corporation for Atmospheric Research 
 !
 !-----------------------------------------------------------------------------
 !  Quick Index:
@@ -83,7 +83,7 @@
                    pi0,rho0,prs0,thv0,th0,rth0,qv0,qc0,              &
                    qi0,rr0,rf0,rrf0,                                 &
                    zs,gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy,            &
-                   rain,sws,svs,sps,srs,sgs,sus,shs,                 &
+                   rain,raincv,sws,svs,sps,srs,sgs,sus,shs,          &
                    dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,          &
                    divx,rho,rr,rf,prs,                               &
                    u0,rru,ua,u3d,uten,uten1,                         &
@@ -153,7 +153,7 @@
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: qi0,rr0,rf0,rrf0
       real, intent(in), dimension(ib:ie,jb:je) :: zs
       real, intent(in), dimension(itb:ite,jtb:jte) :: gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy
-      real, intent(inout), dimension(ib:ie,jb:je,nrain) :: rain,sws,svs,sps,srs,sgs,sus,shs
+      real, intent(inout), dimension(ib:ie,jb:je,nrain) :: rain,raincv,sws,svs,sps,srs,sgs,sus,shs
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: divx,rho,rr,rf,prs
       real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: u0,rru,ua,u3d,uten,uten1
@@ -267,35 +267,6 @@
       ENDIF
 
 
-      call bcp(rho)
-#ifdef MPI
-      call comm_1s_start(rho,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_s)
-#endif
-
-
-      !$omp parallel do default(shared)  &
-      !$omp private(i,j,k)
-        do k=1,nk
-        do j=1,nj
-        do i=1,ni
-          rr(i,j,k) = 1.0/rho(i,j,k)
-          rf(i,j,k) = (c1(i,j,k)*rho(i,j,k-1)+c2(i,j,k)*rho(i,j,k))
-        enddo
-        enddo
-        enddo
-      if(timestats.ge.1) time_prsrho=time_prsrho+mytime()
-
-
-        call bcp(rr)
-#ifdef MPI
-      call comm_1s_start(rr,p2w1,p2w2,p2e1,p2e2,p2s1,p2s2,p2n1,p2n2,reqs_p2)
-#endif
-
-        call bcp(rf)
-#ifdef MPI
-      call comm_1s_start(rf,p3w1,p3w2,p3e1,p3e2,p3s1,p3s2,p3n1,p3n2,reqs_p3)
-#endif
-
       IF( psolver.eq.2 .or. psolver.eq.3 .or. psolver.eq.6 .or. psolver.eq.7 )THEN
         ! 180212: moved this out of sound,sounde,soundcb
 
@@ -325,12 +296,21 @@
 
         endif
 
+        if(timestats.ge.1) time_sound=time_sound+mytime()
+
         call bcp(ppx)
 #ifdef MPI
         call comm_1p_start(ppx,zw1,zw2,ze1,ze2,zs1,zs2,zn1,zn2,reqs_z)
 #endif
 
       ENDIF
+
+
+      call bcp(rho)
+#ifdef MPI
+      call comm_1s_start(rho,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_s)
+#endif
+
 
 !-----------------------------------------------------------------
 
@@ -371,6 +351,7 @@
         enddo
         enddo
         enddo
+        if(timestats.ge.1) time_turb=time_turb+mytime()
       ENDIF
 
       if( do_lsnudge .and. donudge .and. do_lsnudge_u )then
@@ -397,6 +378,7 @@
         enddo
         enddo
         !-----
+        if(timestats.ge.1) time_misc=time_misc+mytime()
       endif
       if( do_lsnudge .and. donudge .and. do_lsnudge_v )then
         if( myid.eq.0 ) print *,'  applying large-scale nudging to base-state and reference v profiles '
@@ -422,6 +404,7 @@
         enddo
         enddo
         !-----
+        if(timestats.ge.1) time_misc=time_misc+mytime()
       endif
 
 #ifdef MPI
@@ -584,7 +567,7 @@
 #endif
         !$omp parallel do default(shared)  &
         !$omp private(i,j,k)
-        do k=1,nk+1
+        do k=1,nk
         do j=0,nj+1
         do i=0,ni+1
           tkea(i,j,k)=tke3d(i,j,k)
@@ -662,38 +645,41 @@
 !----------
 
 #ifdef MPI
-        !-----
-        call comm_1s_end(rho,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_s)
-        call getcorner(rho,nw1(1),nw2(1),ne1(1),ne2(1),sw1(1),sw2(1),se1(1),se2(1))
-        call bcs2(rho)
-        !-----
-        call comm_1s_end(rr,p2w1,p2w2,p2e1,p2e2,p2s1,p2s2,p2n1,p2n2,reqs_p2)
-        call getcorner(rr,nw1(1),nw2(1),ne1(1),ne2(1),sw1(1),sw2(1),se1(1),se2(1))
-        call bcs2(rr)
-        !-----
-        call comm_1s_end(rf,p3w1,p3w2,p3e1,p3e2,p3s1,p3s2,p3n1,p3n2,reqs_p3)
-        call getcorner(rf,nw1(1),nw2(1),ne1(1),ne2(1),sw1(1),sw2(1),se1(1),se2(1))
-        call bcs2(rf)
-        !-----
-#endif
-
-        ! meh 1 !
-      !$omp parallel do default(shared)  &
-      !$omp private(i,j,k)
-        do j=0,nj+1
-        do i=0,ni+1
-          ! cm1r17, 2nd-order extrapolation:
-          rf(i,j,1) = cgs1*rho(i,j,1)+cgs2*rho(i,j,2)+cgs3*rho(i,j,3)
-          rf(i,j,nk+1) = cgt1*rho(i,j,nk)+cgt2*rho(i,j,nk-1)+cgt3*rho(i,j,nk-2)
-        enddo
-        enddo
-
-#ifdef MPI
         IF( psolver.eq.2 .or. psolver.eq.3 .or. psolver.eq.6 .or. psolver.eq.7 )THEN
           call comm_1p_end1(ppx,zw1,zw2,ze1,ze2,zs1,zs2,zn1,zn2,reqs_z)
           call comm_1p_end2(reqs_z)
         ENDIF
 #endif
+
+#ifdef MPI
+        call comm_1s_end(rho,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_s)
+        call getcorner(rho,nw1(1),nw2(1),ne1(1),ne2(1),sw1(1),sw2(1),se1(1),se2(1))
+        call bcs2(rho)
+#endif
+
+      !$omp parallel do default(shared)  &
+      !$omp private(i,j,k)
+        do k=2,nk
+        do j=0,nj+1
+        do i=0,ni+1
+          rr(i,j,k) = 1.0/rho(i,j,k)
+          rf(i,j,k) = (c1(i,j,k)*rho(i,j,k-1)+c2(i,j,k)*rho(i,j,k))
+        enddo
+        enddo
+        enddo
+
+        ! meh 1 !
+      !$omp parallel do default(shared)  &
+      !$omp private(i,j)
+        do j=0,nj+1
+        do i=0,ni+1
+          rr(i,j,1) = 1.0/rho(i,j,1)
+          ! cm1r17, 2nd-order extrapolation:
+          rf(i,j,1) = cgs1*rho(i,j,1)+cgs2*rho(i,j,2)+cgs3*rho(i,j,3)
+          rf(i,j,nk+1) = cgt1*rho(i,j,nk)+cgt2*rho(i,j,nk-1)+cgt3*rho(i,j,nk-2)
+        enddo
+        enddo
+        if(timestats.ge.1) time_prsrho=time_prsrho+mytime()
 
 !-----------------------------------------------------------------
 
@@ -848,6 +834,17 @@
       if(imove.eq.1.and.imoist.eq.1)then
         weps = 10.0*epsilon
         call movesfc(0.0,dt,weps,uh,vh,rain(ib,jb,2),dum1(ib,jb,1),dum1(ib,jb,2),dum1(ib,jb,3), &
+                     reqs_s,sw31(1,1,1),sw32(1,1,1),se31(1,1,1),se32(1,1,1),               &
+                            ss31(1,1,1),ss32(1,1,1),sn31(1,1,1),sn32(1,1,1))
+      endif
+
+    ENDIF
+
+    IF( output_rain.eq.1 .and. cuparam.ge.1 )THEN
+
+      if(imove.eq.1.and.imoist.eq.1)then
+        weps = 10.0*epsilon
+        call movesfc(0.0,dt,weps,uh,vh,raincv(ib,jb,2),dum1(ib,jb,1),dum1(ib,jb,2),dum1(ib,jb,3), &
                      reqs_s,sw31(1,1,1),sw32(1,1,1),se31(1,1,1),se32(1,1,1),               &
                             ss31(1,1,1),ss32(1,1,1),sn31(1,1,1),sn32(1,1,1))
       endif

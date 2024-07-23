@@ -2778,7 +2778,7 @@
       subroutine advw(nrk,xh,rxh,arh1,arh2,uh,xf,vh,gz,rgz,mh,mf,rho0,rr0,rf0,rrf0,  &
                       dumx,dumy,dumz,advx,advy,advz,subs,divx,                       &
                       rru,rrv,rrw,w3d  ,wten,rds,rdsf,c1,c2,rho,dt,                  &
-                      dowbud ,wdiag,hadvorder,vadvorder,advweno ,bndy,kbdy,uf,vf,u3d,v3d,hflxw,hflxe,hflxs,hflxn)
+                      dowbud ,wdiag,hadvorder,vadvorder,advweno ,bndy,kbdy,uf,vf,u3d,v3d,hflxw,hflxe,hflxs,hflxn,iamw)
       use input
       use constants
       use adv_routines
@@ -2814,6 +2814,7 @@
       real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: u3d
       real, intent(in), dimension(ib:ie,jb:je+1,kb:ke) :: v3d
       integer, intent(in), dimension(ibib:ieib,jbib:jeib,kmaxib) :: hflxw,hflxe,hflxs,hflxn
+      logical, intent(in) :: iamw
  
       integer :: i,j,k,hadv
       real :: ubar,vbar,cc1,cc2
@@ -3300,6 +3301,7 @@
       enddo
       enddo
 
+      IF( iamw )THEN
         IF( do_ib .and. ( gk00fix.eq.1 .or. gk00fix.eq.3 ) )THEN
           ! apply fix from Gallus and Klemp (2000, MWR, pg 1160)
           do k=2,kmaxib
@@ -3341,6 +3343,7 @@
           enddo
           enddo
         ENDIF
+      ENDIF
 
       ! cm1ib: moved wten
 

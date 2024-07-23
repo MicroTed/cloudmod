@@ -1190,7 +1190,7 @@
         ! get dissipation rate:
         IF(idiss.eq.1.or.output_dissten.eq.1)THEN
 !$omp parallel do default(shared)  &
-!$omp private(i,j,k,tmp11,tmp22,tmp33,tmp12,tmp13,tmp23,tem)
+!$omp private(i,j,k,tmp11,tmp33,tmp12,tmp13,tmp23,tem)
           do k=2,nk
           do j=1,nj
           do i=1,ni
@@ -1201,7 +1201,7 @@
             tmp13=0.5*( t13(i,j,k)**2 + t13(i+1,j,k)**2 )
             tmp23=      t23(i,j,k)**2
             dissten(i,j,k)= rcoef*( ( 2.0*( tmp33 ) + ( tmp13 + tmp23 )               &
-                                     +2.0*( tmp11 + tmp22 ) + tmp12 )/(rf(i,j,k)**2)  &
+                                     +2.0*( tmp11 ) + tmp12 )/(rf(i,j,k)**2)  &
                    -twodthree*(divx(i,j,k)**2) )
           enddo
           enddo

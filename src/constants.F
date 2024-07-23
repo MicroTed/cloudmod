@@ -4,10 +4,10 @@
 
   public
 
-    real :: g,rd,rv,cp,cpinv,cv,cpv,cvv,rcp,                                 &
-            cpdcv,rovcp,rddcp,rddcv,rddrv,cvdrd,cpdrd,eps,reps,repsm1,       &
-            cpt,cvt,pnum,xlv,lathv,xls,lvdcp,condc,cpl,cpi,lv1,lv2,ls1,ls2,  &
-            rhow,c_e1,c_e2,c_s,rcs,earth_radius,govtwo
+    real :: g,rd,rv,cp,cpinv,cv,cpv,cvv,rcp,                                     &
+            cpdcv,cvdcp,rovcp,rddcp,rddcv,rddrv,cvdrd,cpdrd,eps,reps,repsm1,     &
+            cpt,cvt,pnum,xlv,lathv,xls,xlf,lvdcp,condc,cpl,cpi,lv1,lv2,ls1,ls2,  &
+            rhow,svp1,svp2,svp3,svpt0,c_e1,c_e2,c_s,rcs,earth_radius,govtwo
 
       !----------------
 
@@ -128,6 +128,7 @@
       cvv    = cpv-rv
       rcp    = 1.0/cp
       cpdcv  = cp/cv
+      cvdcp  = cv/cp
       rovcp  = rd/cp
       rddcp  = rd/cp
       rddcv  = rd/cv
@@ -149,7 +150,12 @@
       lv2    = cpl-cpv
       ls1    = xls+(cpi-cpv)*to
       ls2    = cpi-cpv
+      xlf    = xls-xlv
       rhow   = 1.0e3
+      svp1   = 0.6112
+      svp2   = 17.67
+      svp3   = 29.65
+      svpt0  = 273.15
 
 
       IF( testcase.eq.4 .or. testcase.eq.5 )THEN
@@ -170,3 +176,58 @@
     !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
   END MODULE constants
+  
+! ---------------------------------------------------------------------------  
+
+    ! GHB: index_module is for NSSL microphysics
+  
+  MODULE index_module
+  
+  implicit none
+
+! Mixing Ratio
+  integer :: lv = 2
+  integer :: lc = 3
+  integer :: lr = 4
+  integer :: li = 5
+  integer :: ls = 6
+  integer :: lgh = 7
+  integer :: lhl = 0
+  integer :: lhw = 0
+  integer :: lsw = 0
+  integer :: lhlw = 0
+  integer :: lhab = 7
+
+! Number concentration
+
+  integer :: lccna = 0 ! activated ccn
+  integer :: lcina = 0 ! activated ice nuclei
+  integer :: lccn = 8
+  integer :: lccnuf = 0
+
+  integer :: lnc = 1
+  integer :: lnr = 1
+  integer :: lni = 1
+  integer :: lns = 1
+  integer :: lnh = 1
+  integer :: lnhl = 1
+
+! Particle volume
+
+  integer :: lvh = 0
+  integer :: lvhl = 0
+
+! reflectivity (6th moment)
+
+  integer :: lzr = 0
+  integer :: lzh = 0
+  integer :: lzhl = 0
+  
+! flags
+  
+  logical :: f_ccna = .false.
+  logical :: f_cina = .false.
+  
+  
+  END MODULE index_module
+ 

@@ -31,7 +31,7 @@
                    ufrc,vfrc,thfrc,qvfrc,ug,vg,dvdr,                 &
                    uavg,vavg,thavg,qavg,cavg,                        &
                    ua,va,tha,qa,uten1,vten1,thten1,qten,             &
-                   frad,zir,ruh,ruf,rvh,rvf,mtime)
+                   frad,thraten,zir,ruh,ruf,rvh,rvf,mtime)
       use input
       use constants
       implicit none
@@ -56,7 +56,7 @@
       real, intent(inout), dimension(ib:ie,jb:je+1,kb:ke) :: vten1
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: thten1
       real, intent(inout), dimension(ibm:iem,jbm:jem,kbm:kem,numq) :: qten
-      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: frad
+      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: frad,thraten
       real, intent(inout), dimension(ibr:ier,jbr:jer) :: zir
       real, intent(in), dimension(ib:ie) :: ruh
       real, intent(in), dimension(ib:ie+1) :: ruf
@@ -82,8 +82,8 @@
         do k=1,nk
         do j=1,nj
         do i=1,ni
-          thten1(i,j,k) = thten1(i,j,k)-(frad(i,j,k+1)-frad(i,j,k))*rdz*mh(i,j,k)  &
-                                       /(cp*rhoi)
+          thraten(i,j,k) = -(frad(i,j,k+1)-frad(i,j,k))*rdz*mh(i,j,k)/(cp*rhoi)
+          thten1(i,j,k) = thten1(i,j,k)+thraten(i,j,k)
         enddo
         enddo
         enddo

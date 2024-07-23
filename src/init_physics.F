@@ -11,13 +11,13 @@
       use constants
       use module_sf_slab
       use module_sf_sfclay
-      use module_sf_sfclayrev
       use radtrns3d_module
       use module_ra_rrtmg_lw , only : rrtmg_lwinit
       use module_ra_rrtmg_sw , only : rrtmg_swinit
       use module_sf_mynn , only : mynn_sf_init_driver
-      use module_bl_mynn , only : mynn_bl_init_driver,mynn_level
       use module_sf_myjsfc , only : myjsfcinit
+      use sf_sfclayrev , only : sf_sfclayrev_init
+      use cu_ntiedtke, only : cu_ntiedtke_init
 #ifdef MPI
       use mpi
 #endif
@@ -39,6 +39,9 @@
 
       real :: foo1,foo2,foo3,foo4,foo5,foo6
       real :: p_top
+
+      character(len=80) :: errmsg
+      integer :: errflg
 
 !-----------------------------------------------------------------------
 !-----  USERS SHOULD NOT NEED TO CHANGE ANYTHING IN THIS FILE ----------
@@ -79,10 +82,12 @@
 #ifdef MPI
              call MPI_BARRIER (MPI_COMM_WORLD,ierr)
 #endif
-             CALL rrtmg_lwinit(                             &
-                           p_top,  .true.         ,         &
-                  ids=1  ,ide=ni+1 , jds= 1 ,jde=nj+1 , kds=1  ,kde=nk+1 ,          &
-                  ims=ib ,ime=ie   , jms=jb ,jme=je   , kms=kb ,kme=ke ,            &
+             CALL rrtmg_lwinit(                                             &
+                  p_top=p_top,                                              &
+                  allowed_to_read = .true.         ,                        &
+                   myid = myid ,                                            &
+                  ids=1  ,ide=ni+1 , jds= 1 ,jde=nj+1 , kds=1  ,kde=nk+1 ,  &
+                  ims=ib ,ime=ie   , jms=jb ,jme=je   , kms=kb ,kme=ke ,    &
                   its=1  ,ite=ni   , jts=1  ,jte=nj   , kts=1  ,kte=nk )
 
 !!!             aclwalloc = .true.
@@ -94,10 +99,11 @@
 #ifdef MPI
              call MPI_BARRIER (MPI_COMM_WORLD,ierr)
 #endif
-             CALL rrtmg_swinit(                             &
-                            .true.         ,                &
-                  ids=1  ,ide=ni+1 , jds= 1 ,jde=nj+1 , kds=1  ,kde=nk+1 ,          &
-                  ims=ib ,ime=ie   , jms=jb ,jme=je   , kms=kb ,kme=ke ,            &
+             CALL rrtmg_swinit(                                              &
+                   allowed_to_read = .true.         ,                        &
+                   myid = myid ,                                             &
+                  ids=1  ,ide=ni+1 , jds= 1 ,jde=nj+1 , kds=1  ,kde=nk+1 ,   &
+                  ims=ib ,ime=ie   , jms=jb ,jme=je   , kms=kb ,kme=ke ,     &
                   its=1  ,ite=ni   , jts=1  ,jte=nj   , kts=1  ,kte=nk )
 #ifdef MPI
              call MPI_BARRIER (MPI_COMM_WORLD,ierr)
@@ -116,7 +122,8 @@
           call sfclayinit
         endif
         if( sfcmodel.eq.3 )then
-          call sfclayrevinit
+          if(myid.eq.0) print *,'  sf_sfclayrev_init '
+          call sf_sfclayrev_init(errmsg=errmsg,errflg=errflg)
         endif
         if( sfcmodel.eq.6 )then
           call mynn_sf_init_driver( .true. )
@@ -131,22 +138,20 @@
         endif
       ENDIF
 
-      IF( ipbl.eq.4 )THEN
-        mynn_level = 2
-!           CALL mynn_bl_init_driver(&
-!                &RUBLTEN,RVBLTEN,RTHBLTEN,RQVBLTEN,RQCBLTEN,&
-!                &RQIBLTEN,                                  &
-!                !RQNCBLTEN,RQNIBLTEN,                       &
-!                &QKE,                                       &
-!                &TKE_PBL,EXCH_H                             &
-!                &,restart,allowed_to_read,mynn_closure_level &
-!                &,IDS,IDE,JDS,JDE,KDS,KDE                    &
-!                &,IMS,IME,JMS,JME,KMS,KME                    &
-!                &,ITS,ITE,JTS,JTE,KTS,KTE)
-      ENDIF
-      IF( ipbl.eq.5 )THEN
-        mynn_level = 3
-      ENDIF
+      if( cuparam.eq.1 )then
+      if(myid.eq.0) print *
+      if(myid.eq.0) print *,'  cu_ntiedtke_init '
+      if(myid.eq.0) print *
+      call  cu_ntiedtke_init(con_cp=cp,      &
+                             con_rd=rd,      &
+                             con_rv=rv,      &
+                             con_xlv=xlv,    &
+                             con_xls=xls,    &
+                             con_xlf=xlf,    &
+                             con_grav=g,     &
+                             errmsg=errmsg,  &
+                             errflg=errflg)
+      endif
 
 !-----------------------------------------------------------------------
 

@@ -17,13 +17,14 @@
                                qbudget,asq,bsq,qname,                               &
                                xfref,xhref,yfref,yhref,xh,xf,yh,yf,zh,zf,sigma,sigmaf,zs, &
                                th0,prs0,pi0,rho0,qv0,u0,v0,                         &
-                               rain,sws,svs,sps,srs,sgs,sus,shs,                    &
+                               rain,raincv,sws,svs,sps,srs,sgs,sus,shs,             &
                                tsk,znt,ust,cd,ch,cq,u1,v1,s1,t1,thflux,qvflux,      &
                                prate,ustt,ut,vt,st,                                 &
                                radbcw,radbce,radbcs,radbcn,                         &
                                rho,prs,ua,dumu,va,dumv,wa,ppi,tha,qa,tkea,          &
-                               swten,lwten,radsw,rnflx,radswnet,radlwin,rad2d,      &
+                               swten,lwten,thraten,radsw,rnflx,radswnet,radlwin,rad2d,      &
                                effc,effi,effs,effr,effg,effis,                      &
+                               thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten,       &
                                lu_index,kpbl2d,psfc,u10,v10,s10,hfx,qfx,xland,      &
                                hpbl,wspd,psim,psih,gz1oz0,br,                       &
                                CHS,CHS2,CQS2,CPMM,ZOL,MAVAIL,                       &
@@ -33,7 +34,7 @@
                                tmn,tml,t0ml,hml,h0ml,huml,hvml,tmoml,               &
                                qpten,qtten,qvten,qcten,pta,pdata,ploc,ppx,          &
                                tdiag,qdiag,phi1,phi2,                               &
-                   tsq,qsq,cov,sh3d,el_pbl,qc_bl,qi_bl,cldfra_bl,            &
+                   tsq,qsq,cov,sh3d,sm3d,el_pbl,qc_bl,qi_bl,cldfra_bl,       &
                    qWT,qSHEAR,qBUOY,qDISS,dqke,qke_adv,qke,qke3d,            &
                    edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc,          &
                    sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D,                  &
@@ -87,7 +88,7 @@
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: th0,prs0,pi0,rho0,qv0
       real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: u0
       real, intent(in), dimension(ib:ie,jb:je+1,kb:ke) :: v0
-      real, intent(in), dimension(ib:ie,jb:je,nrain) :: rain,sws,svs,sps,srs,sgs,sus,shs
+      real, intent(in), dimension(ib:ie,jb:je,nrain) :: rain,raincv,sws,svs,sps,srs,sgs,sus,shs
       real, intent(in), dimension(ib:ie,jb:je) :: tsk,znt,ust,cd,ch,cq,u1,v1,s1,t1,xland,psfc,thflux,qvflux,prate,ustt,ut,vt,st
       real, intent(in), dimension(jb:je,kb:ke) :: radbcw,radbce
       real, intent(in), dimension(ib:ie,kb:ke) :: radbcs,radbcn
@@ -100,9 +101,10 @@
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: ppi,tha
       real, intent(in), dimension(ibm:iem,jbm:jem,kbm:kem,numq) :: qa
       real, intent(in), dimension(ibt:iet,jbt:jet,kbt:ket) :: tkea
-      real, intent(in), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,effc,effi,effs,effr,effg,effis
+      real, intent(in), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,thraten,effc,effi,effs,effr,effg,effis
       real, intent(in), dimension(ni,nj) :: radsw,rnflx,radswnet,radlwin
       real, intent(in), dimension(ni,nj,nrad2d) :: rad2d
+      real, intent(in), dimension(ibcu:iecu,jbcu:jecu,kbcu:kecu) :: thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten
       integer, intent(in), dimension(ibl:iel,jbl:jel) :: lu_index
       integer, intent(in), dimension(ibl:iel,jbl:jel) :: kpbl2d
       real, intent(in), dimension(ibl:iel,jbl:jel) :: u10,v10,s10,hfx,qfx,    &
@@ -119,7 +121,7 @@
       real, intent(inout), dimension(nparcels,3) :: ploc
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: ppx
       real, intent(in),    dimension(ibph:ieph,jbph:jeph,kbph:keph) :: phi1,phi2
-      real, intent(in)   , dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: tsq,qsq,cov,sh3d,el_pbl,qc_bl,qi_bl,cldfra_bl, &
+      real, intent(in)   , dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: tsq,qsq,cov,sh3d,sm3d,el_pbl,qc_bl,qi_bl,cldfra_bl, &
            qWT,qSHEAR,qBUOY,qDISS,dqke,qke_adv,qke,qke3d,edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc,  &
            sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
       real, intent(in)   , dimension(ibmynn:iemynn,jbmynn:jemynn) :: vdfg,maxmf
@@ -135,8 +137,8 @@
       double precision, intent(in) :: domainlocx,domainlocy
       double precision, intent(in   ) :: adaptmovetim
       integer, intent(in   ) :: mvrec,nwritemv
-      real, intent(in   ), dimension(kb:ke) :: ug,vg
-      real, intent(in   ), dimension(kb:ke) :: gamk,kmw,ufw,vfw,u1b,v1b
+      real, intent(in),    dimension(kb:ke) :: ug,vg
+      real, intent(in),    dimension(kb:ke) :: gamk,kmw,ufw,vfw,u1b,v1b
       integer, intent(in   ), dimension(ntim) :: ntavg
       double precision, intent(in   ), dimension(ntim) :: rtavg
       double precision, intent(in   ), dimension(ibta:ieta,jbta:jeta,kbta:keta,ntim,ntavr) :: tavg
@@ -389,7 +391,11 @@
       write(50) xcenter
       write(50) ycenter
       write(50) umove
+      write(50) umovem1
+      write(50) umovem2
       write(50) vmove
+      write(50) vmovem1
+      write(50) vmovem2
       write(50) domainlocx
       write(50) domainlocy
       write(50) adaptmovetim
@@ -423,10 +429,10 @@
 #ifdef NETCDF
   ELSEIF( restart_format.eq.2 )THEN
 
-    call disp_err( nf90_inq_varid(ncid,"cm1rversion",varid) , .true. )
-    call disp_err( nf90_put_var(ncid,varid,cm1rversion,(/time_index/)) , .true. )
-
     IF(myid.eq.0)THEN
+
+      call disp_err( nf90_inq_varid(ncid,"cm1rversion",varid) , .true. )
+      call disp_err( nf90_put_var(ncid,varid,cm1rversion,(/time_index/)) , .true. )
 
       call disp_err( nf90_inq_varid(ncid,"nstep",varid) , .true. )
       call disp_err( nf90_put_var(ncid,varid,nstep,(/time_index/)) , .true. )
@@ -518,8 +524,20 @@
       call disp_err( nf90_inq_varid(ncid,"umove",varid) , .true. )
       call disp_err( nf90_put_var(ncid,varid,umove,(/time_index/)) , .true. )
 
+      call disp_err( nf90_inq_varid(ncid,"umovem1",varid) , .true. )
+      call disp_err( nf90_put_var(ncid,varid,umovem1,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"umovem2",varid) , .true. )
+      call disp_err( nf90_put_var(ncid,varid,umovem2,(/time_index/)) , .true. )
+
       call disp_err( nf90_inq_varid(ncid,"vmove",varid) , .true. )
       call disp_err( nf90_put_var(ncid,varid,vmove,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"vmovem1",varid) , .true. )
+      call disp_err( nf90_put_var(ncid,varid,vmovem1,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"vmovem2",varid) , .true. )
+      call disp_err( nf90_put_var(ncid,varid,vmovem2,(/time_index/)) , .true. )
 
       call disp_err( nf90_inq_varid(ncid,"domainlocx",varid) , .true. )
       call disp_err( nf90_put_var(ncid,varid,domainlocx,(/time_index/)) , .true. )
@@ -653,14 +671,19 @@
 
 !---------------------------------------------------------------
 
-  IF( do_lsnudge .or. do_adapt_move )THEN
-
     if( myid.eq.0 )then
-      write(50) ug
-      write(50) vg
+      IF( restart_format.eq.1 )THEN
+        write(50) ug
+        write(50) vg
+#ifdef NETCDF
+      ELSEIF( restart_format.eq.2 )THEN
+        call disp_err( nf90_inq_varid(ncid,"ug",varid) , .true. )
+        call disp_err( nf90_put_var(ncid,varid,ug(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+        call disp_err( nf90_inq_varid(ncid,"vg",varid) , .true. )
+        call disp_err( nf90_put_var(ncid,varid,vg(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+#endif
+      ENDIF
     endif
-
-  ENDIF
 
 !---------------------------------------------------------------
 ! standard 2D:
@@ -828,6 +851,10 @@
                     ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
                     dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
         call writer(ni,nj,1,nk,nx,ny,swten(ib,jb,1),'swten   ',      &
+                    ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                    ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                    dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+        call writer(ni,nj,1,nk,nx,ny,thraten(ib,jb,1),'thraten ',     &
                     ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
                     ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
                     dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
@@ -1304,6 +1331,10 @@
                   ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
                   ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
                   dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call writer(ni,nj,1,nk,nx,ny,sm3d(ib,jb,1),'sm3d    ',       &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
       call writer(ni,nj,1,nk,nx,ny,el_pbl(ib,jb,1),'el_pbl  ',     &
                   ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
                   ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
@@ -1521,15 +1552,71 @@
     endif
 
 !---------------------------------------------------------------
+!  convection param.
+
+    IF( cuparam.ge.1 )THEN
+      call writer(ni,nj,1,1,nx,ny,raincv(ib,jb,1),'raincv  ',      &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      if(nrain.eq.2)  &
+      call writer(ni,nj,1,1,nx,ny,raincv(ib,jb,2),'raincv2 ',      &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call writer(ni,nj,1,nk,nx,ny,thcuten(ib,jb,1),'thcuten ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call writer(ni,nj,1,nk,nx,ny,qvcuten(ib,jb,1),'qvcuten ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call writer(ni,nj,1,nk,nx,ny,qccuten(ib,jb,1),'qccuten ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call writer(ni,nj,1,nk,nx,ny,qicuten(ib,jb,1),'qicuten ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call writer(ni,nj,1,nk,nx,ny,ucuten(ib,jb,1),'ucuten  ',     &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call writer(ni,nj,1,nk,nx,ny,vcuten(ib,jb,1),'vcuten  ',     &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+    ENDIF
+
+!---------------------------------------------------------------
 !  2-part turbulence param:
 
       if( myid.eq.0 )then
-        write(50) gamk
-        write(50) kmw
-        write(50) ufw
-        write(50) vfw
-        write(50) u1b
-        write(50) v1b
+        if( restart_format.eq.1 )then
+          write(50) gamk
+          write(50) kmw
+          write(50) ufw
+          write(50) vfw
+          write(50) u1b
+          write(50) v1b
+#ifdef NETCDF
+        elseif( restart_format.eq.2 )then
+          call disp_err( nf90_inq_varid(ncid,"gamk",varid) , .true. )
+          call disp_err( nf90_put_var(ncid,varid,gamk(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+          call disp_err( nf90_inq_varid(ncid,"kmw",varid) , .true. )
+          call disp_err( nf90_put_var(ncid,varid,kmw(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+          call disp_err( nf90_inq_varid(ncid,"ufw",varid) , .true. )
+          call disp_err( nf90_put_var(ncid,varid,ufw(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+          call disp_err( nf90_inq_varid(ncid,"vfw",varid) , .true. )
+          call disp_err( nf90_put_var(ncid,varid,vfw(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+          call disp_err( nf90_inq_varid(ncid,"u1b",varid) , .true. )
+          call disp_err( nf90_put_var(ncid,varid,u1b(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+          call disp_err( nf90_inq_varid(ncid,"v1b",varid) , .true. )
+          call disp_err( nf90_put_var(ncid,varid,v1b(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+#endif
+        endif
       endif
 
 !---------------------------------------------------------------

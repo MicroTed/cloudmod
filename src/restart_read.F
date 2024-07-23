@@ -26,13 +26,14 @@
                               qbudget,asq,bsq,qname,                               &
                               xfref,xhref,yfref,yhref,xh,xf,yh,yf,zh,zf,sigma,sigmaf,zs, &
                               th0,prs0,pi0,rho0,qv0,u0,v0,                         &
-                              rain,sws,svs,sps,srs,sgs,sus,shs,                    &
+                              rain,raincv,sws,svs,sps,srs,sgs,sus,shs,             &
                               tsk,znt,ust,cd,ch,cq,u1,v1,s1,t1,thflux,qvflux,      &
                               prate,ustt,ut,vt,st,                                 &
                               radbcw,radbce,radbcs,radbcn,                         &
                               rho,prs,ua,dumu,va,dumv,wa,ppi,tha,qa,tkea,          &
-                              swten,lwten,radsw,rnflx,radswnet,radlwin,rad2d,      &
+                              swten,lwten,thraten,radsw,rnflx,radswnet,radlwin,rad2d,      &
                               effc,effi,effs,effr,effg,effis,                      &
+                              thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten,       &
                               lu_index,kpbl2d,psfc,u10,v10,s10,hfx,qfx,xland,      &
                               hpbl,wspd,psim,psih,gz1oz0,br,                       &
                               CHS,CHS2,CQS2,CPMM,ZOL,MAVAIL,                       &
@@ -42,7 +43,7 @@
                               tmn,tml,t0ml,hml,h0ml,huml,hvml,tmoml,               &
                               qpten,qtten,qvten,qcten,pta,pdata,ploc,ppx,          &
                               tdiag,qdiag,phi1,phi2,                               &
-                   tsq,qsq,cov,sh3d,el_pbl,qc_bl,qi_bl,cldfra_bl,            &
+                   tsq,qsq,cov,sh3d,sm3d,el_pbl,qc_bl,qi_bl,cldfra_bl,       &
                    qWT,qSHEAR,qBUOY,qDISS,dqke,qke_adv,qke,qke3d,            &
                    edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc,          &
                    sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D,                  &
@@ -101,7 +102,7 @@
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: th0,prs0,pi0,rho0,qv0
       real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: u0
       real, intent(inout), dimension(ib:ie,jb:je+1,kb:ke) :: v0
-      real, intent(inout), dimension(ib:ie,jb:je,nrain) :: rain,sws,svs,sps,srs,sgs,sus,shs
+      real, intent(inout), dimension(ib:ie,jb:je,nrain) :: rain,raincv,sws,svs,sps,srs,sgs,sus,shs
       real, intent(inout), dimension(ib:ie,jb:je) :: tsk,znt,ust,cd,ch,cq,u1,v1,s1,t1,xland,psfc,thflux,qvflux,prate,ustt,ut,vt,st
       real, intent(inout), dimension(jb:je,kb:ke) :: radbcw,radbce
       real, intent(inout), dimension(ib:ie,kb:ke) :: radbcs,radbcn
@@ -114,9 +115,10 @@
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: ppi,tha
       real, intent(inout), dimension(ibm:iem,jbm:jem,kbm:kem,numq) :: qa
       real, intent(inout), dimension(ibt:iet,jbt:jet,kbt:ket) :: tkea
-      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,effc,effi,effs,effr,effg,effis
+      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,thraten,effc,effi,effs,effr,effg,effis
       real, intent(inout), dimension(ni,nj) :: radsw,rnflx,radswnet,radlwin
       real, intent(inout), dimension(ni,nj,nrad2d) :: rad2d
+      real, intent(inout), dimension(ibcu:iecu,jbcu:jecu,kbcu:kecu) :: thcuten,qvcuten,qccuten,qicuten,ucuten,vcuten
       integer, intent(inout), dimension(ibl:iel,jbl:jel) :: lu_index
       integer, intent(inout), dimension(ibl:iel,jbl:jel) :: kpbl2d
       real, intent(inout), dimension(ibl:iel,jbl:jel) :: u10,v10,s10,hfx,qfx, &
@@ -133,7 +135,7 @@
       real, intent(inout), dimension(nparcels,3) :: ploc
       real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: ppx
       real, intent(inout), dimension(ibph:ieph,jbph:jeph,kbph:keph) :: phi1,phi2
-      real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: tsq,qsq,cov,sh3d,el_pbl,qc_bl,qi_bl,cldfra_bl, &
+      real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: tsq,qsq,cov,sh3d,sm3d,el_pbl,qc_bl,qi_bl,cldfra_bl, &
            qWT,qSHEAR,qBUOY,qDISS,dqke,qke_adv,qke,qke3d,edmf_a,edmf_w,edmf_qt,edmf_thl,edmf_ent,edmf_qc,  &
            sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
       real, intent(inout), dimension(ibmynn:iemynn,jbmynn:jemynn) :: vdfg,maxmf
@@ -409,7 +411,11 @@
       read(50) xcenter
       read(50) ycenter
       read(50) umove
+      read(50) umovem1
+      read(50) umovem2
       read(50) vmove
+      read(50) vmovem1
+      read(50) vmovem2
       read(50) domainlocx
       read(50) domainlocy
       read(50) adaptmovetim
@@ -609,10 +615,10 @@
 #ifdef NETCDF
   ELSEIF( restart_format.eq.2 )THEN
 
-    call disp_err( nf90_inq_varid(ncid,"cm1rversion",varid) , .true. )
-    call disp_err( nf90_get_var(ncid,varid,cm1rversion,(/time_index/)) , .true. )
-
     IF(myid.eq.0)THEN
+
+      call disp_err( nf90_inq_varid(ncid,"cm1rversion",varid) , .true. )
+      call disp_err( nf90_get_var(ncid,varid,cm1rversion,(/time_index/)) , .true. )
 
       call disp_err( nf90_inq_varid(ncid,"nstep",varid) , .true. )
       call disp_err( nf90_get_var(ncid,varid,nstep,(/time_index/)) , .true. )
@@ -704,8 +710,20 @@
       call disp_err( nf90_inq_varid(ncid,"umove",varid) , .true. )
       call disp_err( nf90_get_var(ncid,varid,umove,(/time_index/)) , .true. )
 
+      call disp_err( nf90_inq_varid(ncid,"umovem1",varid) , .true. )
+      call disp_err( nf90_get_var(ncid,varid,umovem1,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"umovem2",varid) , .true. )
+      call disp_err( nf90_get_var(ncid,varid,umovem2,(/time_index/)) , .true. )
+
       call disp_err( nf90_inq_varid(ncid,"vmove",varid) , .true. )
       call disp_err( nf90_get_var(ncid,varid,vmove,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"vmovem1",varid) , .true. )
+      call disp_err( nf90_get_var(ncid,varid,vmovem1,(/time_index/)) , .true. )
+
+      call disp_err( nf90_inq_varid(ncid,"vmovem2",varid) , .true. )
+      call disp_err( nf90_get_var(ncid,varid,vmovem2,(/time_index/)) , .true. )
 
       call disp_err( nf90_inq_varid(ncid,"domainlocx",varid) , .true. )
       call disp_err( nf90_get_var(ncid,varid,domainlocx,(/time_index/)) , .true. )
@@ -812,7 +830,11 @@
       call MPI_BCAST(xcenter,1,MPI_REAL            ,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(ycenter,1,MPI_REAL            ,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(umove  ,1,MPI_REAL            ,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(umovem1,1,MPI_REAL            ,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(umovem2,1,MPI_REAL            ,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(vmove  ,1,MPI_REAL            ,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(vmovem1,1,MPI_REAL            ,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(vmovem2,1,MPI_REAL            ,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(domainlocx  ,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(domainlocy  ,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(adaptmovetim,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
@@ -837,6 +859,31 @@
       call MPI_BCAST(avgsfcq,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(avgsfcp,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 #endif
+!---------------------------------------------------------------
+
+  if(myid.eq.0) print *,'  nxold,nyold,nzold = ',nxold,nyold,nzold
+
+  if( .not. allocated(datk1) )    allocate( datk1(0:nxold+1,0:nyold+1) )
+  if( .not. allocated(datk2) )    allocate( datk2(0:nxold+1,0:nyold+1) )
+
+  if( .not. allocated(sigma0) )   allocate( sigma0(0:nzold) )
+  if( .not. allocated(sigmaf0) )  allocate( sigmaf0(0:nzold+2) )
+
+  if( .not. allocated(ix) )       allocate( ix(ni) )
+  if( .not. allocated(iy) )       allocate( iy(nj) )
+  if( .not. allocated(iz) )       allocate( iz(nk) )
+
+  if( .not. allocated(ixu) )      allocate( ixu(ni+1) )
+  if( .not. allocated(iyv) )      allocate( iyv(nj+1) )
+  if( .not. allocated(izw) )      allocate( izw(nk+1) )
+
+  if( .not. allocated(rx) )       allocate( rx(ni) )
+  if( .not. allocated(ry) )       allocate( ry(nj) )
+  if( .not. allocated(rz) )       allocate( rz(nk) )
+
+  if( .not. allocated(rxu) )      allocate( rxu(ni+1) )
+  if( .not. allocated(ryv) )      allocate( ryv(nj+1) )
+  if( .not. allocated(rzw) )      allocate( rzw(nk+1) )
 
 !---------------------------------------------------------------
 ! budget variables:
@@ -868,35 +915,51 @@
 
 !---------------------------------------------------------------
 
-  IF( do_lsnudge .or. do_adapt_move )THEN
-
-    if( myid.eq.0 )then
+  if( myid.eq.0 )then
     if( interp_on_restart )then
       allocate( dumz(0:nzold+1) )
       dumz = 0.0
-      read(50) dumz
+      IF( restart_format.eq.1 )THEN
+        read(50) dumz
+#ifdef NETCDF
+      ELSEIF( restart_format.eq.2 )THEN
+        stop 1111
+#endif
+      ENDIF
       do k=1,nk
         kk = iz(k)
         ug(k) = (1.0-rz(k))*dumz(kk) + rz(k)*dumz(kk+1)
       enddo
-      read(50) dumz
+      IF( restart_format.eq.1 )THEN
+        read(50) dumz
+#ifdef NETCDF
+      ELSEIF( restart_format.eq.2 )THEN
+#endif
+      ENDIF
       do k=1,nk
         kk = iz(k)
         vg(k) = (1.0-rz(k))*dumz(kk) + rz(k)*dumz(kk+1)
       enddo
       deallocate( dumz )
     else
-      read(50) ug
-      read(50) vg
+      IF( restart_format.eq.1 )THEN
+        read(50) ug
+        read(50) vg
+#ifdef NETCDF
+      ELSEIF( restart_format.eq.2 )THEN
+        call disp_err( nf90_inq_varid(ncid,"ug",varid) , .true. )
+        call disp_err( nf90_get_var(ncid,varid,ug(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+        call disp_err( nf90_inq_varid(ncid,"vg",varid) , .true. )
+        call disp_err( nf90_get_var(ncid,varid,vg(1:nk),(/1,time_index/),(/nk,1/)) , .true. )
+#endif
+      ENDIF
     endif
-    endif
+  endif
 
 #ifdef MPI
     call MPI_BCAST(ug(kb),ke-kb+1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
     call MPI_BCAST(vg(kb),ke-kb+1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
 #endif
-
-  ENDIF
 
 !-----------------------------------------------------------------------
 
@@ -1141,10 +1204,12 @@
                   dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
     endif
     if( idoles .and. iusetke )then
+    if( .not. interp_on_restart )then  ! cm1r21.1: do not read tke when interpolating to a new grid !
       call  readr(ni,nj,1,nk+1,nx,ny,tkea(ib,jb,1),'tkea    ',     &
                   ni,nj,ngxy,myid,numprocs,nodex,nodey,orecw,54,   &
                   ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
                   dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz+1,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold+1,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+    endif
     endif
 
 !---------------------------------------------------------------
@@ -1156,6 +1221,10 @@
                     ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
                     dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
         call  readr(ni,nj,1,nk,nx,ny,swten(ib,jb,1),'swten   ',      &
+                    ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                    ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                    dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+        call  readr(ni,nj,1,nk,nx,ny,thraten(ib,jb,1),'thraten ',     &
                     ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
                     ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
                     dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
@@ -1631,6 +1700,10 @@
                   ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
                   ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
                   dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call  readr(ni,nj,1,nk,nx,ny,sm3d(ib,jb,1),'sm3d    ',       &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
       call  readr(ni,nj,1,nk,nx,ny,el_pbl(ib,jb,1),'el_pbl  ',     &
                   ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
                   ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
@@ -1848,10 +1921,51 @@
     endif
 
 !---------------------------------------------------------------
+!  convection param.
+
+    IF( cuparam.ge.1 )THEN
+      call  readr(ni,nj,1,1,nx,ny,raincv(ib,jb,1),'raincv  ',      &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      if(nrain.eq.2)  &
+      call  readr(ni,nj,1,1,nx,ny,raincv(ib,jb,2),'raincv2 ',      &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call  readr(ni,nj,1,nk,nx,ny,thcuten(ib,jb,1),'thcuten ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call  readr(ni,nj,1,nk,nx,ny,qvcuten(ib,jb,1),'qvcuten ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call  readr(ni,nj,1,nk,nx,ny,qccuten(ib,jb,1),'qccuten ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call  readr(ni,nj,1,nk,nx,ny,qicuten(ib,jb,1),'qicuten ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call  readr(ni,nj,1,nk,nx,ny,ucuten(ib,jb,1),'ucuten  ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+      call  readr(ni,nj,1,nk,nx,ny,vcuten(ib,jb,1),'vcuten  ',    &
+                  ni,nj,ngxy,myid,numprocs,nodex,nodey,orecs,51,   &
+                  ncid,time_index,restart_format,restart_filetype,myi1p,myi2p,myj1p,myj2p, &
+                  dat1(1,1),dat2(1,1),dat3(1,1,1),datk1(0,0),datk2(0,0),nx,ny,nz,ix,iy,iz,rx,ry,rz,nxold,nyold,nzold,sigma(0),sigma0(0),reqt,ppnode,d3n,d3t,mynode,nodeleader,nodes,d2is,d2js,d3is,d3js)
+    ENDIF
+
+!---------------------------------------------------------------
 !  2-part turbulence param:
 
       if( myid.eq.0 )then
         if( interp_on_restart )then
+
+        if( restart_format.eq.1 )then
           allocate( dumz(0:nzold+1) )
           dumz = 0.0
           !---
@@ -1893,14 +2007,25 @@
           !---
           deallocate( dumz )
         else
-         read(50) gamk
-         read(50) kmw
-         read(50) ufw
-         read(50) vfw
-         read(50) u1b
-         read(50) v1b
+          stop 2222
         endif
+
+        else
+          if( restart_format.eq.1 )then
+            read(50) gamk
+            read(50) kmw
+            read(50) ufw
+            read(50) vfw
+            read(50) u1b
+            read(50) v1b
+#ifdef NETCDF
+          elseif( restart_format.eq.2 )then
+#endif
+          endif
+        endif
+
       endif
+
 #ifdef MPI
       call MPI_BCAST(gamk,ke-kb+1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(kmw ,ke-kb+1,MPI_REAL,0,MPI_COMM_WORLD,ierr)
@@ -1982,6 +2107,7 @@
 !  time-average vars:
 
       IF( dotimeavg )THEN
+      if( .not. interp_on_restart )then  ! cm1r21.1: do not read timeavg fields when interpolating to a new grid !
 
         if( myid.eq.0 )then
            read(50) ifoo
@@ -2091,6 +2217,7 @@
         enddo
         enddo
 
+      endif
       ENDIF
 
 !---------------------------------------------------------------
@@ -2507,26 +2634,26 @@
       endif
 #endif
 
-      deallocate( xhref0 )
-      deallocate( xfref0 )
-      deallocate( yhref0 )
-      deallocate( yfref0 )
-      deallocate( sigma0 )
-      deallocate( sigmaf0 )
-      deallocate( datk1 )
-      deallocate( datk2 )
-      deallocate( ix )
-      deallocate( iy )
-      deallocate( iz )
-      deallocate( ixu )
-      deallocate( iyv )
-      deallocate( izw )
-      deallocate( rx )
-      deallocate( ry )
-      deallocate( rz )
-      deallocate( rxu )
-      deallocate( ryv )
-      deallocate( rzw )
+      if(allocated(xhref0))  deallocate( xhref0 )
+      if(allocated(xfref0))  deallocate( xfref0 )
+      if(allocated(yhref0))  deallocate( yhref0 )
+      if(allocated(yfref0))  deallocate( yfref0 )
+      if(allocated(sigma0))  deallocate( sigma0 )
+      if(allocated(sigmaf0)) deallocate( sigmaf0 )
+      if(allocated(datk1))   deallocate( datk1 )
+      if(allocated(datk2))   deallocate( datk2 )
+      if(allocated(ix))      deallocate( ix )
+      if(allocated(iy))      deallocate( iy )
+      if(allocated(iz))      deallocate( iz )
+      if(allocated(ixu))     deallocate( ixu )
+      if(allocated(iyv))     deallocate( iyv )
+      if(allocated(izw))     deallocate( izw )
+      if(allocated(rx))      deallocate( rx )
+      if(allocated(ry))      deallocate( ry )
+      if(allocated(rz))      deallocate( rz )
+      if(allocated(rxu))     deallocate( rxu )
+      if(allocated(ryv))     deallocate( ryv )
+      if(allocated(rzw))     deallocate( rzw )
 
       if( interp_on_restart )then
         if(myid.eq.0) print *,'  setting qpten to zero '

@@ -1,6 +1,6 @@
 
- CM1 Numerical Model, release 21.0  (cm1r21.0)
- 20 April 2022
+ CM1 Numerical Model, release 21.1  (cm1r21.1)
+ 24 March 2024
 
  Summary of changes.
 
@@ -78,6 +78,15 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    Thompson microphysics scheme. 
 
 
+   -------------------
+    cm1r21.0:
+
+ - Added the option to use a convection parameterization.  Currently only the 
+   "new Tiedtke" scheme is available (cuparam=1).  
+
+ - Added the WSM6 microphysics scheme from "MMM shared physics" (ptype=7). 
+
+
 -------------------------------------------------------------
 ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 -------------------------------------------------------------
@@ -116,5 +125,91 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    files).  
    (base.F)
 
+
+   -------------------
+    cm1r21.0:
+
+ - Updated the Makefile; noted which options are preferred for NCAR's casper 
+   and derecho computers; updated default settings for the gfortran and Cray
+   fortran compilers.
+
+ - Updated the NSSL microphysics code.  See the README.NSSLmp file for more 
+   information.  Thanks to Ted Mansell of NOAA/NSSL. 
+
+ - Updated the P3 microphysics code to the WRFv4.5.2 version.
+
+ - Updated the MYNN PBL and surface-layer codes to the WRFv4.5.2 versions. 
+
+ - Updated the YSU PBL and "revised WRF" surface-layer codes to the "MMM shared
+   physics" versions. 
+
+ - Modified the RRTMG radiation codes to use the same values for physical 
+   constants (eg, c_p, R, g) as the CM1 solver. 
+
+ - Fixed a problem interpolating ozone to model levels in the RRTMG radiation 
+   codes.  (Thanks to Osamu Miyawaki of NSF-NCAR/ASP for pointing out this 
+   problem.) 
+   (module_ra_rrtmg_lw.F)
+
+ - Fixed a major problem with the apmasscon=1 option (that adjusts the mean 
+   pressure to ensure conservation of total mass) when using a large number 
+   of grid points (roughly, > 10^9).  Double precision is now used in the 
+   calculation to prevent the solver from blowing up with very large domains.
+   (solve2.F)
+
+ - Fixed a minor distributed-memory parallelization problem when using TKE 
+   advection with the MYNN PBL code. 
+   (solve2.F, cm1.F)
+
+ - Fixed a very minor bug with the initialization of viscosity/diffusivity when 
+   using DNS and some LES sgs models. 
+   (cm1.F)
+
+ - Fixed a very minor bug with the initialization of effective radii for cloud,
+   ice, and snow when using RRTMG. 
+   (cm1.F) 
+
+ - Made several improvements to the TC-tracking algoritm (do_adapt_move=true).
+   It is now based on the centroid of a smoothed surface-pressure field, and 
+   the adaptive movement code now does a better job of keeping the TC center 
+   in the middle of the domain. 
+   (azimavg.F, cm1.F)
+
+ - Fixed several problems with netcdf-format restart files (restart_format=2).
+   (writeout_nc.F)
+
+ - Fixed a bug when writing out variables from the two-part subgrid turbulent 
+   model (sgsmodel=3,4); now only the actual levels are written (as opposed to the 
+   entire domain, where most of the data is undefined/zero).  
+   (writeout.F)
+
+ - Fixed several bugs for LES with terrain. 
+   (turb.F, turbtend.F, solve1.F)
+
+ - Fixed a minor bug with the vertical diffusion of subgrid TKE for sgsmodel=1,3,4
+   when using doimpl=1 (vertically implicit diffusion).
+   (turbtend.F)
+
+ - Fixed some bugs associated with shared-memory (OpenMP) parallelization.
+   Also, sped-up OpenMP parallelization in a few places. 
+
+ - Fixed a bug with NBA subgrid turbulence (sgsmodel=5,6) when moisture is 
+   present. 
+   (turb.F)
+
+ - Fixed a few minor bugs with some "domain" LES diagnostics.
+   (domaindiag.F, turb.F)
+
+ - Fixed a few bugs with the "LES within mesoscale model" option (cm1setup=4).
+
+ - Modified the code that calculates and writes azimuthally averaged fields 
+   so that much less memory is used.  A similar change was made to the iinit=7
+   option (modified Rankine initial vortex) to also use less memory. 
+   (azimavg.F, cm1.F, init3d.F)
+
+ - Fixed a few bugs associated with interpolating to a new grid on a restart. 
+   Unfortunately, this exercise has exposed several flaws with the format of 
+   restart files in CM1; an overhaul of restart files is planned for the next 
+   major upgrade of CM1. 
 
 
