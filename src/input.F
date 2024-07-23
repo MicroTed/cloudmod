@@ -269,7 +269,8 @@
           advwenos,advwenov,weno_order,                                 &
           apmasscon,idiff,mdiff,difforder,imoist,                       &
           ipbl,sgsmodel,tconfig,bcturbs,horizturb,doimpl,               &
-          irdamp,hrdamp,psolver,ptype,ihail,iautoc,cuparam,             &
+          irdamp,hrdamp,psolver,ptype,nssl_3moment,nssl_density_on,     &
+          ihail,iautoc,cuparam,                                         &
           icor,betaplane,lspgrad,eqtset,idiss,efall,rterm,              &
           wbc,ebc,sbc,nbc,bbc,tbc,irbc,roflux,nudgeobc,                 &
           isnd,iwnd,itern,iinit,                                        &
