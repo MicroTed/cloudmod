@@ -972,6 +972,10 @@
 
         ELSEIF( ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.53 )THEN
 
+          DO i = 1,numq
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+          ENDDO
+
           rdt = 1.0/dt
 
           p3jloop:  &
@@ -1204,6 +1208,10 @@
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
         ELSEIF( ptype.eq.52 )THEN
+
+          DO i = 1,numq
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+          ENDDO
 
           rdt = 1.0/dt
 
