@@ -1068,11 +1068,11 @@ END subroutine p3_init
                case (1)
                   diag_effi_ave(i,k,j) = diag_effi(i,k,1)
                case (2)
-                  diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2))/(dum1+dum2)
+                  if (dum1+dum2 > 0.0) diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2))/(dum1+dum2)
                case (3)
-                  diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2)+qitot(i,k,3))/(dum1+dum2+dum3)
+                  if (dum1+dum2+dum3 > 0.0 ) diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2)+qitot(i,k,3))/(dum1+dum2+dum3)
                case (4)
-                  diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2)+qitot(i,k,3)+qitot(i,k,4))/(dum1+dum2+dum3+dum4)
+                  if (dum1+dum2+dum3+dum4 > 0.0 ) diag_effi_ave(i,k,j) = (qitot(i,k,1)+qitot(i,k,2)+qitot(i,k,3)+qitot(i,k,4))/(dum1+dum2+dum3+dum4)
             end select
 
          enddo  !k-loop
@@ -2051,7 +2051,7 @@ END subroutine p3_init
  integer :: dmropt = 0 ! extra option for crcnw
  double precision t2s, xdp, xvc, xvr, rwrad
  double precision xl2p,rb
- real :: alphac, alphar, volb, xdiac, rh, nh
+ real :: alphac, alphar, volb, xdiac, rh, nh, erw
  real, parameter :: aa1 = 9.44e15, aa2 = 5.78e3
 
  integer :: dumi,i,k,ii,iice,iice_dest,dumj,dumii,dumjj,dumzz,tmpint1,ktop,kbot,kdir,    &
@@ -2331,7 +2331,7 @@ END subroutine p3_init
     !--- apply mass clipping if dry and mass is sufficiently small
     !    (implying all mass is expected to evaporate/sublimate in one time step)
 
-       if (qc(i,k).lt.qsmall .or. (qc(i,k).lt.1.e-8 .and. sup(i,k).lt.-0.1)) then
+       if (qc(i,k).lt.qsmall .or. nc(i,k) < nsmall .or. (qc(i,k).lt.1.e-8 .and. sup(i,k).lt.-0.1)) then
           qv(i,k) = qv(i,k) + qc(i,k)
           th(i,k) = th(i,k) - invexn(i,k)*qc(i,k)*xxlv(i,k)*inv_cp
           qc(i,k) = 0.
@@ -2340,7 +2340,7 @@ END subroutine p3_init
           log_hydrometeorsPresent = .true.    ! updated further down
        endif
 
-       if (qr(i,k).lt.qsmall .or. (qr(i,k).lt.1.e-8 .and. sup(i,k).lt.-0.1)) then
+       if (qr(i,k).lt.qsmall .or. nr(i,k) < nsmall  .or. (qr(i,k).lt.1.e-8 .and. sup(i,k).lt.-0.1)) then
           qv(i,k) = qv(i,k) + qr(i,k)
           th(i,k) = th(i,k) - invexn(i,k)*qr(i,k)*xxlv(i,k)*inv_cp
           qr(i,k) = 0.
@@ -2350,8 +2350,8 @@ END subroutine p3_init
        endif
 
        do iice = 1,nCat
-          if (qitot(i,k,iice).lt.qsmall .or. (qitot(i,k,iice).lt.1.e-8 .and.             &
-           supi(i,k).lt.-0.1)) then
+          if (qitot(i,k,iice).lt.qsmall .or. nitot(i,k,iice).lt.nsmall ) then ! .or. &
+             !   (qitot(i,k,iice).lt.1.e-8 .and. supi(i,k).lt.-0.1)) then
              qv(i,k) = qv(i,k) + qitot(i,k,iice)
              th(i,k) = th(i,k) - invexn(i,k)*(qitot(i,k,iice)-qiliq(i,k,iice))*xxls(i,k)*inv_cp
              th(i,k) = th(i,k) - invexn(i,k)*qiliq(i,k,iice)*xxlv(i,k)*inv_cp
@@ -2364,7 +2364,8 @@ END subroutine p3_init
              log_hydrometeorsPresent = .true.    ! final update
           endif
 
-          if (log_LiquidFrac .and. qitot(i,k,iice).ge.qsmall .and. (qiliq(i,k,iice)/qitot(i,k,iice)).gt.0.99) then
+          if (log_LiquidFrac .and. qitot(i,k,iice).ge.qsmall ) then ! split line in case qitot = 0
+            if (( qiliq(i,k,iice)/qitot(i,k,iice)).gt.0.99) then
              qr(i,k) = qr(i,k) + qitot(i,k,iice)
              nr(i,k) = nr(i,k) + nitot(i,k,iice)
              th(i,k) = th(i,k) - invexn(i,k)*(qitot(i,k,iice)-qiliq(i,k,iice))*xlf(i,k)*inv_cp
@@ -2373,6 +2374,7 @@ END subroutine p3_init
              qirim(i,k,iice) = 0.
              qiliq(i,k,iice) = 0.
              birim(i,k,iice) = 0.
+            endif
           endif
 
           if (qitot(i,k,iice).ge.qsmall .and. qitot(i,k,iice).lt.1.e-8 .and.             &
@@ -2559,7 +2561,7 @@ END subroutine p3_init
 
        iice_loop1: do iice = 1,nCat
 
-          qitot_notsmall_1: if (qitot(i,k,iice).ge.qsmall) then
+          qitot_notsmall_1: if (qitot(i,k,iice).ge.qsmall .and. nitot(i,k,iice) > nsmall ) then
 
             !impose lower limits to prevent taking log of # < 0
              nitot(i,k,iice) = max(nitot(i,k,iice),nsmall)
@@ -3605,6 +3607,25 @@ END subroutine p3_init
 !................................................................
 ! autoconversion
 
+         if (iparam.eq.5) then
+           alphar = 0.0
+           erw = 1.0
+           if ( qr(i,k) > qsmall .and. nr(i,k) > nsmall ) then
+             xvr = Max((4./3.)*pi*(10.e-6)**3, qr(i,k)/(nr(i,k)*1000.))
+             rwrad = 0.5*(6.*xvr/pi)**(1./3.)
+             diag_3d(i,k,3) = 1000.*rwrad
+           else
+             xvr = 0.0
+             rwrad = 0.0
+           endif
+         else
+           if ( qr(i,k) > qsmall .and. nr(i,k) > nsmall ) then
+             xvr = Max((4./3.)*pi*(10.e-6)**3, qr(i,k)/(nr(i,k)*1000.))
+             rwrad = 0.5*(6.*xvr/pi)**(1./3.)
+             diag_3d(i,k,3) = 1000.*rwrad
+           endif
+         endif
+
 !Note (BUG), needs to be in-cloud condition
        qc_not_small_1: if (qc(i,k)*iSCF(k).ge.1.e-8) then
 
@@ -3658,7 +3679,9 @@ END subroutine p3_init
 
           elseif (iparam.eq.5) then
             ! Cohard and Pinty (2000)
-            xvc = qc(i,k)/(nc(i,k)*900.)
+            xvc = qc(i,k)/(nc(i,k)*1000.)
+
+            alphac = 0.0
 
             xdiac = ((6.*xvc)/pi)**thrd
             rb = 0.5*xdiac*(1./(1.+alphac))**(1./6.)
@@ -3675,9 +3698,8 @@ END subroutine p3_init
               nh = 1.e30
             ENDIF
 
-            alphac = 0.0
-            volb = xvc*(1./(1.+alphac))**(1./2.)
-            ncautc = Max(0.0, ((alphac+2.)/(alphac+1.))*aa1*(rho(i,k)*nc(i,k))**2*xvc**2 )*inv_rho(i,k)
+            !volb = xvc*(1./(1.+alphac))**(1./2.)
+            ncautc = Max(0.0, ((alphac+2.)/(alphac+1.))*aa1*rho(i,k)*(nc(i,k))**2*xvc**2 )
 
             IF ( rb .le. 7.51d-6 ) THEN
               t2s = 1.d30
@@ -3697,11 +3719,45 @@ END subroutine p3_init
               ncslf = 0.0
             ENDIF
 
+!            IF ( i == 15 ) write(6,*) 'ncautr,k = ',k,ncautr,qc(i,k),nc(i,k),ncautc,xvc
+
+             IF ( qr(i,k) > qsmall .and. qr(i,k)*rho(i,k) > 1.2*xl2p ) THEN
+           !  xvr = Max((4./3.)*pi*(40.e-6)**3, qr(i,k)/(nr(i,k)*900.))
+             
+             IF ( rwrad > rh ) THEN
+             
+             IF ( rwrad > 50.e-6 ) THEN
+               ncacc = aa2*nr(i,k)*(rho(i,k)*nc(i,k))*(xvc + xvr)
+
+           !  IF ( qr(i,k)*rho(i,k) > 1.2*xl2p ) THEN
+              qcacc = erw*aa2*nr(i,k)*rho(i,k)*qc(i,k)*   &
+     &        ((alphac + 2.)*xvc/(alphac + 1.) + xvr) !*rhoinv(mgs)
+             ELSE
+              qcacc = aa1*nc(i,k)*rho(i,k)*qc(i,k)*                       &
+     &          ((alphac + 3.)*(alphac + 2.)*xvc**2/(alphac + 1.)**2 +    &
+     &           (alphar + 6.)*(alphar + 5.)*(alphar + 4.)*xvr**2/        &
+     &           ((alphar + 3.)*(alphar + 2.)*(alphar + 1.))) 
+
+               ncacc = aa1*nr(i,k)*nc(i,k)*rho(i,k)*   &
+     &          ((alphac + 2.)*xvc**2/(alphac + 1.) +    &
+     &          (alphar + 6.)*(alphar + 5.)*(alphar + 4.)*xvr**2/  &
+     &             ((alphar + 3.)*(alphar + 2.)*(alphar + 1.)) )
+             ENDIF ! rwrad
+
+              ! ncacc = Min(ncacc, 0.10*nc(i,k)*odt )
+              ! qcacc = Min(qcacc, 0.10*qc(i,k)*odt )
+
+             ENDIF ! rwrad > rh
+            ENDIF ! qr > qsmall
           endif
 
           if (qcaut .eq.0.) ncautc = 0.
           if (ncautc.eq.0.) qcaut  = 0.
 
+       else
+          if (iparam.eq.5) then
+            xvc = 0.0
+          endif
        endif qc_not_small_1
 
 !............................
@@ -3720,7 +3776,7 @@ END subroutine p3_init
             !Khroutdinov and Kogan (2000)
              ncslf = 0.
           elseif (iparam.eq.5) then
-            ! ncslf = 0.
+             ncslf = 0.
           endif
 
        endif
@@ -3757,8 +3813,7 @@ END subroutine p3_init
              ncacc = qcacc*nc(i,k)/qc(i,k)
           elseif (iparam.eq.5) then
             ! Cohard and Pinty 2000
-            xvr = qr(i,k)/(nr(i,k)*900.)
-            ncacc = aa2*nr(i,k)*(rho(i,k)*nc(i,k))*(xvc + xvr)
+            ! Done in section with autoconversion
           endif
 
           if (qcacc.eq.0.) ncacc = 0.
@@ -3770,7 +3825,7 @@ END subroutine p3_init
 ! self-collection and breakup of rain
 ! (breakup following modified Verlinde and Cotton scheme)
 
-       if (qr(i,k).ge.qsmall) then
+       if (qr(i,k).ge.qsmall .and. nr(i,k) > nsmall ) then
 
         ! include breakup
           dum1 = 280.e-6
@@ -3795,16 +3850,26 @@ END subroutine p3_init
           elseif (iparam.eq.4) then
              nrslf = dum*205.*(qr(i,k)*iSPF(k))**1.55*(nr(i,k)*1.e-6*rho(i,k)*iSPF(k))**0.6*1.e6/rho(i,k)*SPF(k) ! 1.e6 converts cm-3 to m-3
           elseif (iparam.eq.5) then
-            xvr = qr(i,k)/(nr(i,k)*900.)
-            alphar = 0
-            rwrad = 0.5*((6.*xvr)/pi)**thrd ! (6.*qr(i,k)/(pi*900.*nr(i,k)))**(1./3.)
+           ! xvr = qr(i,k)/(nr(i,k)*900.)
+           ! alphar = 0
+           ! rwrad = 0.5*((6.*xvr)/pi)**thrd ! (6.*qr(i,k)/(pi*900.*nr(i,k)))**(1./3.)
+            dum2 =  (3.67+alphar)*2.*rwrad
+            IF ( dum1 > 1.9e-3 ) THEN
+              dum = 0.0
+            ELSE
+              IF ( 2.*rwrad .lt. 6.1e-4  ) THEN
+                dum = 1.0
+              ELSE
+                dum = Exp(-50.0*(50.0*(2.*rwrad - 6.0e-4)))
+              ENDIF
+            ENDIF
             IF ( rwrad .ge. 50.e-6 ) THEN
               nrslf = dum*aa2*rho(i,k)*(nr(i,k))**2*xvr
             ELSE
-              nrslf = dum*aa1*rho(i,k)*(nr(i,k)*xvr)**2*      &
+              nrslf =  aa1*rho(i,k)*(nr(i,k)*xvr)**2*      &
      &                   (alphar + 6.)*(alphar + 5.)*(alphar + 4.)/  &
      &                  ((alphar + 3.)*(alphar + 2.)*(alphar + 1.))
-              
+
             ENDIF
           
           endif
@@ -4274,7 +4339,8 @@ END subroutine p3_init
        ! clipping for Filiq > 0.99 (transfer unmelted ice to rain)
        if (log_LiquidFrac) then
          do iice = 1,nCat
-            if (qitot(i,k,iice).ge.qsmall .and. (qiliq(i,k,iice)/qitot(i,k,iice)).gt.0.99) then
+            if (qitot(i,k,iice).ge.qsmall ) then
+              if ((qiliq(i,k,iice)/qitot(i,k,iice)).gt.0.99) then ! split conditional to avoid div by zero
                   qr(i,k) = qr(i,k) + qitot(i,k,iice)
                   nr(i,k) = nr(i,k) + nitot(i,k,iice)
                   th(i,k) = th(i,k) - invexn(i,k)*(qitot(i,k,iice)-qiliq(i,k,iice))*xlf(i,k)*inv_cp
@@ -4283,6 +4349,7 @@ END subroutine p3_init
                   qirim(i,k,iice) = 0.
                   qiliq(i,k,iice) = 0.
                   birim(i,k,iice) = 0.
+               endif
             endif
           enddo !iice-loop
         endif
@@ -4421,7 +4488,7 @@ END subroutine p3_init
 
              kloop_sedi_c2: do k = k_qxtop,k_qxbot,-kdir
 
-                if (qc(i,k)*iSCF(k).ge.qsmall) then
+                if (qc(i,k)*iSCF(k).ge.qsmall .and. nc(i,k) > nsmall) then
                    call get_cloud_dsd2(qc(i,k),nc(i,k),mu_c(i,k),rho(i,k),nu(i,k),dnu,   &
                                    lamc(i,k),lammin,lammax,tmp1,tmp2,iSCF(k))
                    dum = 1./lamc(i,k)**bcn
@@ -4566,7 +4633,7 @@ END subroutine p3_init
 
           kloop_sedi_r1: do k = k_qxtop,k_qxbot,-kdir
 
-             qr_not_small_1: if (qr(i,k)*iSPF(k).ge.qsmall) then
+             qr_not_small_1: if (qr(i,k)*iSPF(k).ge.qsmall .and. nr(i,k) > nsmall ) then
 
                !Compute Vq, Vn:
                 nr(i,k)  = max(nr(i,k),nsmall)
@@ -4693,7 +4760,7 @@ END subroutine p3_init
                 kloop_sedi_i1: do k = k_qxtop,k_qxbot,-kdir
 
                    !-- compute Vq, Vn (get values from lookup table)
-                   qi_notsmall_i1: if (qitot(i,k,iice).ge.qsmall) then
+                   qi_notsmall_i1: if (qitot(i,k,iice).ge.qsmall .and. nitot(i,k,iice) > nsmall ) then
 
                     !--Compute Vq, Vn:
                       nitot(i,k,iice) = max(nitot(i,k,iice),nsmall) !impose lower limits to prevent log(<0)
@@ -4786,7 +4853,7 @@ END subroutine p3_init
                 kloop_sedi_i2: do k = k_qxtop,k_qxbot,-kdir
 
                    !-- compute Vq, Vn (get values from lookup table)
-                   qi_notsmall_i2: if (qitot(i,k,iice).ge.qsmall) then
+                   qi_notsmall_i2: if (qitot(i,k,iice).ge.qsmall .and. nitot(i,k,iice) > nsmall ) then
 
                     !--Compute Vq, Vn:
                       nitot(i,k,iice) = max(nitot(i,k,iice),nsmall) !impose lower limits to prevent log(<0)
@@ -4889,7 +4956,7 @@ END subroutine p3_init
                 kloop_sedi_i3: do k = k_qxtop,k_qxbot,-kdir
 
                    !-- compute Vq, Vn (get values from lookup table)
-                   qi_notsmall_i3: if (qitot(i,k,iice).ge.qsmall) then
+                   qi_notsmall_i3: if (qitot(i,k,iice).ge.qsmall .and. nitot(i,k,iice) >= nsmall ) then
 
                     !--Compute Vq, Vn:
                       nitot(i,k,iice) = max(nitot(i,k,iice),nsmall) !impose lower limits to prevent log(<0)
@@ -5007,7 +5074,7 @@ END subroutine p3_init
                 kloop_sedi_i4: do k = k_qxtop,k_qxbot,-kdir
 
                    !-- compute Vq, Vn (get values from lookup table)
-                   qi_notsmall_i4: if (qitot(i,k,iice).ge.qsmall) then
+                   qi_notsmall_i4: if (qitot(i,k,iice).ge.qsmall .and. nitot(i,k,iice) > nsmall ) then
 
                     !--Compute Vq, Vn:
                       nitot(i,k,iice) = max(nitot(i,k,iice),nsmall) !impose lower limits to prevent log(<0)
@@ -5455,7 +5522,7 @@ END subroutine p3_init
 
        iice_loop_final_diagnostics:  do iice = 1,nCat
 
-          qi_not_small:  if (qitot(i,k,iice).ge.qsmall) then
+          qi_not_small:  if (qitot(i,k,iice).ge.qsmall .and. nitot(i,k,iice).ge.nsmall) then
 
             !impose lower limits to prevent taking log of # < 0
              nitot(i,k,iice) = max(nitot(i,k,iice),nsmall)
@@ -5775,8 +5842,13 @@ END subroutine p3_init
     do i = its,ite
        do k = ktop,kbot,-kdir
           do iice = 1,nCat
+             if ( nitot(i,k,iice) > nsmall .and. qitot(i,k,iice) > qsmall ) then
              diag_dhmax(i,k,iice) = maxHailSize(rho(i,k),nitot(i,k,iice),rhofaci(i,k),    &
                                                 arr_lami(i,k,iice),arr_mui(i,k,iice))
+             else
+             diag_dhmax(i,k,iice) = 0.0
+             endif
+             
           enddo
           diag_3d(i,k,1) = sum(qitot(i,k,:))
           diag_3d(i,k,2) = maxval(diag_dhmax(i,k,:))

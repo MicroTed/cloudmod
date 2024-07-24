@@ -188,24 +188,28 @@
 !-----------------------------------------------------------------------
 !  west boundary condition
 
-!$omp parallel do default(shared)  &
-!$omp private(i,j,k)
-    DO k=1,nk
-
 #ifndef MPI
       if(wbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=jb,je
         do i=1,ngxy
           s(1-i,j,k)=s(ni+1-i,j,k)
+        enddo
         enddo
         enddo
       elseif(wbc.eq.2)then
 #else
       if(ibw.eq.1.and.wbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+1
         do i=1-ngxy,0
           s(i,j,k)=s(1,j,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -213,9 +217,13 @@
 #else
       elseif(wbc.eq.3.or.wbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+1
         do i=1,ngxy
           s(1-i,j,k)=s(i,j,k)
+        enddo
         enddo
         enddo
       endif
@@ -225,18 +233,26 @@
 
 #ifndef MPI
       if(ebc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=jb,je
         do i=1,ngxy
           s(ni+i,j,k)=s(i,j,k)
+        enddo
         enddo
         enddo
       elseif(ebc.eq.2)then
 #else
       if(ibe.eq.1.and.ebc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+1
         do i=ni+1,ni+ngxy
           s(i,j,k)=s(ni,j,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -244,9 +260,13 @@
 #else
       elseif(ebc.eq.3.or.ebc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+1
         do i=1,ngxy
           s(ni+i,j,k)=s(ni+1-i,j,k)
+        enddo
         enddo
         enddo
       endif
@@ -256,18 +276,26 @@
 
 #ifndef MPI
       if(sbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=ib,ie
           s(i,1-j,k)=s(i,nj+1-j,k)
+        enddo
         enddo
         enddo
       elseif(sbc.eq.2)then
 #else
       if(ibs.eq.1.and.sbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1-ngxy,0
         do i=0,ni+1
           s(i,j,k)=s(i,1,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -275,9 +303,13 @@
 #else
       elseif(sbc.eq.3.or.sbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=0,ni+1
           s(i,1-j,k)=s(i,j,k)
+        enddo
         enddo
         enddo
       endif
@@ -287,18 +319,26 @@
 
 #ifndef MPI
       if(nbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=ib,ie
           s(i,nj+j,k)=s(i,j,k)
+        enddo
         enddo
         enddo
       elseif(nbc.eq.2)then
 #else
       if(ibn.eq.1.and.nbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=nj+1,nj+ngxy
         do i=0,ni+1
           s(i,j,k)=s(i,nj,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -306,14 +346,16 @@
 #else
       elseif(nbc.eq.3.or.nbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=0,ni+1
           s(i,nj+j,k)=s(i,nj+1-j,k)
         enddo
         enddo
+        enddo
       endif
-
-    ENDDO
 
 !-----------------------------------------------------------------------
 
@@ -494,24 +536,28 @@
 !-----------------------------------------------------------------------
 !  west boundary condition
 
-!$omp parallel do default(shared)  &
-!$omp private(i,j,k)
-    DO k=1,nk
-
 #ifndef MPI
       if(wbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=jb,je
         do i=1,ngxy
           u(1-i,j,k)=u(ni+1-i,j,k)
+        enddo
         enddo
         enddo
       elseif(wbc.eq.2)then
 #else
       if(ibw.eq.1.and.wbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+1
         do i=1-ngxy,0
           u(i,j,k)=u(1,j,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -519,10 +565,14 @@
 #else
       elseif(wbc.eq.3.or.wbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+1
           u(1,j,k)=0.
         do i=1,ngxy
           u(1-i,j,k)=-u(1+i,j,k)
+        enddo
         enddo
         enddo
       endif
@@ -532,18 +582,26 @@
 
 #ifndef MPI
       if(ebc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=jb,je
         do i=1,ngxy
           u(ni+1+i,j,k)=u(1+i,j,k)
+        enddo
         enddo
         enddo
       elseif(ebc.eq.2)then
 #else
       if(ibe.eq.1.and.ebc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+1
         do i=ni+2,ni+1+ngxy
           u(i,j,k)=u(ni+1,j,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -551,10 +609,14 @@
 #else
       elseif(ebc.eq.3.or.ebc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+1
           u(ni+1,j,k)=0.0
         do i=1,ngxy
           u(ni+1+i,j,k)=-u(ni+1-i,j,k)
+        enddo
         enddo
         enddo
       endif
@@ -564,18 +626,26 @@
 
 #ifndef MPI
       if(sbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=ib,ie+1
           u(i,1-j,k)=u(i,nj+1-j,k)
+        enddo
         enddo
         enddo
       elseif(sbc.eq.2)then
 #else
       if(ibs.eq.1.and.sbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1-ngxy,0
         do i=0,ni+2
           u(i,j,k)=u(i,1,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -583,9 +653,13 @@
 #else
       elseif(sbc.eq.3.or.sbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=0,ni+2
           u(i,1-j,k)=u(i,j,k)
+        enddo
         enddo
         enddo
       endif
@@ -595,18 +669,26 @@
 
 #ifndef MPI
       if(nbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=ib,ie+1
           u(i,nj+j,k)=u(i,j,k)
+        enddo
         enddo
         enddo
       elseif(nbc.eq.2)then
 #else
       if(ibn.eq.1.and.nbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=nj+1,nj+ngxy
         do i=0,ni+2
           u(i,j,k)=u(i,nj,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -614,14 +696,16 @@
 #else
       elseif(nbc.eq.3.or.nbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=0,ni+2
           u(i,nj+j,k)=u(i,nj+1-j,k)
         enddo
         enddo
+        enddo
       endif
-
-    ENDDO
 
 !-----------------------------------------------------------------------
 
@@ -646,24 +730,28 @@
 !-----------------------------------------------------------------------
 !  south boundary condition
 
-!$omp parallel do default(shared)  &
-!$omp private(i,j,k)
-    DO k=1,nk
-
 #ifndef MPI
       if(sbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=ib,ie
           v(i,1-j,k)=v(i,nj+1-j,k)
+        enddo
         enddo
         enddo
       elseif(sbc.eq.2)then
 #else
       if(ibs.eq.1.and.sbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1-ngxy,0
         do i=0,ni+1
           v(i,j,k)=v(i,1,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -671,6 +759,9 @@
 #else
       elseif(sbc.eq.3.or.sbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=0,ni+1
           v(i,1-j,k)=-v(i,j+1,k)
@@ -679,31 +770,44 @@
         do i=0,ni+1
           v(i,   1,k)=0.
         enddo
+        enddo
       endif
 
 !-----------------------------------------------------------------------
 !  north boundary condition
 
       IF(axisymm.eq.1)THEN
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do i=ib,ie
           v(i,2,k)=v(i,1,k)
+        enddo
         enddo
       ENDIF
 
 #ifndef MPI
       if(nbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=ib,ie
           v(i,nj+1+j,k)=v(i,1+j,k)
+        enddo
         enddo
         enddo
       elseif(nbc.eq.2)then
 #else
       if(ibn.eq.1.and.nbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=nj+2,nj+1+ngxy
         do i=0,ni+1
           v(i,j,k)=v(i,nj+1,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -711,6 +815,9 @@
 #else
       elseif(nbc.eq.3.or.nbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=1,ngxy
         do i=0,ni+1
           v(i,nj+1+j,k)=-v(i,nj+1-j,k)
@@ -719,6 +826,7 @@
         do i=0,ni+1
           v(i,nj+1,k)=0.
         enddo
+        enddo
       endif
 
 !-----------------------------------------------------------------------
@@ -726,18 +834,26 @@
 
 #ifndef MPI
       if(wbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=jb,je+1
         do i=1,ngxy
           v(1-i,j,k)=v(ni+1-i,j,k)
+        enddo
         enddo
         enddo
       elseif(wbc.eq.2)then
 #else
       if(ibw.eq.1.and.wbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+2
         do i=1-ngxy,0
           v(i,j,k)=v(1,j,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -745,17 +861,25 @@
 #else
       elseif(wbc.eq.3.or.wbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+2
         do i=1,ngxy
           v(1-i,j,k)=v(i,j,k)
         enddo
         enddo
+        enddo
       endif
 
       IF(axisymm.eq.1)THEN
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+2
         do i=1,ngxy
           v(1-i,j,k) = -v(i,j,k)
+        enddo
         enddo
         enddo
       ENDIF
@@ -765,18 +889,26 @@
 
 #ifndef MPI
       if(ebc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=jb,je+1
         do i=1,ngxy
           v(ni+i,j,k)=v(i,j,k)
+        enddo
         enddo
         enddo
       elseif(ebc.eq.2)then
 #else
       if(ibe.eq.1.and.ebc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+2
         do i=ni+1,ni+ngxy
           v(i,j,k)=v(ni,j,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -784,14 +916,16 @@
 #else
       elseif(ebc.eq.3.or.ebc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
         do j=0,nj+2
         do i=1,ngxy
           v(ni+i,j,k)=v(ni+1-i,j,k)
         enddo
         enddo
+        enddo
       endif
-
-    ENDDO
 
 !-----------------------------------------------------------------------
 
@@ -816,25 +950,29 @@
 
 !-----------------------------------------------------------------------
 !  west boundary condition
-
-!$omp parallel do default(shared)  &
-!$omp private(i,j,k)
-    DO k=2,nk
  
 #ifndef MPI
       if(wbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=jb,je
         do i=1,ngxy
           w(1-i,j,k)=w(ni+1-i,j,k)
+        enddo
         enddo
         enddo
       elseif(wbc.eq.2)then
 #else
       if(ibw.eq.1.and.wbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=0,nj+1
         do i=1-ngxy,0
           w(i,j,k)=w(1,j,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -842,9 +980,13 @@
 #else
       elseif(wbc.eq.3.or.wbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=0,nj+1
         do i=1,ngxy
           w(1-i,j,k)=w(i,j,k)
+        enddo
         enddo
         enddo
       endif
@@ -854,18 +996,26 @@
 
 #ifndef MPI
       if(ebc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=jb,je
         do i=1,ngxy
           w(ni+i,j,k)=w(i,j,k)
+        enddo
         enddo
         enddo
       elseif(ebc.eq.2)then
 #else
       if(ibe.eq.1.and.ebc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=0,nj+1
         do i=ni+1,ni+ngxy
           w(i,j,k)=w(ni,j,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -873,9 +1023,13 @@
 #else
       elseif(ebc.eq.3.or.ebc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=0,nj+1
         do i=1,ngxy
           w(ni+i,j,k)=w(ni+1-i,j,k)
+        enddo
         enddo
         enddo 
       endif
@@ -885,18 +1039,26 @@
 
 #ifndef MPI
       if(sbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=1,ngxy
         do i=ib,ie
           w(i,1-j,k)=w(i,nj+1-j,k)
+        enddo
         enddo
         enddo
       elseif(sbc.eq.2)then
 #else
       if(ibs.eq.1.and.sbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=1-ngxy,0
         do i=0,ni+1
           w(i,j,k)=w(i,1,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -904,9 +1066,13 @@
 #else
       elseif(sbc.eq.3.or.sbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=1,ngxy
         do i=0,ni+1
           w(i,1-j,k)=w(i,j,k)
+        enddo
         enddo
         enddo
       endif
@@ -916,18 +1082,26 @@
 
 #ifndef MPI
       if(nbc.eq.1)then
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=1,ngxy
         do i=ib,ie
           w(i,nj+j,k)=w(i,j,k)
+        enddo
         enddo
         enddo
       elseif(nbc.eq.2)then
 #else
       if(ibn.eq.1.and.nbc.eq.2)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=nj+1,nj+ngxy
         do i=0,ni+1
           w(i,j,k)=w(i,nj,k)
+        enddo
         enddo
         enddo
 #ifdef MPI
@@ -935,22 +1109,24 @@
 #else
       elseif(nbc.eq.3.or.nbc.eq.4)then
 #endif
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=2,nk
         do j=1,ngxy
         do i=0,ni+1
           w(i,nj+j,k)=w(i,nj+1-j,k)
         enddo
         enddo
+        enddo
       endif
-
-    ENDDO
 
 !-----------------------------------------------------------------------
 !  top/bottom boundary condition
 
     IF(flag.eq.1)THEN
 
-!$omp parallel do default(shared)  &
-!$omp private(i,j)
+      !$omp parallel do default(shared)  &
+      !$omp private(i,j)
       do j=0,nj+1
       do i=0,ni+1
         w(i,j, 1)=0.0

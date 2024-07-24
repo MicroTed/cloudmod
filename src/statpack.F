@@ -281,7 +281,7 @@
     if( ipbl.eq.1 )then
     if( stat_kh.eq.1 .or. stat_km.eq.1 )then
         call maxmin(ni,nj,nk+1,xkzh,nstat,rstat,kmin,kmax,'XKZHMX','XKZHMN')
-        call maxmin(ni,nj,nk+1,xkzq,nstat,rstat,kmin,kmax,'XKZQMX','XKZQMN')
+!!!        call maxmin(ni,nj,nk+1,xkzq,nstat,rstat,kmin,kmax,'XKZQMX','XKZQMN')
         call maxmin(ni,nj,nk+1,xkzm,nstat,rstat,kmin,kmax,'XKZMMX','XKZMMN')
     endif
     endif
@@ -1012,14 +1012,14 @@
       desc_stat(stat_out) = 'min eddy diffusivity for heat (from YSU)'
       unit_stat(stat_out) = 'm^2/s'
       !--------
-      stat_out = stat_out+1
-      name_stat(stat_out) = 'xkzqmax'
-      desc_stat(stat_out) = 'max eddy diffusivity for moisture (from YSU)'
-      unit_stat(stat_out) = 'm^2/s'
-      stat_out = stat_out+1
-      name_stat(stat_out) = 'xkzqmin'
-      desc_stat(stat_out) = 'min eddy diffusivity for moisture (from YSU)'
-      unit_stat(stat_out) = 'm^2/s'
+!      stat_out = stat_out+1
+!      name_stat(stat_out) = 'xkzqmax'
+!      desc_stat(stat_out) = 'max eddy diffusivity for moisture (from YSU)'
+!      unit_stat(stat_out) = 'm^2/s'
+!      stat_out = stat_out+1
+!      name_stat(stat_out) = 'xkzqmin'
+!      desc_stat(stat_out) = 'min eddy diffusivity for moisture (from YSU)'
+!      unit_stat(stat_out) = 'm^2/s'
       !--------
       stat_out = stat_out+1
       name_stat(stat_out) = 'xkzmmax'

@@ -967,12 +967,12 @@
         do j=1,nj
         do i=1,ni
           rrf = mf(i,j,k)/rf(i,j,k)
-          r2 = (kmh(i,j,k  )+kmh(i,j,k+1))*mh(i,j,k  )*rho(i,j,k  )*rrf
+          r2 = (kmv(i,j,k  )+kmv(i,j,k+1))*mh(i,j,k  )*rho(i,j,k  )*rrf
           cfc = tema*r2
           cfb = 1.0 - cfc
           cfd = t(i,j,k) + temb*( r2*t(i,j,k+1)-r2*t(i,j,k) )
-          tem = -(kmv(i,j,k-1)+kmv(i,j,k))*(t(i,j,k)-t(i,j,k-1))*rdz*mh(i,j,k-1)*rho(i,j,k-1)
-          cfd = cfd + temc*tem*rrf
+!!!          tem = -(kmv(i,j,k-1)+kmv(i,j,k))*(t(i,j,k)-t(i,j,k-1))*rdz*mh(i,j,k-1)*rho(i,j,k-1)
+!!!          cfd = cfd + temc*tem*rrf
           tem = 1.0/cfb
           dumx(i,j,k) = -cfc*tem
           dumy(i,j,k) =  cfd*tem
@@ -986,8 +986,8 @@
         do j=1,nj
         do i=1,ni
           rrf = mf(i,j,k)/rf(i,j,k)
-          r1 = (kmh(i,j,k-1)+kmh(i,j,k  ))*mh(i,j,k-1)*rho(i,j,k-1)*rrf
-          r2 = (kmh(i,j,k  )+kmh(i,j,k+1))*mh(i,j,k  )*rho(i,j,k  )*rrf
+          r1 = (kmv(i,j,k-1)+kmv(i,j,k  ))*mh(i,j,k-1)*rho(i,j,k-1)*rrf
+          r2 = (kmv(i,j,k  )+kmv(i,j,k+1))*mh(i,j,k  )*rho(i,j,k  )*rrf
           cfa = tema*r1
           cfc = tema*r2
           cfb = 1.0 - cfa - cfc
@@ -1007,12 +1007,12 @@
         do j=1,nj
         do i=1,ni
           rrf = mf(i,j,k)/rf(i,j,k)
-          r1 = (kmh(i,j,k-1)+kmh(i,j,k  ))*mh(i,j,k-1)*rho(i,j,k-1)*rrf
+          r1 = (kmv(i,j,k-1)+kmv(i,j,k  ))*mh(i,j,k-1)*rho(i,j,k-1)*rrf
           cfa = tema*r1
           cfb = 1.0 - cfa
           cfd = t(i,j,k) + temb*( -r1*t(i,j,k)+r1*t(i,j,k-1) )
-          tem = -(kmv(i,j,k)+kmv(i,j,k+1))*(t(i,j,k+1)-t(i,j,k))*rdz*mh(i,j,k)*rho(i,j,k)
-          cfd = cfd - temc*tem*rrf
+!!!          tem = -(kmv(i,j,k)+kmv(i,j,k+1))*(t(i,j,k+1)-t(i,j,k))*rdz*mh(i,j,k)*rho(i,j,k)
+!!!          cfd = cfd - temc*tem*rrf
           tem = 1.0/(cfa*dumx(i,j,k-1)+cfb)
           dumz(i,j,k) = (cfd-cfa*dumy(i,j,k-1))*tem
           turbz(i,j,k) = rf(i,j,k)*(dumz(i,j,k)-t(i,j,k))*rdt
@@ -1051,7 +1051,7 @@
 
       subroutine turbu(dt,xh,ruh,xf,rxf,arf1,arf2,uf,vh,mh,mf,rmf,rho,rf,  &
                        zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gxu,     &
-                       turbx,turby,turbz,dum1,dum2,dum3,dum7,dum8,u,uten,w,t11,t12,t13,t22,kmv,cm0, &
+                       turbx,turby,turbz,dum1,dum2,dum3,dum7,dum8,dum9,u,uten,w,t11,t12,t13,t22,kmv,cm0, &
                        kmw,ufw,u1b,u2pt,ufwk,doubud,udiag)
       use input
       use constants
@@ -1069,7 +1069,7 @@
       real, intent(in), dimension(kb:ke) :: rds,sigma
       real, intent(in), dimension(kb:ke+1) :: rdsf,sigmaf
       real, intent(in), dimension(itb:ite,jtb:jte,ktb:kte) :: gxu
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: turbx,turby,turbz,dum1,dum2,dum3,dum7,dum8
+      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: turbx,turby,turbz,dum1,dum2,dum3,dum7,dum8,dum9
       real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: u
       real, intent(inout), dimension(ib:ie+1,jb:je,kb:ke) :: uten
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: w
@@ -1101,15 +1101,10 @@
       do k=1,nk
 
         !  x-direction
-        do j=1,nj
-        do i=1,ni+1
-          turbx(i,j,k)=(t11(i,j,k)-t11(i-1,j,k))*rdx*uf(i)
-        enddo
-        enddo
-
         !  y-direction
         do j=1,nj
         do i=1,ni+1
+          turbx(i,j,k)=(t11(i,j,k)-t11(i-1,j,k))*rdx*uf(i)
           turby(i,j,k)=(t12(i,j+1,k)-t12(i,j,k))*rdy*vh(j)
         enddo
         enddo
@@ -1256,7 +1251,7 @@
 
       call       turbuz(dt,xh,ruh,xf,rxf,arf1,arf2,uf,vh,mh,mf,rmf,rho,rf,  &
                        zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gxu,     &
-                       turbz,dum1,dum2,dum3,dum7,u ,w ,t11,t12,t13,t22,kmv, &
+                       turbz,dum1,dum2,dum3,dum7,dum9,u ,w ,t11,t12,t13,t22,kmv, &
                        kmw,ufw,u1b,u2pt,ufwk)
 
   ELSE  dovert
@@ -1373,7 +1368,7 @@
 
       subroutine turbuz(dt,xh,ruh,xf,rxf,arf1,arf2,uf,vh,mh,mf,rmf,rho,rf,  &
                        zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gxu,     &
-                       turbz,dum1,dum2,dum3,dum7,u ,w ,t11,t12,t13,t22,kmv, &
+                       turbz,dum1,dum2,dum3,dum7,dum9,u ,w ,t11,t12,t13,t22,kmv, &
                        kmw,ufw,u1b,u2pt,ufwk)
       use input
       use constants
@@ -1391,7 +1386,7 @@
       real, intent(in), dimension(kb:ke) :: rds,sigma
       real, intent(in), dimension(kb:ke+1) :: rdsf,sigmaf
       real, intent(in), dimension(itb:ite,jtb:jte,ktb:kte) :: gxu
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: turbz,dum1,dum2,dum3,dum7
+      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: turbz,dum1,dum2,dum3,dum7,dum9
       real, intent(in), dimension(ib:ie+1,jb:je,kb:ke) :: u
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: w
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: t11,t12,t13,t22
@@ -1535,14 +1530,14 @@
       ELSE
         ! with terrain:
 
-        ! dum1 stores w at scalar-pts:
+        ! dum9 stores w at scalar-pts:
 
         !$omp parallel do default(shared)   &
         !$omp private(i,j,k)
         DO k=1,nk
         do j=0,nj+1
         do i=0,ni+1
-          dum1(i,j,k)=0.5*(w(i,j,k)+w(i,j,k+1))
+          dum9(i,j,k)=0.5*(w(i,j,k)+w(i,j,k+1))
         enddo
         enddo
         ENDDO
@@ -1589,8 +1584,8 @@
           dum2(i,j,k)=(cfd-cfa*dum2(i,j,k-1))*tem
           ! explicit piece ... dwdx term
           dum7(i,j,k)=(w(i,j,k)*rgz(i,j)-w(i-1,j,k)*rgz(i-1,j))*rdx*uf(i)          &
-                  +0.5*rds(k)*( (zt-sigma(k  ))*(dum1(i,j,k  )+dum1(i-1,j,k  ))    &
-                               -(zt-sigma(k-1))*(dum1(i,j,k-1)+dum1(i-1,j,k-1)) )  &
+                  +0.5*rds(k)*( (zt-sigma(k  ))*(dum9(i,j,k  )+dum9(i-1,j,k  ))    &
+                               -(zt-sigma(k-1))*(dum9(i,j,k-1)+dum9(i-1,j,k-1)) )  &
                              *(rgz(i,j)-rgz(i-1,j))*rdx*uf(i)
           dum7(i,j,k)=dum7(i,j,k)*0.25*( kmv(i-1,j,k)+kmv(i,j,k) )                 &
                                       *( gz(i-1,j)*rf(i-1,j,k)+gz(i,j)*rf(i,j,k) )
@@ -1617,8 +1612,8 @@
           turbz(i,j,k) = (rho(i-1,j,k)+rho(i,j,k))*(dum3(i,j,k)-u(i,j,k))*rdt
           ! explicit piece ... dwdx term
           dum7(i,j,k)=(w(i,j,k)*rgz(i,j)-w(i-1,j,k)*rgz(i-1,j))*rdx*uf(i)          &
-                  +0.5*rds(k)*( (zt-sigma(k  ))*(dum1(i,j,k  )+dum1(i-1,j,k  ))    &
-                               -(zt-sigma(k-1))*(dum1(i,j,k-1)+dum1(i-1,j,k-1)) )  &
+                  +0.5*rds(k)*( (zt-sigma(k  ))*(dum9(i,j,k  )+dum9(i-1,j,k  ))    &
+                               -(zt-sigma(k-1))*(dum9(i,j,k-1)+dum9(i-1,j,k-1)) )  &
                              *(rgz(i,j)-rgz(i-1,j))*rdx*uf(i)
           dum7(i,j,k)=dum7(i,j,k)*0.25*( kmv(i-1,j,k)+kmv(i,j,k) )                 &
                                       *( gz(i-1,j)*rf(i-1,j,k)+gz(i,j)*rf(i,j,k) )
@@ -1820,7 +1815,7 @@
 
       subroutine turbv(dt,xh,rxh,arh1,arh2,uh,xf,rvh,vf,mh,mf,rho,rr,rf,   &
                        zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gyv,  &
-                       turbx,turby,turbz,dum1,dum2,dum3,dum7,dum8,v,vten,w,t12,t22,t23,kmv,cm0, &
+                       turbx,turby,turbz,dum1,dum2,dum3,dum7,dum8,dum9,v,vten,w,t12,t22,t23,kmv,cm0, &
                        kmw,vfw,v1b,v2pt,vfwk,dovbud,vdiag)
       use input
       use constants
@@ -1839,7 +1834,7 @@
       real, intent(in), dimension(kb:ke) :: rds,sigma
       real, intent(in), dimension(kb:ke+1) :: rdsf,sigmaf
       real, intent(in), dimension(itb:ite,jtb:jte,ktb:kte) :: gyv
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: turbx,turby,turbz,dum1,dum2,dum3,dum7,dum8
+      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: turbx,turby,turbz,dum1,dum2,dum3,dum7,dum8,dum9
       real, intent(in), dimension(ib:ie,jb:je+1,kb:ke) :: v
       real, intent(inout), dimension(ib:ie,jb:je+1,kb:ke) :: vten
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: w
@@ -1871,15 +1866,10 @@
       do k=1,nk
 
         !  x-direction
-        do j=1,nj+1
-        do i=1,ni
-          turbx(i,j,k)=(t12(i+1,j,k)-t12(i,j,k))*rdx*uh(i)
-        enddo
-        enddo
-
         !  y-direction
         do j=1,nj+1
         do i=1,ni
+          turbx(i,j,k)=(t12(i+1,j,k)-t12(i,j,k))*rdx*uh(i)
           turby(i,j,k)=(t22(i,j,k)-t22(i,j-1,k))*rdy*vf(j)
         enddo
         enddo
@@ -2028,7 +2018,7 @@
 
       call       turbvz(dt,xh,rxh,arh1,arh2,uh,xf,rvh,vf,mh,mf,rho,rr,rf,   &
                        zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gyv,  &
-                       turbz,dum1,dum2,dum3,dum7,v ,w ,t12,t22,t23,kmv, &
+                       turbz,dum1,dum2,dum3,dum7,dum9,v ,w ,t12,t22,t23,kmv, &
                        kmw,vfw,v1b,v2pt,vfwk)
 
   ELSE  dovert
@@ -2145,7 +2135,7 @@
 
       subroutine turbvz(dt,xh,rxh,arh1,arh2,uh,xf,rvh,vf,mh,mf,rho,rr,rf,   &
                        zs,gz,rgz,gzu,gzv,rds,sigma,rdsf,sigmaf,gyv,  &
-                       turbz,dum1,dum2,dum3,dum7,v ,w ,t12,t22,t23,kmv, &
+                       turbz,dum1,dum2,dum3,dum7,dum9,v ,w ,t12,t22,t23,kmv, &
                        kmw,vfw,v1b,v2pt,vfwk)
       use input
       use constants
@@ -2164,7 +2154,7 @@
       real, intent(in), dimension(kb:ke) :: rds,sigma
       real, intent(in), dimension(kb:ke+1) :: rdsf,sigmaf
       real, intent(in), dimension(itb:ite,jtb:jte,ktb:kte) :: gyv
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: turbz,dum1,dum2,dum3,dum7
+      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: turbz,dum1,dum2,dum3,dum7,dum9
       real, intent(in), dimension(ib:ie,jb:je+1,kb:ke) :: v
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: w
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: t12,t22,t23
@@ -2313,14 +2303,14 @@
 
         ! with terrain:
 
-        ! dum1 stores w at scalar-pts:
+        ! dum9 stores w at scalar-pts:
 
         !$omp parallel do default(shared)   &
         !$omp private(i,j,k)
         DO k=1,nk
         do j=0,nj+1
         do i=0,ni+1
-          dum1(i,j,k)=0.5*(w(i,j,k)+w(i,j,k+1))
+          dum9(i,j,k)=0.5*(w(i,j,k)+w(i,j,k+1))
         enddo
         enddo
         ENDDO
@@ -2374,8 +2364,8 @@
           dum1(i,j,k)=-cfc*tem
           dum2(i,j,k)=(cfd-cfa*dum2(i,j,k-1))*tem
           dum7(i,j,k)=(w(i,j,k)*rgz(i,j)-w(i,j-1,k)*rgz(i,j-1))*rdy*vf(j)          &
-                  +0.5*rds(k)*( (zt-sigma(k  ))*(dum1(i,j,k  )+dum1(i,j-1,k  ))    &
-                               -(zt-sigma(k-1))*(dum1(i,j,k-1)+dum1(i,j-1,k-1)) )  &
+                  +0.5*rds(k)*( (zt-sigma(k  ))*(dum9(i,j,k  )+dum9(i,j-1,k  ))    &
+                               -(zt-sigma(k-1))*(dum9(i,j,k-1)+dum9(i,j-1,k-1)) )  &
                              *(rgz(i,j)-rgz(i,j-1))*rdy*vf(j)
           ! explicit piece ... dwdy term
           dum7(i,j,k)=dum7(i,j,k)*0.25*( kmv(i,j-1,k)+kmv(i,j,k) )                 &
@@ -2403,8 +2393,8 @@
           turbz(i,j,k) = (rho(i,j-1,k)+rho(i,j,k))*(dum3(i,j,k)-v(i,j,k))*rdt
           ! explicit piece ... dwdy term
           dum7(i,j,k)=(w(i,j,k)*rgz(i,j)-w(i,j-1,k)*rgz(i,j-1))*rdy*vf(j)          &
-                  +0.5*rds(k)*( (zt-sigma(k  ))*(dum1(i,j,k  )+dum1(i,j-1,k  ))    &
-                               -(zt-sigma(k-1))*(dum1(i,j,k-1)+dum1(i,j-1,k-1)) )  &
+                  +0.5*rds(k)*( (zt-sigma(k  ))*(dum9(i,j,k  )+dum9(i,j-1,k  ))    &
+                               -(zt-sigma(k-1))*(dum9(i,j,k-1)+dum9(i,j-1,k-1)) )  &
                              *(rgz(i,j)-rgz(i,j-1))*rdy*vf(j)
           dum7(i,j,k)=dum7(i,j,k)*0.25*( kmv(i,j-1,k)+kmv(i,j,k) )                 &
                                       *( gz(i,j-1)*rf(i,j-1,k)+gz(i,j)*rf(i,j,k) )
@@ -2525,15 +2515,10 @@
       do k=2,nk
 
         !  x-direction
-        do j=1,nj
-        do i=1,ni
-          turbx(i,j,k)=(t13(i+1,j,k)-t13(i,j,k))*rdx*uh(i)
-        enddo
-        enddo
-
         !  y-direction
         do j=1,nj
         do i=1,ni
+          turbx(i,j,k)=(t13(i+1,j,k)-t13(i,j,k))*rdx*uh(i)
           turby(i,j,k)=(t23(i,j+1,k)-t23(i,j,k))*rdy*vh(j)
         enddo
         enddo

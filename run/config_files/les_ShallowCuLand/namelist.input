@@ -3,7 +3,7 @@
  nx           =      96,
  ny           =      96,
  nz           =     110,
- ppnode       =      36,
+ ppnode       =     128,
  timeformat   =       2,
  timestats    =       1,
  terrain_flag = .false.,

@@ -1,8 +1,8 @@
 
  User's Guide to namelist.input file (which is located in the "run" directory)
 
- CM1 Numerical Model, Release 21.0  (cm1r21.0) 
- Last updated:  20 April 2022
+ CM1 Numerical Model, Release 21.1  (cm1r21.1) 
+ Last updated:  24 March 2024
 
  Entries with "--- NEW ---" are new (or modified) for cm1r21
 
@@ -140,7 +140,7 @@
               diffusivity terms
             - NOTE:  user must set the parameters in "param7" section below
 
-               ---  NEW ---
+               --- NEW ---
       4 = LES within mesoscale model
             - runs LES model within an inner fine mesh; runs mesoscale model 
               with PBL parameterization beyond.  See param17 section for 
@@ -190,6 +190,7 @@
     8  =  Convection Permitting Model (CPM) simulation of Radiative Convective 
           Equilibrium (RCE)
           - Based on Bretherton et al (2005, JAS)
+          - NOTE: No diurnal cycle.  (Solar constant is fixed at 650.83 W/m2)
           - See namelist.input in run/config_files/cpm_RadConvEquil 
 
     9  =  Stable boundary layer using Large Eddy Simulation (LES)
@@ -470,6 +471,8 @@
 
              6 = Rotunno-Emanuel (1987) simple water-only scheme
 
+             7 = WSM6        --- NEW ---
+
             (Note: options 26,27,28 use namelist nssl2mom_params, see below and 
                    README.NSSLmp
                    3-moment option can be activated with nssl_3moment = .true.)
@@ -512,6 +515,11 @@
  iautoc - Include autoconversion of qc to qr when ptype = 2?  (0=no, 1=yes)
             (Goddard-LFO scheme only)
 
+               --- NEW ---
+ cuparam - Convection parameterization:
+             0 = no convection parameterization (default)
+             1 = new Tiedtke convection parameterization
+
  icor - Include Coriolis acceleration?  (0=no,  1=yes)
         (If user chooses 1, then fcor must be set below)
         f-plane is assumed.
@@ -519,7 +527,7 @@
     NOTE: if icor=1, consider including a large-scale pressure gradient 
           acceleration term (see lspgrad below)
 
- --- NEW ---
+               --- NEW ---
  betaplane - Use beta plane (i.e., Coriolis term is a function of y)?  
              (0=no, 1=yes)
              Caution: not well tested.  May not work with some lateral
@@ -679,7 +687,7 @@
     [additional variables           3 = line of warm bubbles
      need to be set in              4 = initialization for moist benchmark
      init3d.F file]                 5 = cold blob
-                                    7 = Rotunno-Emanuel tropical cyclone
+                                    7 = tropical cyclone (modified Rankine by default)
     See relevant code in            8 = line thermal with random perturbations
     init3d.F file for               9 = forced convergence (Loftus et al 2008)
     more details.                  10 = momentum forcing (Morrison et al 2015)
@@ -809,17 +817,17 @@
         Note: typical value of ndcnst (nt_c) for maritime environments:  100 cm-3
               typical value of ndcnst (nt_c) for continental environments:  300 cm-3
 
- ---  NEW  ---
+ --- NEW  ---
  nt_c - same as ndcnst, but for Thompson microphysics scheme
 
      (NOTE: for other microphysics schemes, you will have 
             to change this value manually in the code)
 
- ---  NEW  ---
+ --- NEW  ---
  csound - speed of sound (m/s) for psolver=6,7
      (Note: should be roughly 5-10 times larger than maximum flow velocity)
 
- ---  NEW  ---
+ --- NEW  ---
  cstar - propagation speed (m/s) of outward-propagating waves at open 
          boundaries (for irbc=1,2 only)
 
@@ -1074,15 +1082,15 @@
 
  cnst_ust - value of surface friction velocity (u-star, m/s) if set_ust=1
 
- ---  NEW  ---
+ --- NEW  ---
  ramp_sgs - gradually turn on (ie, "ramp up") the subgrid-scale model for 
             LES  (0=no, 1=yes)   (for sgsmodel >=1 only)
 
- ---  NEW  ---
+ --- NEW  ---
  ramp_time - for ramp_sgs=1 only: this is the time over which the LES 
              subgrid-scale model is linearly ramped up. 
 
- ---  NEW  ---
+ --- NEW  ---
  t2p_avg - for two-part models (sgsmodel=3,4) use either:
               1 - spatial average (over entire domain at each model level)
               2 - time average (each grid point has a different time-avg)
@@ -1305,9 +1313,22 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
                       1 = GrADS format
                       2 = netcdf
-                          (note: GrADS users might want to use the COARDS
-                           convention for netcdf output ... set coards = .true.
-                           in writeout_nc.F)
+
+          !---  IMPORTANT NOTE about large runs  ---!
+          ! NOTE:  output_format=2 (netcdf-format output files) tends
+                   to be inefficient in CM1 for large processor/core 
+                   counts, ie, when using >2,000 (roughly) cores.
+                   For many thousands of processors/cores, we recommend 
+                   using output_format=1 (also known as unformatted,
+                   direct-access binary format) and then converting the 
+                   subsequent output files to netcdf format (if desired) 
+                   using a conversion program; CDO (climate data operators)
+                   is useful to this end.  On NCAR's derecho, use the two
+                   following commands:
+                            module load cdo
+                            cdo -f nc4 import_binary cm1out_s.ctl cm1out_s.nc
+                  (see https://code.mpimet.mpg.de/projects/cdo for more info on CDO)
+
 
  output_filetype - Type of output file:
                       1 = all output goes into one file
@@ -1512,8 +1533,8 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
  restart_format - Specifies the format of the restart files:
 
-                      1 = binary
-                      2 = netcdf
+                      1 = binary  (default; highly recommended)
+                      2 = netcdf  (note: inefficient for large number of processors)
 
  restart_filetype - Type of restart file:
                     (since cm1r18.3:  very similar to output_filetype)
@@ -1853,7 +1874,7 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param17 section:  options for cm1setup=4 only 
                     (ie, for LES-within-Mesoscale-Model framework)
@@ -1880,7 +1901,7 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param18 section:  options for eddy recycling
                     (ie, turbulent fluctuations are nudged into the flow 
@@ -1912,7 +1933,7 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param19 section:   Options related to large-scale (i.e., domain-average) nudging.
 
@@ -1959,7 +1980,7 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param20 section:  options related to immersed boundaries 
 
@@ -1975,7 +1996,7 @@ Example: (Note that one must have both iforce=1, iwforce=1, and nwfor >= 1.)
 
 
 -------------------------------------------------------------------------
-                        ---  NEW ---
+                        --- NEW ---
 
   param21 section:  options related to idealized hurricane test cases
 

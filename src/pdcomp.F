@@ -323,7 +323,7 @@
         call   advw(nrkmax,xh,rxh,arh1,arh2,uh,xf,vh,gz,rgz,mh,mf,rho0,rr0,rf0,rrf0,  &
                     dum1,dum2,dum3,dum4,dum5,dum6,dum7,divx,                       &
                     rru,rrv,rrw,w3d  ,wten,rds,rdsf,c1,c2,rho, dt  ,               &
-                    .false.,wdiag,hadvordrv,vadvordrv,advwenov,bndy,kbdy,uf,vf,uten1,vten1,hflxw,hflxe,hflxs,hflxn)
+                    .false.,wdiag,hadvordrv,vadvordrv,advwenov,bndy,kbdy,uf,vf,uten1,vten1,hflxw,hflxe,hflxs,hflxn,.true.)
 
         !$omp parallel do default(shared)  &
         !$omp private(i,j,k)

@@ -40,8 +40,8 @@
                    q3d,qten,kmh,kmv,khh,khv,tkea,tke3d,tketen,                 &
                    nm,defv,defh,dissten,                                       &
                    thpten,qvpten,qcpten,qipten,upten,vpten,xkzh,xkzq,xkzm,     &
-                   rain,u10,v10,s10,br,brcr,hpbl,t2,q2,hfx,qfx,prate,cm0,      &
-                   swten,lwten,cldfra,                                         &
+                   rain,raincv,u10,v10,s10,br,brcr,hpbl,t2,q2,hfx,qfx,prate,cm0, &
+                   swten,lwten,cldfra,qke,                                     &
                    lwupt,lwuptc,lwdnt,lwdntc,lwupb,lwupbc,lwdnb,lwdnbc,        &
                    swupt,swuptc,swdnt,swdntc,swupb,swupbc,swdnb,swdnbc,        &
                    lwcf,swcf,wprof,dumk1,dumk2,                                &
@@ -109,10 +109,11 @@
     real, intent(inout), dimension(ib:ie,jb:je,kb:ke+1) :: nm,defv,defh,dissten
     real, intent(in), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: thpten,qvpten,qcpten,qipten,upten,vpten
     real, intent(in), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: xkzh,xkzq,xkzm
-    real, intent(in), dimension(ib:ie,jb:je,nrain) :: rain
+    real, intent(in), dimension(ib:ie,jb:je,nrain) :: rain,raincv
     real, intent(in), dimension(ibl:iel,jbl:jel) :: u10,v10,s10,br,brcr,hpbl,t2,q2,hfx,qfx
     real, intent(in), dimension(ib:ie,jb:je) :: prate,cm0
     real, intent(in), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,cldfra
+    real, intent(in), dimension(ibmynn:iemynn,jbmynn:jemynn,kbmynn:kemynn) :: qke
     real, intent(in), dimension(ibr:ier,jbr:jer) :: lwupt,lwuptc,lwdnt,lwdntc,lwupb,lwupbc,lwdnb,lwdnbc
     real, intent(in), dimension(ibr:ier,jbr:jer) :: swupt,swuptc,swdnt,swdntc,swupb,swupbc,swdnb,swdnbc
     real, intent(inout), dimension(ibr:ier,jbr:jer) :: lwcf,swcf
@@ -162,19 +163,12 @@
       if( myid.eq.0 ) print *,'  Entering writeout_hifrq ... '
       if( myid.eq.0 ) print *
 
-!!!      nlevels = 3
-!!!      zlev(1) =     0.0
-!!!      zlev(2) =   100.0
-!!!      zlev(3) =   500.0
-
-      nlevels = 7
+      nlevels = 5
       zlev(1) =     0.0
       zlev(2) =   500.0
       zlev(3) =  1000.0
       zlev(4) =  2500.0
       zlev(5) =  5000.0
-      zlev(6) = 35000.0
-      zlev(7) = 45000.0
 
       if(myid.eq.0) print *
       if(myid.eq.0) print *,'  levels for hifrq output: '
@@ -330,6 +324,48 @@
       varlvls(nvar) = 0
 
       call writehf(1,rain(ib,jb,1),dat1,dat2,dat3,reqt,orec,nvar,varname,vardesc,varunit,myi1p,myi2p,myj1p,myj2p)
+
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+    IF( imoist.eq.1 .and. nrain.ge.2 )THEN
+
+      nvar = nvar+1
+      varname(nvar) = 'rain2'
+      vardesc(nvar) = 'accumulated surface rainfall (translated)'
+      varunit(nvar) = 'cm'
+      varlvls(nvar) = 0
+
+      call writehf(1,rain(ib,jb,2),dat1,dat2,dat3,reqt,orec,nvar,varname,vardesc,varunit,myi1p,myi2p,myj1p,myj2p)
+
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+    IF( imoist.eq.1 .and. cuparam.ge.1 )THEN
+
+      nvar = nvar+1
+      varname(nvar) = 'raincv'
+      vardesc(nvar) = 'accumulated surface rainfall (convective, param.)'
+      varunit(nvar) = 'cm'
+      varlvls(nvar) = 0
+
+      call writehf(1,raincv(ib,jb,1),dat1,dat2,dat3,reqt,orec,nvar,varname,vardesc,varunit,myi1p,myi2p,myj1p,myj2p)
+
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+    IF( imoist.eq.1 .and. cuparam.ge.1 .and. nrain.ge.2 )THEN
+
+      nvar = nvar+1
+      varname(nvar) = 'raincv2'
+      vardesc(nvar) = 'translated accumulated surface rainfall (convective, param.)'
+      varunit(nvar) = 'cm'
+      varlvls(nvar) = 0
+
+      call writehf(1,raincv(ib,jb,2),dat1,dat2,dat3,reqt,orec,nvar,varname,vardesc,varunit,myi1p,myi2p,myj1p,myj2p)
 
     ENDIF
 
@@ -1347,6 +1383,69 @@
 
       !c-c-c-c-c-c-c-c-c-c
 
+    IF( sgsmodel.eq.1 .or. sgsmodel.eq.4 )THEN
+      nvar = nvar+1
+      varname(nvar) = 'tke'
+      vardesc(nvar) = 'tke'
+      varunit(nvar) = 'm2/s2'
+      varlvls(nvar) = nlevels
+
+      do n=1,nlevels
+        k = max( 2 , klev(n) )
+        do j=1,nj
+        do i=1,ni
+          dum1(i,j,n) = tke3d(i,j,k)
+        enddo
+        enddo
+      enddo
+
+      call writehf(nlevels,dum1(ib,jb,1),dat1,dat2,dat3,reqt,orec,nvar,varname,vardesc,varunit,myi1p,myi2p,myj1p,myj2p)
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+    IF( sgsmodel.ge.1 .or. horizturb.ge.1 )THEN
+      nvar = nvar+1
+      varname(nvar) = 'kmh'
+      vardesc(nvar) = 'kmh'
+      varunit(nvar) = 'm2/s'
+      varlvls(nvar) = nlevels
+
+      do n=1,nlevels
+        k = max( 2 , klev(n) )
+        do j=1,nj
+        do i=1,ni
+          dum1(i,j,n) = kmh(i,j,k)
+        enddo
+        enddo
+      enddo
+
+      call writehf(nlevels,dum1(ib,jb,1),dat1,dat2,dat3,reqt,orec,nvar,varname,vardesc,varunit,myi1p,myi2p,myj1p,myj2p)
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
+    IF( ipbl.eq.4 .or. ipbl.eq.5 )THEN
+      nvar = nvar+1
+      varname(nvar) = 'qke'
+      vardesc(nvar) = 'twice TKE from MYNN'
+      varunit(nvar) = 'm^2/s^2'
+      varlvls(nvar) = nlevels
+
+      do n=1,nlevels
+        k = max( 1 , klev(n) )
+        do j=1,nj
+        do i=1,ni
+          dum1(i,j,n) = qke(i,j,k)
+        enddo
+        enddo
+      enddo
+
+      call writehf(nlevels,dum1(ib,jb,1),dat1,dat2,dat3,reqt,orec,nvar,varname,vardesc,varunit,myi1p,myi2p,myj1p,myj2p)
+    ENDIF
+
+      !c-c-c-c-c-c-c-c-c-c
+
 
     !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
     !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -1374,7 +1473,7 @@
         ! write descriptor file:
           string = 'cm1out_hf.ctl'
           open(unit=66,file=string)
-          string = 'cm1out_hf_%t6.dat'
+          string = 'cm1out_hf_00%y4.dat'
           write(66,101) string
           write(66,102)
           if( outunits.eq.2 )then

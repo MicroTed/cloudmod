@@ -801,8 +801,12 @@
       call disp_err( nf90_def_var(ncid,"xcenter" ,nf90_float,(/timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"ycenter" ,nf90_float,(/timeid/),varid) , .true. )
 
-      call disp_err( nf90_def_var(ncid,"umove" ,nf90_float,(/timeid/),varid) , .true. )
-      call disp_err( nf90_def_var(ncid,"vmove" ,nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"umove"  ,nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"umovem1",nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"umovem2",nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vmove"  ,nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vmovem1",nf90_float,(/timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vmovem2",nf90_float,(/timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"domainlocx"   ,nf90_double,(/timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"domainlocy"   ,nf90_double,(/timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"adaptmovetim" ,nf90_double,(/timeid/),varid) , .true. )
@@ -837,6 +841,9 @@
       call disp_err( nf90_def_var(ncid,"qbudget" ,nf90_double,(/nbudgetid,timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"asq"     ,nf90_double,(/numqid,timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"bsq"     ,nf90_double,(/numqid,timeid/),varid) , .true. )
+
+      call disp_err( nf90_def_var(ncid,"ug"      ,nf90_float,(/nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vg"      ,nf90_float,(/nkid,timeid/),varid) , .true. )
 
       !------------------
       ! 2d/3d vars:
@@ -969,6 +976,7 @@
           IF ( output_n_as_m3 == 0 ) THEN
           call disp_err( nf90_put_att(ncid,varid,"units","kg^{-1}") , .true. )
           ELSE
+          ! for NSSL microphysics
           call disp_err( nf90_put_att(ncid,varid,"units","m^{-3}") , .true. )
           ENDIF
         elseif(idm .eq. 1 .and. n.ge.nzl1 .and. n .le. nzl2)then
@@ -1009,6 +1017,7 @@
     if( radopt.ge.1 )then
       call disp_err( nf90_def_var(ncid,"lwten"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"swten"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"thraten" ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"radsw"   ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"rnflx"   ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
       call disp_err( nf90_def_var(ncid,"radswnet",nf90_float,(/niid,njid,timeid/),varid) , .true. )
@@ -1107,6 +1116,24 @@
         call disp_err( nf90_def_var(ncid,"psfc"    ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
         call disp_err( nf90_put_att(ncid,varid,"long_name","surface pressure") , .true. )
         call disp_err( nf90_put_att(ncid,varid,"units","Pa") , .true. )
+      if( tbc.eq.3 )then
+
+        call disp_err( nf90_def_var(ncid,"ustt"    ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+        call disp_err( nf90_put_att(ncid,varid,"long_name","ustt") , .true. )
+        call disp_err( nf90_put_att(ncid,varid,"units","Pa") , .true. )
+
+        call disp_err( nf90_def_var(ncid,"ut"    ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+        call disp_err( nf90_put_att(ncid,varid,"long_name","ut") , .true. )
+        call disp_err( nf90_put_att(ncid,varid,"units","Pa") , .true. )
+
+        call disp_err( nf90_def_var(ncid,"vt"    ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+        call disp_err( nf90_put_att(ncid,varid,"long_name","vt") , .true. )
+        call disp_err( nf90_put_att(ncid,varid,"units","Pa") , .true. )
+
+        call disp_err( nf90_def_var(ncid,"st"    ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+        call disp_err( nf90_put_att(ncid,varid,"long_name","st") , .true. )
+        call disp_err( nf90_put_att(ncid,varid,"units","Pa") , .true. )
+      endif
       endif
       if(sfcmodel.ge.1)then
         call disp_err( nf90_def_var(ncid,"lu_index",nf90_float,(/niid,njid,timeid/),varid) , .true. )
@@ -1191,6 +1218,97 @@
       endif
     endif
 
+  !------------------
+  !  mynn:
+
+    IF( ipbl.eq.4 .or. ipbl.eq.5 .or. sfcmodel.eq.6 )THEN
+      call disp_err( nf90_def_var(ncid,"qke"     ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qke3d"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"tsq"     ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qsq"     ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"cov"     ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"sh3d"    ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"sm3d"    ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"el_pbl"  ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qc_bl"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qi_bl"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"cldfra_b",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"edmf_a"  ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"edmf_w"  ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"edmf_qt" ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"edmf_thl",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"edmf_ent",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"edmf_qc" ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"sub_thl3",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"sub_sqv3",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"det_thl3",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"det_sqv3",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"thpten"  ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qvpten"  ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qcpten"  ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qipten"  ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"upten"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vpten"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qnipten" ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qncpten" ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vdfg"    ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"maxmf"   ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"nupdraft",nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"ktop_plu",nf90_float,(/niid,njid,timeid/),varid) , .true. )
+    ENDIF
+
+  !------------------
+  ! myj:
+
+    IF(ipbl.eq.6)THEN
+      call disp_err( nf90_def_var(ncid,"tke_myj" ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"el_myj " ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+    ENDIF         
+    IF(sfcmodel.eq.7)THEN
+      call disp_err( nf90_def_var(ncid,"mixht" ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"akhs"  ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"akms"  ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"elflx" ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"ct"    ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"snow"  ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"sice"  ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"thz0"  ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qz0"   ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"uz0"   ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vz0"   ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"th10"  ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"q10"   ,nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"z0base",nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"zntmyj",nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"lowlyr",nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"ivgtyp",nf90_float,(/niid,njid,timeid/),varid) , .true. )
+    ENDIF
+
+  !------------------
+
+    IF( cuparam.ge.1 )THEN
+      call disp_err( nf90_def_var(ncid,"raincv",nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      if(nrain.eq.2)  &
+      call disp_err( nf90_def_var(ncid,"raincv2",nf90_float,(/niid,njid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"thcuten",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qvcuten",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qccuten",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"qicuten",nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"ucuten" ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vcuten" ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+    ENDIF
+
+  !------------------
+
+      call disp_err( nf90_def_var(ncid,"gamk",nf90_float,(/nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"kmw" ,nf90_float,(/nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"ufw" ,nf90_float,(/nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"vfw" ,nf90_float,(/nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"u1b" ,nf90_float,(/nkid,timeid/),varid) , .true. )
+      call disp_err( nf90_def_var(ncid,"v1b" ,nf90_float,(/nkid,timeid/),varid) , .true. )
+
+  !------------------
+
     if( iptra.eq.1 )then
       do n=1,npt
         if( n.le.9 )then
@@ -1247,6 +1365,12 @@
       call disp_err( nf90_def_var(ncid,"theta"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
       call disp_err( nf90_put_att(ncid,varid,"long_name","potential temperature") , .true. )
       call disp_err( nf90_put_att(ncid,varid,"units","K") , .true. )
+    ENDIF
+    IF( restart_file_u0 .or. do_lsnudge .or. do_adapt_move )THEN
+      call disp_err( nf90_def_var(ncid,"u0"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
+    ENDIF
+    IF( restart_file_v0 .or. do_lsnudge .or. do_adapt_move )THEN
+      call disp_err( nf90_def_var(ncid,"v0"   ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )
     ENDIF
     IF( restart_file_dbz )THEN
       call disp_err( nf90_def_var(ncid,"dbz"     ,nf90_float,(/niid,njid,nkid,timeid/),varid) , .true. )

@@ -247,14 +247,14 @@
 
       endif
 
-      if(timestats.ge.1) time_sound=time_sound+mytime()
-
 !-----------------------------------------------------------------------
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !-----------------------------------------------------------------------
 !  Begin small steps:
 
       small_step_loop:  DO N=1,NLOOP
+
+        if(timestats.ge.1) time_sound=time_sound+mytime()
 
 !-----
 
@@ -558,17 +558,6 @@
 
     ENDIF
 
-!        !$omp parallel do default(shared)   &
-!        !$omp private(i,j,k)
-!        DO k=2,nk
-!        do j=1,nj
-!        do i=1,ni
-!          fwk(i,j,k)=dts*wten(i,j,k)                           &
-!               +beta*( -mm(i,j,k)*(pp3d(i,j,k)-pp3d(i,j,k-1)) )
-!        enddo
-!        enddo
-!        ENDDO
-  
       if(timestats.ge.1) time_sound=time_sound+mytime()
 
 

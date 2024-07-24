@@ -59,6 +59,7 @@
 #endif
       use module_mp_thompson , only : thompson_init
       use module_mp_graupel
+      use mp_wsm6 , only : mp_wsm6_init
       use microphy_p3, only : p3_init
       use module_mp_jensen_ishmael, only : jensen_ishmael_init
       use module_mp_nssl_2mom, only: nssl_2mom_init, rho_qr, cnor, rho_qs,        &
@@ -67,6 +68,7 @@
                         iehw, iehlw,ehw0, ehlw0, dmrauto, inucopt, ioldlimiter, ihlcnh
       use goddard_module, only : consat,consat2
       use lfoice_module, only : lfoice_init
+      use ccpp_kind_types,only: kind_phys
       implicit none
 
       real :: dt,dtlast
@@ -139,6 +141,11 @@
       
       real    :: p3_cccn = 300.e6
       integer :: p3_iparam = 3
+
+      character(len=40) :: errmsg
+      integer :: errflg
+      real(kind=kind_phys) :: pi_phys
+
 #ifdef MPI
       integer :: ntmp1,ntmp2,ntmp3,ntmp4,reqs,reqs1,reqs2,reqs3,reqs4
       integer, dimension(MPI_STATUS_SIZE) :: status
@@ -380,6 +387,7 @@
       call MPI_BCAST(ptype    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(ihail    ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(iautoc   ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+      call MPI_BCAST(cuparam  ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(icor     ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(betaplane,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
       call MPI_BCAST(lspgrad  ,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -779,6 +787,10 @@
         ! set to zero by default
         umove = 0.0
         vmove = 0.0
+        umovem1 = umove
+        umovem2 = umove
+        vmovem1 = vmove
+        vmovem2 = vmove
         imove = 1
         if( axisymm.eq.1 )then
           ! turn off for axisymmetric runs:
@@ -1172,7 +1184,7 @@
         idiff = 0
       ENDIF
       !-----
-      IF( (ipbl.eq.3.or.ipbl.eq.4.or.ipbl.eq.5) .and. idiss.ge.1 )THEN
+      IF( (ipbl.eq.3.or.ipbl.eq.4.or.ipbl.eq.5) .and. idiss.ge.1 .and. cm1setup.ne.4  )THEN
         if(myid.eq.0)then
         print *,'  -------------------------------- '
         print *
@@ -1651,14 +1663,14 @@
         call stopcm1
       ENDIF
       !-----
-      IF(imoist.eq.1.and.output_dbz.eq.1.and.ptype.ne.2.and.ptype.ne.3.and.ptype.ne.5  &
+      IF(imoist.eq.1.and.output_dbz.eq.1.and.ptype.ne.2.and.ptype.ne.3.and.ptype.ne.5.and.ptype.ne.7  &
           .and. (.not. ptype.ge.26))then
         if(myid.eq.0)then
         print *
         print *,'  ptype      = ',ptype
         print *,'  output_dbz = ',output_dbz
         print *
-        print *,'  output_dbz is only available for ptype=2,3,5,26,27,28,50-55'
+        print *,'  output_dbz is only available for ptype=2,3,5,7,26,27,28,50-55'
         print *
         endif
         IF(ptype.eq.4)THEN
@@ -2281,6 +2293,22 @@
         call stopcm1
       ENDIF
       !-----
+      IF( cuparam.lt.0 .or. cuparam.gt.1 )THEN
+        if(myid.eq.0)then
+        print *
+        print *,'  cuparam  = ',cuparam
+        print *
+        print *,'  cuparam must be 0 or 1 '
+        print *
+        print *,'   stopping model .... '
+        print *
+        endif
+#ifdef MPI
+        call MPI_BARRIER (MPI_COMM_WORLD,ierr)
+#endif
+        call stopcm1
+      ENDIF
+      !-----
       IF( radopt.lt.0 .or. radopt.gt.2 )THEN
         if(myid.eq.0)then
         print *
@@ -2348,7 +2376,7 @@
         call stopcm1
       ENDIF
       !-----
-      IF( radopt.eq.2 .and. ( ptype.ne.3 .and. ptype.ne.5 .and. ptype.ne.50 .and. ptype.ne.51 .and. &
+      IF( radopt.eq.2 .and. ( ptype.ne.3 .and. ptype.ne.5 .and. ptype.ne.7 .and. ptype.ne.50 .and. ptype.ne.51 .and. &
                               ptype.ne.52 .and. ptype.ne.53 .and. ptype.ne.54 .and. ptype.ne.55 .and. ptype.ne.60 .and. &
                               ptype.ne.61 .and. ptype.ne.62 .and. ptype.ne.63)  )THEN
         if(myid.eq.0)then
@@ -2775,6 +2803,7 @@
         if( ptype.eq.4  ) param_mp = 'Gilmore/Straka/Rasmussen version of LFO scheme'
         if( ptype.eq.5  ) param_mp = 'Morrison double moment'
         if( ptype.eq.6  ) param_mp = 'Rotunno-Emanuel water-only'
+        if( ptype.eq.7  ) param_mp = 'WSM6'
         if( ptype.eq.26 ) param_mp = 'NSSL 2-moment scheme (graupel-only, no hail)'
         if( ptype.eq.27 ) param_mp = 'NSSL 2-moment scheme (graupel and hail)'
         if( ptype.eq.28 ) param_mp = 'NSSL single-moment scheme (graupel-only)'
@@ -2875,6 +2904,9 @@
       if(dowr) write(outfile,171) '    planetary boundary layer :  ',param_pbl
       if(dowr) write(outfile,171) '    surface layer            :  ',param_sfclay
       if(dowr) write(outfile,171) '    lw/sw radiation          :  ',param_rad
+    if( cuparam.ge.1 )then
+      if(dowr) write(outfile,171) '    convection param.        :  ','new Tiedtke'
+    endif
       if(dowr) write(outfile,171)
       if(dowr) write(outfile,171)
 
@@ -2925,6 +2957,7 @@
       if(dowr) write(outfile,*) 'ptype     =',ptype
       if(dowr) write(outfile,*) 'ihail     =',ihail
       if(dowr) write(outfile,*) 'iautoc    =',iautoc
+      if(dowr) write(outfile,*) 'cuparam   =',cuparam
       if(dowr) write(outfile,*) 'icor      =',icor
       if(dowr) write(outfile,*) 'betaplane =',betaplane
       if(dowr) write(outfile,*) 'lspgrad   =',lspgrad
@@ -3110,6 +3143,13 @@
       if(dowr) write(outfile,*) '  pi_qp = ',pi_qp
       if(dowr) write(outfile,*)
 
+      pi_phys = 4.0_kind_phys*atan(1.0_kind_phys)
+
+      if(dowr) write(outfile,*)
+      if(dowr) write(outfile,*) '  kind_phys = ',kind_phys
+      if(dowr) write(outfile,*) '  pi_phys   = ',pi_phys
+      if(dowr) write(outfile,*)
+
 !--------------------------------------------------------------
 !  some parameters related to subgrid turbulence:
 
@@ -3172,6 +3212,14 @@
       budrain  = 1
       cloudvar = .false.
       rhovar   = .false.
+      ibtmp=1
+      ietmp=1
+      jbtmp=1
+      jetmp=1
+      kbtmp=1
+      ketmp=1
+      ntmp2d=1
+      ntmp1d=1
       !--- end: define defaults ----------------------------------
 
       IF(imoist.eq.1)THEN
@@ -3670,6 +3718,88 @@
           if(dowr) write(outfile,*) '         numq   = ',numq
           if(dowr) write(outfile,*) ' ----------------------------------------------- '
           if(dowr) write(outfile,*)
+
+!-----------------------------------------------------------------------
+!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!-----------------------------------------------------------------------
+
+        ELSEIF(ptype.eq.7)THEN    !  WSM6
+
+          ibtmp  = max( ibtmp  ,  1 )
+          ietmp  = max( ietmp  , ni )
+          kbtmp  = max( kbtmp  ,  1 )
+          ketmp  = max( ketmp  , nk )
+          ntmp2d = max( ntmp2d , 15 )
+          ntmp1d = max( ntmp1d ,  7 )
+
+          iice = 1    ! this means that ptype=7 is ice scheme
+
+          numq = 6    ! there are 6 q variables
+
+          nqv  = 1    ! qv is the first array
+          nql1 = 2    ! the first liquid variable is the second array
+          nql2 = 3    ! the last liquid variable is the third array
+          nqs1 = 4    ! the first solid variable is the fourth array
+          nqs2 = 6    ! the last solid variable is the sixth array
+
+          cloudvar(1) = .false.
+          cloudvar(2) = .true.
+          cloudvar(3) = .false.
+          cloudvar(4) = .true.
+          cloudvar(5) = .false.
+          cloudvar(6) = .false.
+
+          qname(1) = 'qv '
+          qname(2) = 'qc '
+          qname(3) = 'qr '
+          qname(4) = 'qi '
+          qname(5) = 'qs '
+          qname(6) = 'qg '
+
+          qunit(1) = 'kg/kg'
+          qunit(2) = 'kg/kg'
+          qunit(3) = 'kg/kg'
+          qunit(4) = 'kg/kg'
+          qunit(5) = 'kg/kg'
+          qunit(6) = 'kg/kg'
+
+          qmag( 1) = 1.0e-2
+          qmag( 2) = 1.0e-2
+          qmag( 3) = 1.0e-2
+          qmag( 4) = 1.0e-2
+          qmag( 5) = 1.0e-2
+          qmag( 6) = 1.0e-2
+
+          !----- budget stuff below here -----
+
+          nbudget = 10
+
+          budname(1) = 'tcond '
+          budname(2) = 'tevac '
+          budname(3) = 'tauto '
+          budname(4) = 'taccr '
+          budname(5) = 'tevar '
+          budname(6) = 'train '
+          budname(7) = 'erain '
+          budname(8) = 'qsfc  '
+          budname(9) = 'esfc  '
+          budname(10) = 'erad  '
+
+          budrain = 6
+
+            ! Note: using some values from wrf's module_model_constants
+            if(myid.eq.0) print *
+            if(myid.eq.0) print *,'  calling mp_wsm6_init ... '
+            call mp_wsm6_init(den0=1.28,       &
+                              denr=1000.0,     &
+                              dens=100.0,      &
+                              cl=4190.0,       &
+                              cpv=cpv,         &
+                              hail_opt=ihail,  &
+                              errmsg=errmsg,   &
+                              errflg=errflg)
+            if(myid.eq.0) print *,'  ... done '
+            if(myid.eq.0) print *
 
 !-----------------------------------------------------------------------
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -5437,6 +5567,22 @@
 !--------------------------------------------------------------
 !  Define dimensions for allocatable arrays
 
+      ibb=1
+      ieb=1
+      jbb=1
+      jeb=1
+      kbb=1
+      keb=1
+
+      use_pbl = .false.
+
+      ibmynn=1
+      iemynn=1
+      jbmynn=1
+      jemynn=1
+      kbmynn=1
+      kemynn=1
+
       if(imoist.eq.1)then
         ibm=ib
         iem=ie
@@ -5509,14 +5655,6 @@
         ker=1
       endif
 
-      ibpbl=1
-      iepbl=1
-      jbpbl=1
-      jepbl=1
-      kbpbl=1
-      kepbl=1
-      npbl=1
-
       if( (cm1setup.eq.2.or.cm1setup.eq.4) .and. ipbl.ge.1 )then
         ! for boundary-layer schemes:
         ibb=ib
@@ -5526,14 +5664,6 @@
         kbb=kb
         keb=ke
         use_pbl = .true.
-      else
-        ibb=1
-        ieb=1
-        jbb=1
-        jeb=1
-        kbb=1
-        keb=1
-        use_pbl = .false.
       endif
 
       if( ( idopbl .and. ( ipbl.eq.4 .or. ipbl.eq.5 ) ) .or. sfcmodel.eq.6 )then
@@ -5545,21 +5675,22 @@
         kbmynn=kb
         kemynn=ke
         iusetke = .true.
+        ibtmp=max( ibtmp , 1 )
+        ietmp=max( ietmp , ni )
+        kbtmp=max( kbtmp , 1 )
+        ketmp=max( ketmp , nk+1 )
+        ntmp2d=max( ntmp2d , 59 )
+        ntmp1d=max( ntmp1d ,  2 )
+      endif
 
-        ibpbl=ib
-        iepbl=ie
-        jbpbl=1
-        jepbl=1
-        kbpbl=kb
-        kepbl=ke+1
-        npbl = 57
-      else
-        ibmynn=1
-        iemynn=1
-        jbmynn=1
-        jemynn=1
-        kbmynn=1
-        kemynn=1
+      if( idopbl .and. ipbl.eq.1 )then
+        ! YSU
+        ibtmp = max( ibtmp , 1 )
+        ietmp = max( ietmp , ni )
+        kbtmp = max( kbtmp , 1 )
+        ketmp = max( ketmp , nk+1 )
+        ntmp2d = max( ntmp2d , 44 )
+        ntmp1d = max( ntmp1d ,  5 )
       endif
 
       !-----------------------------------------
@@ -5578,6 +5709,14 @@
         bl_mynn_mixqt      =   0      ! 0:mix moisture species separate,1: mix total water
         bl_mynn_output     =   1      ! 1:Allocate and output extra 3D arrays
         bl_mynn_tkeadvect  =  .true.  ! tke advection?  (T=yes)
+        if( ipbl.eq.4 )then
+          bl_mynn_closure    =  2.50_sp   ! flag to determine the closure level for the mynn
+        elseif( ipbl.eq.5 )then
+          bl_mynn_closure    =   3.00_sp  ! flag to determine the closure level for the mynn
+        endif
+        if(myid.eq.0) print *
+        if(myid.eq.0) print *,'  bl_mynn_closure = ',bl_mynn_closure
+        if(myid.eq.0) print *
       endif
       !-----------------------------------------
 
@@ -5590,13 +5729,11 @@
         kbmyj=kb
         kemyj=ke+1
 
-        ibpbl=ib
-        iepbl=ie
-        jbpbl=jb
-        jepbl=je
-        kbpbl=kb
-        kepbl=ke+1
-        npbl = 28
+        ibtmp=max( ibtmp , 1 )
+        ietmp=max( ietmp , ni )
+        kbtmp=max( kbtmp , 1 )
+        ketmp=max( ketmp , nk+1 )
+        ntmp2d=max( ntmp2d , 28 )
       else
         ibmyj=1
         iemyj=1
@@ -5616,6 +5753,15 @@
         iel=1
         jbl=1
         jel=1
+      endif
+
+      if( sfcmodel.eq.3 )then
+        ibtmp = max( ibtmp , 1 )
+        ietmp = max( ietmp , ni )
+        kbtmp = max( kbtmp , 1 )
+        ketmp = max( ketmp , nk )
+        ntmp2d = max( ntmp2d ,  6 )
+        ntmp1d = max( ntmp1d ,  3 )
       endif
 
       if( idoles .or. idopbl .or. ipbl.ge.1 .or. cm1setup.eq.3 )then
@@ -5669,6 +5815,28 @@
         jenba=1
         kbnba=1
         kenba=1
+      endif
+
+      if( cuparam.ge.1 )then
+        ibcu=ib
+        iecu=ie
+        jbcu=jb
+        jecu=je
+        kbcu=kb
+        kecu=ke
+        ibtmp = max( ibtmp ,    1 )
+        ietmp = max( ietmp ,   ni )
+        kbtmp = max( kbtmp ,    1 )
+        ketmp = max( ketmp , nk+1 )
+        ntmp2d = max( ntmp2d , 20 )
+        ntmp1d = max( ntmp1d ,  3 )
+      else
+        ibcu=1
+        iecu=1
+        jbcu=1
+        jecu=1
+        kbcu=1
+        kecu=1
       endif
 
       if(iptra.eq.1)then
@@ -5813,7 +5981,7 @@
       td_melt  = 0
       td_frz   = 0
 
-      IF( output_thbudget.eq.1 .or.dodomaindiag )THEN
+      IF( output_thbudget.eq.1 )THEN
         ibdt = ib
         iedt = ie
         jbdt = jb
@@ -5999,7 +6167,7 @@
 
         endif
       ENDIF
-      IF( ( output_qvbudget.eq.1 .or. dodomaindiag ) .and. imoist.eq.1 )THEN
+      IF( output_qvbudget.eq.1 .and. imoist.eq.1 )THEN
         ibdq = ib
         iedq = ie
         jbdq = jb
@@ -6101,7 +6269,7 @@
       ud_lsw     = 0
       nutk       = 0
 
-      IF( output_ubudget.eq.1 .or. dodomaindiag )THEN
+      IF( output_ubudget.eq.1 )THEN
         ! 170721: to more easily calculate rtke budget, save budget terms
 
         ibdv = ib
@@ -6206,7 +6374,7 @@
       vd_lsw     = 0
       nvtk       = 0
 
-      IF( output_vbudget.eq.1 .or. dodomaindiag )THEN
+      IF( output_vbudget.eq.1 )THEN
         ! 170721: to more easily calculate rtke budget, save budget terms
 
         ibdv = ib
@@ -6308,7 +6476,7 @@
       wd_buoy    = 0
       nwtk       = 0
 
-      IF( output_wbudget.eq.1 .or. dodomaindiag )THEN
+      IF( output_wbudget.eq.1 )THEN
         ! 170721: to more easily calculate rtke budget, save budget terms
 
         ibdv = ib
@@ -6387,7 +6555,8 @@
       kd_adv   = 0
       kd_turb  = 0
 
-      IF( idopbl .and. dodomaindiag .and. iusetke )THEN
+      ! cm1r21.1: add idoles
+      IF( (idopbl.or.idoles) .and. dodomaindiag .and. iusetke )THEN
 
         ibdk = ib
         iedk = ie
@@ -6647,7 +6816,7 @@
 !!!      jbe2 = je
 !!!      kbb2 = kb
 !!!      kbe2 = ke
-
+!!!
 !!!      if(dowr) write(outfile,*) '  ibb2  = ',ibb2
 !!!      if(dowr) write(outfile,*) '  ibe2  = ',ibe2
 !!!      if(dowr) write(outfile,*) '  jbb2  = ',jbb2
@@ -7247,6 +7416,7 @@
       if(dowr) write(outfile,*)
 
       if(dowr) write(outfile,*) 'cpdcv =',cpdcv
+      if(dowr) write(outfile,*) 'cvdcp =',cvdcp
       if(dowr) write(outfile,*) 'rovcp =',rovcp
       if(dowr) write(outfile,*) 'rddcv =',rddcv
       if(dowr) write(outfile,*) 'cvdrd =',cvdrd
@@ -7259,6 +7429,7 @@
       if(dowr) write(outfile,*) 'pnum  =',pnum
       if(dowr) write(outfile,*) 'xlv   =',xlv
       if(dowr) write(outfile,*) 'xls   =',xls
+      if(dowr) write(outfile,*) 'xlf   =',xlf
       if(dowr) write(outfile,*) 'lvdcp =',lvdcp
       if(dowr) write(outfile,*) 'condc =',condc
       if(dowr) write(outfile,*) 'cpl   =',cpl
@@ -7396,19 +7567,27 @@
       if(dowr) write(outfile,135) 'kedk,kedp,kemynn  =',kedk,kedp,kemynn
 
       if(dowr) write(outfile,*)
-      if(dowr) write(outfile,137) 'ibmyj,ibpbl =     =',ibmyj,ibpbl
-      if(dowr) write(outfile,137) 'iemyj,iepbl =     =',iemyj,iepbl
-      if(dowr) write(outfile,137) 'jbmyj,jbpbl =     =',jbmyj,jbpbl
-      if(dowr) write(outfile,137) 'jemyj,jepbl =     =',jemyj,jepbl
-      if(dowr) write(outfile,137) 'kbmyj,kbpbl =     =',kbmyj,kbpbl
-      if(dowr) write(outfile,137) 'kemyj,kepbl =     =',kemyj,kepbl
-      if(dowr) write(outfile,139) 'npbl  =           =',npbl
+      if(dowr) write(outfile,137) 'ibmyj,ibtmp,ibcu  =',ibmyj,ibtmp,ibcu
+      if(dowr) write(outfile,137) 'iemyj,ietmp,iecu  =',iemyj,ietmp,iecu
+      if(dowr) write(outfile,137) 'jbmyj,jbtmp,jbcu  =',jbmyj,jbtmp,jbcu
+      if(dowr) write(outfile,137) 'jemyj,jetmp,jecu  =',jemyj,jetmp,jecu
+      if(dowr) write(outfile,137) 'kbmyj,kbtmp,kbcu  =',kbmyj,kbtmp,kbcu
+      if(dowr) write(outfile,137) 'kemyj,ketmp,kecu  =',kemyj,ketmp,kecu
+      if(dowr) write(outfile,*)
+      if(dowr) write(outfile,139) 'ntmp2d            =',ntmp2d
+      if(dowr) write(outfile,139) 'ntmp1d            =',ntmp1d
 
-137   format(1x,a19,2(4x,i5))
+137   format(1x,a19,3(4x,i5))
 139   format(1x,a19,1(4x,i5))
 
       if(dowr) write(outfile,*)
       if(dowr) write(outfile,*) '  use_pbl = ',use_pbl
+
+      if(dowr) write(outfile,*)
+      if(dowr) write(outfile,*) ' ib3d,ie3d,ib2d,ie2d = ',ib3d,ie3d,ib2d,ie2d
+      if(dowr) write(outfile,*) ' jb3d,je3d,jb2d,je2d = ',jb3d,je3d,jb2d,je2d
+      if(dowr) write(outfile,*) ' kb3d,ke3d           = ',kb3d,ke3d
+      if(dowr) write(outfile,*) ' nout3d,nout2d       = ',nout3d,nout2d
 
     !----------
 
@@ -7759,6 +7938,7 @@
 
           close(unit=40)
 
+        if( axisymm.ne.1 )then
           ! work outward from center of domain :
           xfdp(nx/2+1) = 0.5*(xhref(nx/2)+xhref(nx/2+1))
 
@@ -7768,6 +7948,13 @@
           do i=(nx/2),(1),(-1)
             xfdp(i) = 2.0*xhref(i) - xfdp(i+1)
           enddo
+        else
+          ! axisymm = 1
+          xfdp(1) = 0.0
+          do i=1,nx
+            xfdp(i+1) = 2.0*xhref(i) - xfdp(i)
+          enddo
+        endif
 
         endif
 
@@ -9463,8 +9650,10 @@
 
       endif
 
+    if( lspgrad.eq.3 )then
       ! for lspgrad = 3
       hurr_angle = dble(hurr_rotate) * ( pi_dp / 180.0d0 )
+    endif
 
 !--------------------------------------------------------------
 
@@ -9672,8 +9861,13 @@
 
 !--------------------------------------------------------------
 
-      dtu0 = 1.0
-      dtv0 = 1.0
+      dtu0 = 0.0
+
+      do j=1,nj
+      do i=1,ni+1
+        dtu0(i,j) = 1.0
+      enddo
+      enddo
 
       if( ibw.eq.1 )then
         do j=1,nj
@@ -9685,6 +9879,16 @@
           dtu0(ni+1,j) = 0.0
         enddo
       endif
+
+    !.........................
+
+      dtv0 = 0.0
+
+      do j=1,nj+1
+      do i=1,ni
+        dtv0(i,j) = 1.0
+      enddo
+      enddo
 
       if( ibs.eq.1 )then
         do i=1,ni
@@ -9967,6 +10171,14 @@
 
         !-----------------------------------------------------
 
+        if(dowr) write(outfile,*)
+        if(dowr) write(outfile,*) '      irecywe = ',irecywe
+        if(dowr) write(outfile,*) '      jrecywe = ',jrecywe
+        if(dowr) write(outfile,*) '      irecysn = ',irecysn
+        if(dowr) write(outfile,*) '      jrecysn = ',jrecysn
+        if(dowr) write(outfile,*) '      krecy   = ',krecy
+        if(dowr) write(outfile,*) '      nrecy   = ',nrecy
+        if(dowr) write(outfile,*)
 
       ENDIF  ifrecycle
 
@@ -10008,8 +10220,11 @@
 
 !--------------------------------------------------------------
 
+      if(dowr) write(outfile,*)
+      if(dowr) write(outfile,*) '  dotimeavg = ',dotimeavg
+      if(dowr) write(outfile,*)
+
       IF( dotimeavg )THEN
-        if(dowr) write(outfile,*)
         if(dowr) write(outfile,*) '  ... using time averages ... '
         if(dowr) write(outfile,*)
         if(dowr) write(outfile,*) '      ibta,ieta      = ',ibta,ieta

@@ -20,7 +20,7 @@
                          w3d,ppi,pp3d,ppten,sten,tha,th3d,thten,qa,q3d,qten,  &
                          p3a,p3o,dum2d1,dum2d2,dum2d3,dum2d4,dum2d5,  &
                          effc,effi,effs,effr,effg,effis,    &
-                         tdiag,qdiag,out2d,out3d,  &
+                         tdiag,qdiag,out2d,out3d,tmp2d,tmp1d,  &
                          dowriteout,dorad,dotdwrite,doazimwrite,dorestart,  &
                          getdbz,getvt,dotbud,doqbud)
 
@@ -36,6 +36,8 @@
     use module_mp_nssl_2mom, only : nssl_2mom_driver
     use microphy_p3, only : mp_p3_wrapper_wrf
     use module_mp_jensen_ishmael , only : mp_jensen_ishmael
+    use mp_wsm6 , only : refl10cm_wsm6,mp_wsm6_init
+    use mmm_physics_wrapper_module, only : mp_wsm6_wrapper,mp_wsm6_effectRad_wrapper
 
     implicit none
 
@@ -66,6 +68,8 @@
     real, intent(inout) , dimension(ibdq:iedq,jbdq:jedq,kbdq:kedq,nqdiag) :: qdiag
     real, intent(inout) , dimension(ib2d:ie2d,jb2d:je2d,nout2d) :: out2d
     real, intent(inout) , dimension(ib3d:ie3d,jb3d:je3d,kb3d:ke3d,nout3d) :: out3d
+    real, intent(inout), dimension(ibtmp:ietmp,kbtmp:ketmp  ,ntmp2d ) :: tmp2d
+    real, intent(inout), dimension(ibtmp:ietmp,ntmp1d) :: tmp1d
     logical, intent(in) :: dowriteout,dorad,dotdwrite,doazimwrite,dorestart
     logical, intent(inout) :: getdbz,getvt
     logical, intent(in) :: dotbud,doqbud
@@ -76,10 +80,21 @@
     integer :: has_reqc,has_reqi,has_reqs,do_radar_ref
     real    :: rdt
 
-   if( stopit ) getdbz = .true.
+    ! for wsm6
+    character(len=40) :: errmsg
+    integer :: errflg
+    real, dimension(kbtmp:ketmp) :: p1d,t1d,qv1d,qr1d,qs1d,qg1d,dbz1d,zp
 
-   IF( efall.eq.1 ) getvt = .true.
-   IF( dowriteout .and. output_fallvel.eq.1 ) getvt = .true.
+    !........
+
+        if( stopit ) getdbz = .true.
+
+        if( getdbz .and. qd_dbz.le.0 )then
+          getdbz = .false.
+        endif
+
+        IF( efall.eq.1 ) getvt = .true.
+        IF( dowriteout .and. output_fallvel.eq.1 ) getvt = .true.
 
         ! dum1 = T
         ! dum3 = appropriate rho for budget calculations
@@ -801,8 +816,8 @@
                                cci = q3d(ib,jb,kb, lni),     &
                                csw = q3d(ib,jb,kb, lns),     &
                                chw = q3d(ib,jb,kb, lnh),     &
-                               zrw = q3d(ib,jb,kb, lzr),     &
-                               zhw = q3d(ib,jb,kb, lzh),     &
+                               zrw = q3d(ib,jb,kb, max(1,lzr)), &
+                               zhw = q3d(ib,jb,kb, max(1,lzh)), &
                                vhw = q3d(ib,jb,kb, lvh),     &
                                pii = dum1,                   &
                                p   =  prs,                   &
@@ -849,9 +864,9 @@
                                csw = q3d(ib,jb,kb, lns),     &
                                chw = q3d(ib,jb,kb, lnh),     &
                                chl = q3d(ib,jb,kb, lnhl),    &
-                               zrw = q3d(ib,jb,kb, lzr),     &
-                               zhw = q3d(ib,jb,kb, lzh),     &
-                               zhl = q3d(ib,jb,kb, lzhl),    &
+                               zrw = q3d(ib,jb,kb, max(1,lzr)),     &
+                               zhw = q3d(ib,jb,kb, max(1,lzh)),     &
+                               zhl = q3d(ib,jb,kb, max(1,lzhl)),    &
                                vhw = q3d(ib,jb,kb, lvh),     &
                                vhl = q3d(ib,jb,kb, lvhl),    &
                                pii = dum1,                   &
@@ -980,7 +995,9 @@
 
       ELSEIF (ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.53 .or.ptype.eq.60) THEN
 
-      ! for 1-ice-category configurations
+          DO i = 1,numq
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -1385,6 +1402,10 @@
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 2-mom-ice, 2-ice-category  !
 !---------------------------------------------------------------------------!
 
+          DO i = 1,numq
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+          ENDDO
+
          rdt = 1.0/dt
 
          p3_jloop2: DO j=1,nj
@@ -1568,6 +1589,10 @@
 !---------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 2-ice-category  !
 !---------------------------------------------------------------------------!
+
+          DO i = 1,numq
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -1758,6 +1783,10 @@
 !-------------------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 2-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
+
+          DO i = 1,numq
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -1953,6 +1982,10 @@
 !-------------------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 3-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
+
+          DO i = 1,numq
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -2180,6 +2213,10 @@
 !-------------------------------------------------------------------------------------!
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 4-ice-category, liq-frac  !
 !-------------------------------------------------------------------------------------!
+
+          DO i = 1,numq
+            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
+          ENDDO
 
          rdt = 1.0/dt
 
@@ -2519,7 +2556,7 @@
             enddo
             enddo
 
-            if( getdbz )then
+            if( getdbz .and. qd_dbz.ge.1 )then
               do k=1,nk
               do j=1,nj
               do i=1,ni
@@ -2529,6 +2566,188 @@
               enddo
             endif
 
+
+!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+!ccc     WSM6          ccccccccccccccccccccccccccccccccccccccccccccccccc
+!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+                        
+        ELSEIF(ptype.eq.7)THEN 
+
+          call pdefq(    0.0,asq(1),ruh,rvh,rmh,rho,q3d(ib,jb,kb,1))
+          call pdefq( qsmall,asq(2),ruh,rvh,rmh,rho,q3d(ib,jb,kb,2))
+          call pdefq( qsmall,asq(3),ruh,rvh,rmh,rho,q3d(ib,jb,kb,3))
+          call pdefq( qsmall,asq(4),ruh,rvh,rmh,rho,q3d(ib,jb,kb,4))
+          call pdefq( qsmall,asq(5),ruh,rvh,rmh,rho,q3d(ib,jb,kb,5))
+          call pdefq( qsmall,asq(6),ruh,rvh,rmh,rho,q3d(ib,jb,kb,6))
+
+      ! NOTE: need to OpenMPize !
+                        
+          wsmjloop:  &  
+          DO j=1,nj
+
+            do k=1,nk
+            do i=1,ni
+              tmp2d(i,k, 1) = thten(i,j,k)      ! t
+              tmp2d(i,k, 2) = q3d(i,j,k,nqv)    ! q
+              tmp2d(i,k, 3) = q3d(i,j,k,nqc)    ! qc
+              tmp2d(i,k, 4) = q3d(i,j,k,nqi)    ! qi
+              tmp2d(i,k, 5) = q3d(i,j,k,nqr)    ! qr
+              tmp2d(i,k, 6) = q3d(i,j,k,nqs)    ! qs
+              tmp2d(i,k, 7) = q3d(i,j,k,nqg)    ! qg
+              tmp2d(i,k, 8) = rho(i,j,k)        ! den
+              tmp2d(i,k, 9) = prs(i,j,k)        ! p
+              tmp2d(i,k,10) = dz*rmh(i,j,k)     ! delz
+              tmp2d(i,k,11) = 0.0
+              tmp2d(i,k,12) = 0.0
+              tmp2d(i,k,13) = 0.0
+              tmp2d(i,k,14) = 0.0
+              tmp2d(i,k,15) = 0.0
+            enddo
+            enddo
+
+            do i=1,ni
+              tmp1d(i,1) = 0.0
+              tmp1d(i,2) = 0.0
+              tmp1d(i,3) = 0.0
+              tmp1d(i,4) = 0.0
+              tmp1d(i,5) = 0.0
+              tmp1d(i,6) = 0.0
+              tmp1d(i,7) = 0.0
+            enddo
+
+       call mp_wsm6_wrapper(t=tmp2d(ibtmp,kbtmp,1),        &
+                        q=tmp2d(ibtmp,kbtmp,2),            &
+                        qc=tmp2d(ibtmp,kbtmp,3),           &
+                        qi=tmp2d(ibtmp,kbtmp,4),           &
+                        qr=tmp2d(ibtmp,kbtmp,5),           &
+                        qs=tmp2d(ibtmp,kbtmp,6),           &
+                        qg=tmp2d(ibtmp,kbtmp,7),           &
+                        den=tmp2d(ibtmp,kbtmp,8),          &
+                        p=tmp2d(ibtmp,kbtmp,9),            &
+                        delz=tmp2d(ibtmp,kbtmp,10),        &
+                        delt=dt,                           &
+                        g=g,                               &
+                        cpd=cp,                            &
+                        cpv=cpv,                           &
+                        rd=rd,                             &
+                        rv=rv,                             &
+                        t0c=to,                            &
+                        ep1=repsm1,                        &
+                        ep2=eps,                           &
+                        qmin=qsmall,                       &
+                        xls=xls,                           &
+                        xlv0=xlv,                          &
+                        xlf0=xlf,                          &
+                        den0=1.28,                         &
+                        denr=1000.0,                       &
+                        cliq=cpl,                          &
+                        cice=cpi,                          &
+                        psat=611.2,                        &
+                        rain=tmp1d(ibtmp,1),               &
+                        rainncv=tmp1d(ibtmp,2),            &
+                        sr=tmp1d(ibtmp,3),                 &
+                        snow=tmp1d(ibtmp,4),               &
+                        snowncv=tmp1d(ibtmp,5),            &
+                        graupel=tmp1d(ibtmp,6),            &
+                        graupelncv=tmp1d(ibtmp,7),         &
+                        rainprod2d=tmp2d(ibtmp,kbtmp,11),  &
+                        evapprod2d=tmp2d(ibtmp,kbtmp,12),  &
+                        its=1,                             &
+                        ite=ni,                            &
+                        kts=1,                             &
+                        kte=nk,                            &
+                        errmsg=errmsg,                     &
+                        errflg=errflg                      &
+                       )
+
+            do k=1,nk
+            do i=1,ni
+              dum1(i,j,k)    = tmp2d(i,k,1)
+              q3d(i,j,k,nqv) = tmp2d(i,k,2)
+              q3d(i,j,k,nqc) = tmp2d(i,k,3)
+              q3d(i,j,k,nqi) = tmp2d(i,k,4)
+              q3d(i,j,k,nqr) = tmp2d(i,k,5)
+              q3d(i,j,k,nqs) = tmp2d(i,k,6)
+              q3d(i,j,k,nqg) = tmp2d(i,k,7)
+              if( abs(dum1(i,j,k)-thten(i,j,k)).ge.tsmall .or.  &
+                  abs(q3d(i,j,k,nqv)-qten(i,j,k,nqv)).ge.qsmall )then
+                th3d(i,j,k)=dum1(i,j,k)/(pi0(i,j,k)+pp3d(i,j,k)) - th0(i,j,k)
+                rho(i,j,k)=prs(i,j,k)/(rd*dum1(i,j,k)*(1.0+q3d(i,j,k,nqv)*reps))  ! or, modify pressure (?)
+              endif
+            enddo
+            enddo
+
+            do n = 1,nrain
+            do i=1,ni
+              rain(i,j,n) = rain(i,j,n) + 0.1*tmp1d(i,1)  ! convert from mm to cm
+            enddo
+            enddo
+
+            IF( dorad .and. radopt.ge.1 )THEN
+              if(myid.eq.0) print *,'  getting wsm6 effective radii for radiation '
+              call mp_wsm6_effectRad_wrapper(          &
+                         do_microp_re=.true.,          &
+                         t=tmp2d(ibtmp,kbtmp,1),       &
+                         qc=tmp2d(ibtmp,kbtmp,3),      &
+                         qi=tmp2d(ibtmp,kbtmp,4),      &
+                         qs=tmp2d(ibtmp,kbtmp,6),      &
+                         rho=tmp2d(ibtmp,kbtmp,8),     &
+                         qmin=qsmall,                  &
+                         t0c=to,                       &
+                         re_qc_bg=2.49E-6,             &
+                         re_qi_bg=4.99E-6,             &
+                         re_qs_bg=9.99E-6,             &
+                         re_qc_max=50.E-6,             &
+                         re_qi_max=125.E-6,            &
+                         re_qs_max=999.E-6,            &
+                         re_qc=tmp2d(ibtmp,kbtmp,13),  &
+                         re_qi=tmp2d(ibtmp,kbtmp,14),  &
+                         re_qs=tmp2d(ibtmp,kbtmp,15),  &
+                         its=1,                        &
+                         ite=ni,                       &
+                         kts=1,                        &
+                         kte=nk,                       &
+                         errmsg=errmsg,                &
+                         errflg=errflg)
+              do k=1,nk
+              do i=1,ni
+                effc(i,j,k) = tmp2d(i,k,13)
+                effi(i,j,k) = tmp2d(i,k,14)
+                effs(i,j,k) = tmp2d(i,k,15)
+              enddo
+              enddo
+            ENDIF
+
+            IF( getdbz .and. qd_dbz.ge.1 )THEN
+              do i = 1,ni
+                do k = 1,nk
+                  p1d(k) = prs(i,j,k)
+                  t1d(k) = (th0(i,j,k)+th3d(i,j,k))*(pi0(i,j,k)+pp3d(i,j,k))
+                  qv1d(k)  = q3d(i,j,k,nqv)
+                  qr1d(k)  = q3d(i,j,k,nqr)
+                  qs1d(k)  = q3d(i,j,k,nqs)
+                  qg1d(k)  = q3d(i,j,k,nqg)
+                  dBZ1d(k) = -35._sp
+                  zp(k) = zh(i,j,k)
+                enddo
+                call refl10cm_wsm6(qv1d=qv1d,  &
+                                   qr1d=qr1d,  &
+                                   qs1d=qs1d,  &
+                                   qg1d=qg1d,  &
+                                   t1d=t1d,    &
+                                   p1d=p1d,    &
+                                   dBZ=dbz1d,  &
+                                   kts=1,      &
+                                   kte=nk)
+                do k = 1,nk
+                  qdiag(i,j,k,qd_dbz) = max(-35._sp,dBZ1d(k))
+                enddo
+              enddo
+            ENDIF
+
+          ENDDO  wsmjloop
+
+          if(timestats.ge.1) time_microphy=time_microphy+mytime()
 
 !
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc

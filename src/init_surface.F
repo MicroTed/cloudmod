@@ -193,7 +193,8 @@
 
         do j=jb,je
         do i=ib,ie
-          dsxy(i,j) = sqrt( (dx*ruh(i))**2 + (dy*rvh(j))**2 )
+!!!          dsxy(i,j) = sqrt( (dx*ruh(i))**2 + (dy*rvh(j))**2 )
+          dsxy(i,j) = max( dx*ruh(i) , dy*rvh(j) )
         enddo
         enddo
 
@@ -221,6 +222,9 @@
         ! sfc flux/drag is handled by ysu/gfsedmf/mynn pbl subroutines:
         dosfcflx = .false.
       ENDIF
+
+      ! 230424: bug fix
+      IF( cm1setup.eq.4 .and. isfcflx.eq.1 ) dosfcflx = .true.
 
       if(dowr) write(outfile,*)
       if(dowr) write(outfile,*) '  Settings used in this simulation:'

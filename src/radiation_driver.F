@@ -8,14 +8,14 @@
   CONTAINS
 
       subroutine radiation_driver(mtime,radtim,dt,rbufsz,xh,yh,xf,yf,zf,rmh,c1,c2,     &
-                   swten,lwten,swtenc,lwtenc,cldfra,o30,                               &
+                   swten,lwten,swtenc,lwtenc,cldfra,o30,thraten,                       &
                    radsw,rnflx,radswnet,radlwin,dsr,olr,rad2d,                         &
                    effc,effi,effs,effr,effg,effis,                                     &
                    lwupt,lwuptc,lwdnt,lwdntc,lwupb,lwupbc,lwdnb,lwdnbc,                &
                    swupt,swuptc,swdnt,swdntc,swupb,swupbc,swdnb,swdnbc,                &
                    lwcf,swcf,coszr,                                                    &
                    xice,xsnow,xlat,xlong,coszen,swddir,swddni,swddif,hrang,            &
-                   cldfra1_flag,dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,dum10,    &
+                   cldfra1_flag,dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,dum10,dum11, &
                    prs0,pi0,th0,prs,ppi,tha,rho,qa,                                    &
                    rth0s,prs0s,rho0s,tsk,albd,glw,gsw,emiss,xland,nstep,               &
                    qc_bl,qi_bl,cldfra_bl)
@@ -40,7 +40,7 @@
       real, intent(in), dimension(jb:je+1) :: yf
       real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: zf
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: rmh,c1,c2
-      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,swtenc,lwtenc,cldfra,o30
+      real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: swten,lwten,swtenc,lwtenc,cldfra,o30,thraten
       real, intent(inout), dimension(ni,nj) :: radsw,rnflx,radswnet,radlwin,dsr,olr
       real, intent(inout), dimension(ni,nj,nrad2d) :: rad2d
       real, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: effc,effi,effs,effr,effg,effis
@@ -49,7 +49,7 @@
       real, intent(inout), dimension(ibr:ier,jbr:jer) :: lwcf,swcf,coszr
       real, intent(inout), dimension(ibr:ier,jbr:jer) :: xice,xsnow,xlat,xlong,coszen,swddir,swddni,swddif,hrang
       integer, intent(inout), dimension(ibr:ier,jbr:jer,kbr:ker) :: cldfra1_flag
-      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,dum10
+      real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,dum10,dum11
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: prs0,pi0,th0
       real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: prs,ppi,tha,rho
       real, intent(inout), dimension(ibm:iem,jbm:jem,kbm:kem,numq) :: qa
@@ -315,8 +315,8 @@
 
           !$omp parallel do default(shared)   &
           !$omp private(i,j,k)
-          do k=1,nk
           do j=1,nj
+          do k=1,nk
           do i=1,ni
             dum4(i,j,k) = (pi0(i,j,k)+ppi(i,j,k))
             dum3(i,j,k) = (th0(i,j,k)+tha(i,j,k))*dum4(i,j,k)
@@ -326,6 +326,7 @@
             dum8(i,j,k) = 0.0
             dum9(i,j,k) = 0.0
             dum10(i,j,k) = 0.0
+            dum11(i,j,k) = 0.0
           enddo
           enddo
           enddo
@@ -339,7 +340,7 @@
 
           !$omp parallel do default(shared)   &
           !$omp private(i,j,k)
-          do k=1,nk+1
+          do k=1,nk
           do j=1,nj
           do i=1,ni
             dum5(i,j,k) = dz*rmh(i,j,k)
@@ -353,17 +354,33 @@
           do i=1,ni
             ! surface:
             dum1(i,j,1) = cgs1*prs(i,j,1)+cgs2*prs(i,j,2)+cgs3*prs(i,j,3)
-            dum2(i,j,1) = cgs1*dum3(i,j,1)+cgs2*dum3(i,j,2)+cgs3*dum3(i,j,3)
+!!!            dum2(i,j,1) = cgs1*dum3(i,j,1)+cgs2*dum3(i,j,2)+cgs3*dum3(i,j,3)
+            dum2(i,j,1) = tsk(i,j)   ! cm1r21.1: use surface temp, instead of near-sfc air temp
             ! top of model:
             dum1(i,j,nk+1)= cgt1*prs(i,j,nk)+cgt2*prs(i,j,nk-1)+cgt3*prs(i,j,nk-2)
             dum2(i,j,nk+1)= cgt1*dum3(i,j,nk)+cgt2*dum3(i,j,nk-1)+cgt3*dum3(i,j,nk-2)
           enddo
           enddo
 
+          f_qr = .false.
           f_qs = .false.
           f_qg = .false.
           f_qi = .false.
           f_qc = .false.
+
+          ! store qr in dum11:
+          if( nqr.ge.1 )then
+            f_qr = .true.
+            !$omp parallel do default(shared)   &
+            !$omp private(i,j,k)
+            do k=1,nk
+            do j=1,nj
+            do i=1,ni
+              dum11(i,j,k) = qa(i,j,k,nqr)
+            enddo
+            enddo
+            enddo
+          endif
 
           ! store qs in dum7:
           if( nqs.ge.1 )then
@@ -443,9 +460,8 @@
             enddo
           endif
 
-          ! all microphysics schemes have qv,qr
+          ! all microphysics schemes have qv:
           f_qv = .true.
-          f_qr = .true.
 
           warm_rain = .false.
           is_CAMMGMP_used = .false.
@@ -465,6 +481,14 @@
             ! morrison scheme = 10
             ! use eff arrays from Morrison scheme:
             mp_physics = 10
+            has_reqc = 1
+            has_reqi = 1
+            has_reqs = 1
+          endif
+          if( ptype.eq.7 )then
+            !  wsm6 = 6
+            ! use eff arrays from WSM6 scheme:
+            mp_physics = 6
             has_reqc = 1
             has_reqi = 1
             has_reqs = 1
@@ -638,7 +662,7 @@
                   cldovrlp=cldovrlp,                                &
                   IS_CAMMGMP_USED=is_cammgmp_used,                  &
                   XLAND=XLAND,XICE=XICE,SNOW=XSNOW,                 &
-                  QV3D=qa(ib,jb,kb,nqv),QC3D=dum10           ,QR3D=qa(ib,jb,kb,nqr),     &
+                  QV3D=qa(ib,jb,kb,nqv),QC3D=dum10           ,QR3D=dum11           ,     &
                   QI3D=dum9            ,QS3D=dum7            ,QG3D=dum8            ,     &
                   O3INPUT=O3INPUT,O33D=o30,                         &
                   F_QV=F_QV,F_QC=F_QC,F_QR=F_QR,                    &
@@ -699,7 +723,7 @@
                      ICLOUD=icloud,WARM_RAIN=warm_rain,                &
                      cldovrlp=cldovrlp,                                &
                      XLAND=XLAND,XICE=XICE,SNOW=XSNOW,                 &
-                  QV3D=qa(ib,jb,kb,nqv),QC3D=dum10           ,QR3D=qa(ib,jb,kb,nqr),     &
+                  QV3D=qa(ib,jb,kb,nqv),QC3D=dum10           ,QR3D=dum11           ,     &
                   QI3D=dum9            ,QS3D=dum7            ,QG3D=dum8            ,     &
                   O3INPUT=O3INPUT,O33D=o30,                         &
                      AER_OPT=AER_OPT,               &
@@ -731,8 +755,8 @@
           do i=1,ni
             ! convert to cm1 temp tendency:
             rcvm = cp/( cv+cvv*max(0.0,qa(i,j,k,nqv))                               &
-                          +cpl*max(0.0,(qa(i,j,k,nqc)+qa(i,j,k,nqr)))               &
-                          +cpi*max(0.0,(qa(i,j,k,nqi)+qa(i,j,k,nqs)+qa(i,j,k,nqg))) )
+                          +cpl*max(0.0,(dum10(i,j,k)+dum11(i,j,k)))                 &
+                          +cpi*max(0.0,(dum9(i,j,k)+dum7(i,j,k)+dum8(i,j,k))) )
             lwten(i,j,k) = lwten(i,j,k)*rcvm
             swten(i,j,k) = swten(i,j,k)*rcvm
             lwtenc(i,j,k) = lwtenc(i,j,k)*rcvm
@@ -744,6 +768,35 @@
 
       ENDIF  rad_opt
 
+!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+      ! cm1r21.1: added thraten array
+
+      IF( eqtset.eq.1 )THEN
+        ! traditional equation set (pressure is constant):
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
+        do j=1,nj
+        do i=1,ni
+          ! cm1r17:  swten and lwten now store TEMPERATURE tendencies:
+          thraten(i,j,k) = (swten(i,j,k)+lwten(i,j,k))/(pi0(i,j,k)+ppi(i,j,k))
+        enddo
+        enddo
+        enddo
+      ELSEIF( eqtset.eq.2 )THEN
+        ! Bryan-Fritsch equation set (mass is constant):
+        !$omp parallel do default(shared)  &
+        !$omp private(i,j,k)
+        do k=1,nk
+        do j=1,nj
+        do i=1,ni
+          ! cm1r17:  swten and lwten now store TEMPERATURE tendencies:
+          thraten(i,j,k) = (swten(i,j,k)+lwten(i,j,k))*cvdcp/(pi0(i,j,k)+ppi(i,j,k))
+        enddo
+        enddo
+        enddo
+      ENDIF
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !cc   end radiation  ccccccccccccccccccccccccccccccccccccccccccccccccccc

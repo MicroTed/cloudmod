@@ -156,7 +156,7 @@
       real :: th_sfc,pi_sfc,pifoo,prsfoo,thfoo,t0
       real :: prs_sfc,t_sfc,hs
       integer :: tctype
-      real :: dr,tem
+      real :: tem
       double precision :: tem1,tem2,temd
       logical :: doit
 
@@ -859,25 +859,21 @@
           rrmax = rref(nref)
 
         ELSE
-          ! 3d Cartesian grid ... use constant radial grid spacing:
+          ! 3d Cartesian grid:
 
-          dr = min( dx , dy )
-          if( stretch_x.ne.0 ) dr = min( dr , dx_inner )
-          if( stretch_y.ne.0 ) dr = min( dr , dy_inner )
-
-          rrmax = max( 0.5*(maxx-minx) , 0.5*(maxy-miny) )
-
-          nref = 1+int(rrmax/dr)
+          nref = nx/2 + 3
 
           allocate( rref(nref) )
           rref=0.0
 
           do i=1,nref
-            rref(i) = 0.5*dr + (i-1)*dr
+            rref(i) = xhref( nx/2 + i )
           enddo
 
+          rrmax = rref(nref)
+
           if( myid.eq.0 ) print *,'  xref,yref     = ',xref,yref
-          if( myid.eq.0 ) print *,'  rrmax,dr,nref = ',rrmax,dr,nref
+          if( myid.eq.0 ) print *,'  rrmax,nref = ',rrmax,nref
 
         ENDIF
 
@@ -1165,7 +1161,7 @@
             tem1 = xh(i)-xref
             tem2 = yh(j)-yref
             rr = dsqrt( tem1**2 + tem2**2 )
-          if( rr.le.rrmax )then
+          if( rr.lt.rrmax )then
             ! need to account for grid stretching.  Do simple search:
             diff = -1.0e20
             ii = 0
@@ -1189,6 +1185,12 @@
             ppi(i,j,k) = piref(i1,k)+(piref(i2,k)-piref(i1,k))*frac
             tha(i,j,k) = thref(i1,k)+(thref(i2,k)-thref(i1,k))*frac
             if(imoist.eq.1) qa(i,j,k,nqv) = qvref(i1,k)+(qvref(i2,k)-qvref(i1,k))*frac
+          else
+            if(nn.eq.1)then
+              tha(i,j,k) = thref(nref,k)
+              ppi(i,j,k) = piref(nref,k)
+              qa(i,j,k,nqv) = qvref(nref,k)
+            endif
           endif
           enddo
           enddo
@@ -1203,7 +1205,7 @@
             rr = dsqrt( tem1**2 + tem2**2 )
           if( rr.lt.tsmall )then
             ua(i,j,k) = 0.0
-          elseif( rr.le.rrmax )then
+          elseif( rr.lt.rrmax )then
             ! need to account for grid stretching.  Do simple search:
             diff = -1.0e20
             ii = 0
@@ -1239,7 +1241,7 @@
             rr = dsqrt( tem1**2 + tem2**2 )
           if( rr.lt.tsmall )then
             va(i,j,k) = 0.0
-          elseif( rr.le.rrmax )then
+          elseif( rr.lt.rrmax )then
             ! need to account for grid stretching.  Do simple search:
             diff = -1.0e20
             ii = 0
@@ -1541,6 +1543,17 @@
 ! Random perturbations:
 
       IF( irandp.eq.1 )THEN
+
+!        do n=1,nint(var7)
+!          if(myid.eq.0) print *,'  pert loop = ',n
+!        do k=1,nk
+!          do jj = 0,ny+1
+!          do ii = 0,nx+1
+!            call random_number(rand)
+!          enddo
+!          enddo
+!        enddo
+!        enddo
 
       IF( testcase.eq.0 )THEN
         ! not a pre-configured test case: 
@@ -2125,7 +2138,8 @@
                         tha,th3d,qa,q3d,cme,csm,ce1,ce2,                        &
                         tkea,tke3d,kmh,kmv,khh,khv,nm,defv,defh,lenscl,dissten, &
                         t11,t12,t13,t22,t23,t33,iamsat,                         &
-                        pta,pt3d,pdata,bndy,kbdy,                               &
+                        pta,pt3d,pdata,bndy,kbdy,timavg,                        &
+                        upten,vpten,ucuten,vcuten,                              &
                         reqs_u,reqs_v,reqs_w,reqs_s,reqs_p,reqs_tk,             &
                         nw1,nw2,ne1,ne2,sw1,sw2,se1,se2,                        &
                         pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,                        &
@@ -2190,6 +2204,9 @@
       real, intent(inout), dimension(nparcels,npvals) :: pdata
       logical, intent(in), dimension(ibib:ieib,jbib:jeib,kbib:keib) :: bndy
       integer, intent(in), dimension(ibib:ieib,jbib:jeib) :: kbdy
+      real, intent(inout), dimension(ibb:ieb,jbb:jeb,kbb:keb) :: upten,vpten
+      real, intent(inout), dimension(ibcu:iecu,jbcu:jecu,kbcu:kecu) :: ucuten,vcuten
+      real, intent(inout), dimension(ibta:ieta,jbta:jeta,kbta:keta,ntavr) :: timavg
       integer, dimension(rmp) :: reqs_u,reqs_v,reqs_w,reqs_s,reqs_p,reqs_tk
       real, intent(inout), dimension(kmt) :: nw1,nw2,ne1,ne2,sw1,sw2,se1,se2
       real, intent(inout), dimension(jmp,kmp) :: pw1,pw2,pe1,pe2
@@ -2444,7 +2461,7 @@
 !------------------------------------------------------------------
 !  Get stuff
 
-  IF( .not. restarted )THEN
+  IF( ( .not. restarted ) .or.( interp_on_restart ) )THEN
 
     IF(psolver.eq.4.or.psolver.eq.5.or.psolver.eq.6.or.psolver.eq.7)THEN
 
@@ -2460,6 +2477,10 @@
       enddo
 
     ELSE
+
+      if(myid.eq.0) print *
+      if(myid.eq.0) print *,'  getting prs,rho '
+      if(myid.eq.0) print *
 
       IF( imoist.eq.1 )THEN
 
@@ -2561,7 +2582,11 @@
 !------------------------------------------------------------------
 !  cm1r18:  get total mass of dry air at t=0
 
-      IF( .not. restarted )THEN
+      IF( ( .not. restarted ) .or. ( interp_on_restart ) )THEN
+
+        if(myid.eq.0) print *
+        if(myid.eq.0) print *,'  Getting mass1 '
+        if(myid.eq.0) print *
 
         dumk1 = 0.0
 
@@ -2597,7 +2622,9 @@
 
         mass1 = temq
 
+        if( myid.eq.0 ) print *
         if( myid.eq.0 ) print *,'  mass1 = ',mass1
+        if( myid.eq.0 ) print *
 
       ENDIF
 
@@ -2606,8 +2633,11 @@
 
     IF( psolver.eq.2 .or. psolver.eq.3 .or. psolver.eq.6 .or. psolver.eq.7 )THEN
 
-      IF( .not. restarted )THEN
+      IF( ( .not. restarted ) .or. ( interp_on_restart ) )THEN
+
+        if( myid.eq.0 ) print *
         if( myid.eq.0 ) print *,'  setting initial ppx '
+        if( myid.eq.0 ) print *
 
         IF( psolver.eq.2 .or. psolver.eq.3 .or. psolver.eq.7 )THEN
 
@@ -2827,6 +2857,111 @@
     endif
     ENDIF  iorst
     ENDIF
+
+!------------------------------------------------------------------
+
+      if( use_pbl )then
+
+        call bcs(upten)
+        call bcs(vpten)
+#ifdef MPI
+        call comm_1s_start(upten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_p)
+        call comm_1s_end(upten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_p)
+        call comm_1s_start(vpten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_p)
+        call comm_1s_end(vpten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_p)
+#endif
+        IF( axisymm.eq.1 )THEN
+          ! cm1r19 bug fix:
+          !$omp parallel do default(shared)   &
+          !$omp private(i,k)
+          do k=1,nk
+            upten(0,1,k) = -upten(1,1,k)
+            upten(ni+1,1,k) = upten(ni,1,k)
+            do i=0,ni+1
+              vpten(i,0,k) = vpten(i,1,k)
+              vpten(i,2,k) = vpten(i,1,k)
+              vpten(i,3,k) = vpten(i,1,k)
+            enddo
+          enddo
+        ENDIF
+
+      endif
+
+!------------------------------------------------------------------
+
+    IF( cuparam.eq.1 )THEN
+      call bcs(ucuten)
+      call bcs(vcuten)
+#ifdef MPI
+      call comm_1s_start(ucuten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_p)
+      call comm_1s_end(ucuten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_p)
+      call comm_1s_start(vcuten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_p)
+      call comm_1s_end(vcuten,pw1,pw2,pe1,pe2,ps1,ps2,pn1,pn2,reqs_p)
+#endif
+      ENDIF
+
+!------------------------------------------------------------------
+
+        tavgcode:  &
+        IF( dotimeavg .and. ( (.not. restarted) .or. interp_on_restart ) )THEN
+          if(myid.eq.0) print *
+          if(myid.eq.0) print *,'  initializing timeavg fields '
+          if(myid.eq.0) print *
+          if(utav.ge.1)then
+            do k=1,keta
+            do j=0,nj+1
+            do i=0,ni+2
+              timavg(i,j,k,utav) = u3d(i,j,k)
+            enddo
+            enddo
+            enddo
+          endif
+          if(vtav.ge.1)then
+            do k=1,keta
+            do j=0,nj+2
+            do i=0,ni+1
+              timavg(i,j,k,vtav) = v3d(i,j,k)
+            enddo
+            enddo
+            enddo
+          endif
+          if(wtav.ge.1)then
+            do k=1,keta
+            do j=0,nj+1
+            do i=0,ni+1
+              timavg(i,j,k,wtav) = w3d(i,j,k)
+            enddo
+            enddo
+            enddo
+          endif
+          if(ttav.ge.1)then
+            do k=1,keta
+            do j=0,nj+1
+            do i=0,ni+1
+              timavg(i,j,k,ttav) = th3d(i,j,k)
+            enddo
+            enddo
+            enddo
+          endif
+          if(etav.ge.1)then
+            do k=1,keta
+            do j=0,nj+1
+            do i=0,ni+1
+              timavg(i,j,k,etav) = tke3d(i,j,k)
+            enddo
+            enddo
+            enddo
+          endif
+          if(qtav.ge.1)then
+            do k=1,keta
+            do j=0,nj+1
+            do i=0,ni+1
+              timavg(i,j,k,qtav) = q3d(i,j,k,nqv)
+            enddo
+            enddo
+            enddo
+          endif
+        ENDIF  tavgcode
 
 !------------------------------------------------------------------
 

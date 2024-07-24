@@ -98,6 +98,8 @@
 
 !!!      print *,'  nloop,dts,dttmp = ',nloop,dts,nloop*dts
 
+      !$omp parallel do default(shared)   &
+      !$omp private(i,j)
       do j=1,nj+1
       do i=1,ni+1
         dtu(i,j) = dts*dtu0(i,j)
@@ -226,14 +228,14 @@
 
       endif
 
-      if(timestats.ge.1) time_sound=time_sound+mytime()
-
 !-----------------------------------------------------------------------
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 !-----------------------------------------------------------------------
 !  Begin small steps:
 
       small_step_loop:  DO N=1,NLOOP
+
+        if(timestats.ge.1) time_sound=time_sound+mytime()
 
 !-----
 
@@ -996,8 +998,6 @@
         enddo
         ENDDO
       endif
-
-      if(timestats.ge.1) time_sound=time_sound+mytime()
 
 !--------------------------------------------------------------------
 

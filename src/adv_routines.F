@@ -225,6 +225,9 @@
 
   IF( stag.eq.1 )THEN
 
+  pdcheck:  &
+  if( pdef.eq.1 )then
+
 !$omp parallel do default(shared)   &
 !$omp private(i,j,k,s1,s2,s3,s4,s5,bmax,doit)
     DO k=1,nk
@@ -246,14 +249,12 @@
           s5=a(i-2,j,k)
         endif
         doit = .true.
-        IF( pdef.eq.1 )THEN
           bmax = max(abs(s1),abs(s2),abs(s3),abs(s4),abs(s5))
           if( bmax.gt.bmin )then
             doit = .true.
           else
             doit = .false.
           endif
-        ENDIF
 
 
         IF(doit)THEN
@@ -276,14 +277,12 @@
           s5=a(i,j-2,k)
         endif
         doit = .true.
-        IF( pdef.eq.1 )THEN
           bmax = max(abs(s1),abs(s2),abs(s3),abs(s4),abs(s5))
           if( bmax.gt.bmin )then
             doit = .true.
           else
             doit = .false.
           endif
-        ENDIF
 
 
         IF(doit)THEN
@@ -295,6 +294,33 @@
       enddo
       enddo
     ENDDO
+
+  else  pdcheck
+
+    !$omp parallel do default(shared)   &
+    !$omp private(i,j,k)
+    DO k=1,nk
+      do j=1,nj+1
+      !dir$ vector always
+      do i=1,ni+1
+
+        if(rru(i,j,k).ge.0.0)then
+          dumx(i,j,k) = rru(i,j,k)*weno5(a(i-3,j,k),a(i-2,j,k),a(i-1,j,k),a(i  ,j,k),a(i+1,j,k),weps)
+        else
+          dumx(i,j,k) = rru(i,j,k)*weno5(a(i+2,j,k),a(i+1,j,k),a(i  ,j,k),a(i-1,j,k),a(i-2,j,k),weps)
+        endif
+
+        if(rrv(i,j,k).ge.0.0)then
+          dumy(i,j,k) = rrv(i,j,k)*weno5(a(i,j-3,k),a(i,j-2,k),a(i,j-1,k),a(i,j  ,k),a(i,j+1,k),weps)
+        else
+          dumy(i,j,k) = rrv(i,j,k)*weno5(a(i,j+2,k),a(i,j+1,k),a(i,j  ,k),a(i,j-1,k),a(i,j-2,k),weps)
+        endif
+
+      enddo
+      enddo
+    ENDDO
+
+  endif  pdcheck
 
   ELSEIF( stag.eq.2 )THEN
     ! u-staggered:
