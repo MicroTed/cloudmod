@@ -234,7 +234,7 @@
 !--------------------------------------------------------------
 !  writeout data
 
-      levs_output = maxk
+      levs_output(:) = maxk
 
 211   format(i1.1)
 212   format(i2.2)
@@ -3250,7 +3250,7 @@
           enddo
           enddo
 
-        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),levs_output(n_out),sigma,zs,zh,dum9)
     endif
 
   !.............................................

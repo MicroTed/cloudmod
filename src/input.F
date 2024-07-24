@@ -255,8 +255,6 @@
       logical :: nssl_3moment = .false.
       logical :: nssl_density_on = .true.
 
-      integer :: output_n_as_m3 = 0   ! convert number conc from #/kg to #/m3
-      integer :: output_uv_ground = 0  ! output u,v, as ground relative
 
 !-----------------------------------------------------------------------
 !  timestats:
