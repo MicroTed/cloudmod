@@ -22,7 +22,7 @@
                          effc,effi,effs,effr,effg,effis,    &
                          tdiag,qdiag,out2d,out3d,tmp2d,tmp1d,  &
                          dowriteout,dorad,dotdwrite,doazimwrite,dorestart,  &
-                         getdbz,getvt,dotbud,doqbud)
+                         getdbz,getvt,dotbud,doqbud,qunit)
 
     use input
     use constants
@@ -73,6 +73,7 @@
     logical, intent(in) :: dowriteout,dorad,dotdwrite,doazimwrite,dorestart
     logical, intent(inout) :: getdbz,getvt
     logical, intent(in) :: dotbud,doqbud
+    character(len=20), dimension(maxq), intent(in) :: qunit
 
     !........
 
@@ -993,6 +994,7 @@
   !      - increase value of 'nout3d' (and/or 'nout2d') in 'cm1.F'
   !-----------------------------------------------------------------------------------
 
+
       ELSEIF (ptype.eq.50 .or. ptype.eq.51 .or. ptype.eq.53 .or.ptype.eq.60) THEN
 
           DO i = 1,numq
@@ -1167,10 +1169,14 @@
 !   P3 scheme -- config:  2-mom-cld, 2-mom-rain, 3-mom-ice, 1-ice-category  !
 !---------------------------------------------------------------------------!
 
+
                do k=1,nk
                do i=1,ni
                   p3a(i,k,23) = q3d(i,j,k,9)
                   p3a(i,k,24) = q3d(i,j,k,10)
+                  IF ( trim(qunit(lccn)) /= 'none' ) THEN
+                  p3a(i,k,31) = q3d(i,j,k,lccn)
+                  ENDIF
                enddo
                enddo
 
@@ -1214,12 +1220,16 @@
                                diag3d_01     = p3a(1,1,28),                  &
                                diag3d_02     = p3a(1,1,29),                  &
                                diag3d_03     = p3a(1,1,30),                  &
+                               cn            = p3a(1,1,31),                  &
                                diagflag      = (getdbz .or. dowriteout)  )
 
                do k=1,nk
                do i=1,ni
                   q3d(i,j,k, 9) = p3a(i,k,23)   ! nc
                   q3d(i,j,k,10) = p3a(i,k,24)   ! qzi_1
+                  IF ( trim(qunit(lccn)) /= 'none' ) THEN
+                   q3d(i,j,k,lccn) = p3a(i,k,31) ! ccn
+                  ENDIF
                enddo
                enddo
 
@@ -1624,6 +1634,9 @@
                p3a(i,k,27) = q3d(i,j,k, 6)                  ! nc_3d
                p3a(i,k,31) = q3d(i,j,k,14)                  ! qzi1_3d
                p3a(i,k,32) = q3d(i,j,k,15)                  ! qzi2_3d
+               IF ( trim(qunit(lccn)) /= 'none' ) THEN
+                 p3a(i,k,40) = q3d(i,j,k,lccn)              ! ccna
+               ENDIF
             enddo
             enddo
 
@@ -1680,6 +1693,7 @@
                                diag3d_01     = p3a(1,1,37),                  &
                                diag3d_02     = p3a(1,1,38),                  &
                                diag3d_03     = p3a(1,1,39),                  &
+                               cn            = p3a(1,1,40),                  &
                                diagflag      = (getdbz .or. dowriteout)    )
 
             if( axisymm.eq.1 )then
@@ -1725,6 +1739,9 @@
                q3d(i,j,k, 6 ) = p3a(i,k,27)    ! nc_3d
                q3d(i,j,k,14 ) = p3a(i,k,31)    ! qzi1_3d
                q3d(i,j,k,15 ) = p3a(i,k,32)    ! qzi2_3d
+               IF ( trim(qunit(lccn)) /= 'none' ) THEN
+                 q3d(i,j,k,lccn) = p3a(i,k,40) ! ccna
+               ENDIF
             enddo
             enddo
 

@@ -3438,7 +3438,7 @@
                          effc,effi,effs,effr,effg,effis,    &
                          tdiag,qdiag,out2d,out3d,tmp2d,tmp1d,  &
                          dowriteout,dorad,dotdwrite,doazimwrite,dorestart,  &
-                         getdbz,getvt,dotbud,doqbud)
+                         getdbz,getvt,dotbud,doqbud,qunit)
       endif
 
       ENDIF

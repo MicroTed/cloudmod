@@ -3229,6 +3229,32 @@
 
   !.............................................
 
+    if(output_temperature .eq.1)then
+      n_out = n_out + 1
+      name_output(n_out) = 't       '
+      desc_output(n_out) = 'air temperature'
+      unit_output(n_out) = 'K'
+      grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+          do k=1,maxk
+          do j=1,nj
+          do i=1,ni
+            if ( psolver.eq.6 ) then
+              dum1(i,j,k) = (th0(i,j,k)+tha(i,j,k))*(prs(i,j,k)*rp00)**rovcp
+            else
+              dum1(i,j,k) = (th0(i,j,k)+tha(i,j,k))*(pi0(i,j,k)+ppi(i,j,k))
+            endif
+          enddo
+          enddo
+          enddo
+
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),sigma,zs,zh,dum9)
+    endif
+
+  !.............................................
+
     IF( dotimeavg .and. ttav.ge.1 )THEN
       n_out = n_out + 1
       name_output(n_out) = 'thtavg'
