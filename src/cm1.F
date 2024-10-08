@@ -99,7 +99,7 @@
       real, dimension(:,:,:), allocatable :: dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9
       real, dimension(:,:), allocatable :: zs,gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy
       real, dimension(:,:,:), allocatable :: gx,gxu,gy,gyv
-      real, dimension(:,:,:), allocatable :: rain,sws,svs,sps,srs,sgs,sus,shs
+      real, dimension(:,:,:), allocatable :: rain,hail,sws,svs,sps,srs,sgs,sus,shs
       real, dimension(:,:), allocatable :: tsk,znt,rznt,zntmp,ust,stau,tst,qst,z0t,z0q,thflux,qvflux,  &
                                            cd,ch,cq,u1,v1,s1,t1,xland,psfc,tlh,f2d,psmth,prate,ustt,ut,vt,st,cm0
       real, dimension(:,:), allocatable :: radbcw,radbce
@@ -1489,6 +1489,8 @@
 #endif
       allocate(   rain(ib:ie,jb:je,nrain) )
       rain = 0.0
+      allocate(   hail(ib:ie,jb:je,nrain) )
+      hail = 0.0
       allocate(    sws(ib:ie,jb:je,nrain) )
       sws = 0.0
       allocate(    svs(ib:ie,jb:je,nrain) )
@@ -2383,7 +2385,7 @@
                         zh,mh,rmh,zf,mf,rmf,rho0s,pi0s,prs0s,             &
                         pi0,prs0,rho0,thv0,th0,rth0,qv0,                  &
                         u0,v0,qc0,qi0,rr0,rf0,rrf0,                       &
-                        rain,sws,svs,sps,srs,sgs,sus,shs,                 &
+                        rain,hail,sws,svs,sps,srs,sgs,sus,shs,            &
                         thflux,qvflux,cd,ch,cq,f2d,                       &
                         dum1,dum2,dum3,dum4,divx,rho,prs,                 &
                         rru,ua,u3d,uten,uten1,rrv,va,v3d,vten,vten1,      &
@@ -3380,7 +3382,7 @@
         call pdefq(    0.0,asq(1),ruh,rvh,rmh,rho,q3d(ib,jb,kb,1))
       else
         call   mp_driver(nstep,dt,qbudget,asq,bsq,xh,ruh,xf,ruf,yh,rvh,yf,rvf,  &
-                         mh,rmh,c1,c2,zh,mf,rmf,zf,rain,prate,pi0,th0,rho0,prs0,qv0,   &
+                         mh,rmh,c1,c2,zh,mf,rmf,zf,rain,hail,prate,pi0,th0,rho0,prs0,qv0,   &
                          rho,prs,dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,  &
                          w3d,ppi,pp3d,ppten,sten,tha,th3d,thten,qa,q3d,qten,   &
                          p3a,p3o,dum2d1,dum2d2,dum2d3,dum2d4,dum2d5,  &
@@ -3404,7 +3406,7 @@
                    pi0,rho0,prs0,thv0,th0,rth0,qv0,qc0,              &
                    qi0,rr0,rf0,rrf0,                                 &
                    zs,gz,rgz,gzu,rgzu,gzv,rgzv,dzdx,dzdy,            &
-                   rain,sws,svs,sps,srs,sgs,sus,shs,                 &
+                   rain,hail,sws,svs,sps,srs,sgs,sus,shs,            &
                    dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,          &
                    divx,rho,rr,rf,prs,                               &
                    u0,rru,ua,u3d,uten,uten1,                         &
@@ -3909,7 +3911,7 @@
                         xh,xf,uf,yh,yf,vf,xfref,yfref,                                         &
                         rds,sigma,rdsf,sigmaf,zh,zf,mf,gx,gy,wprof,                            &
                         pi0,prs0,rho0,rr0,rf0,rrf0,th0,qv0,u0,v0,thv0,rth0,qc0,qi0,            &
-                        zs,rgzu,rgzv,rain,sws,svs,sps,srs,sgs,sus,shs,thflux,qvflux,psfc,      &
+                        zs,rgzu,rgzv,rain,hail,sws,svs,sps,srs,sgs,sus,shs,thflux,qvflux,psfc, &
                         rxh,arh1,arh2,uh,ruh,rxf,arf1,arf2,vh,rvh,mh,rmh,rmf,rr,rf,            &
                         gz,rgz,gzu,gzv,gxu,gyv,dzdx,dzdy,c1,c2,                                &
                         cd,ch,cq,tlh,f2d,psmth,prate,ustt,cm0,                                 &

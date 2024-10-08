@@ -15,7 +15,7 @@
 
 
     subroutine mp_driver(nstep,dt,qbudget,asq,bsq,xh,ruh,xf,ruf,yh,rvh,yf,rvf,  &
-                         mh,rmh,c1,c2,zh,mf,rmf,zf,rain,prate,pi0,th0,rho0,prs0,qv0,   &
+                         mh,rmh,c1,c2,zh,mf,rmf,zf,rain,hail,prate,pi0,th0,rho0,prs0,qv0,   &
                          rho,prs,dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,  &
                          w3d,ppi,pp3d,ppten,sten,tha,th3d,thten,qa,q3d,qten,  &
                          p3a,p3o,dum2d1,dum2d2,dum2d3,dum2d4,dum2d5,  &
@@ -49,7 +49,7 @@
     real, intent(in), dimension(jb:je+1) :: yf,rvf
     real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: mh,rmh,c1,c2,zh
     real, intent(in), dimension(ib:ie,jb:je,kb:ke+1) :: mf,rmf,zf
-    real, intent(inout), dimension(ib:ie,jb:je,nrain) :: rain
+    real, intent(inout), dimension(ib:ie,jb:je,nrain) :: rain,hail
     real, intent(inout), dimension(ib:ie,jb:je) :: prate
     real, intent(in), dimension(ib:ie,jb:je,kb:ke) :: pi0,th0,rho0,prs0,qv0
     real, intent(inout), dimension(ib:ie,jb:je,kb:ke) :: rho,prs
@@ -813,6 +813,7 @@
                                dtp = dt,                     &
                                itimestep = nstep,            &
                               RAIN = rain,                   &
+                              hail = hail,                   &
                               nrain = nrain,                 &
                               prate = prate,                 &
                               dbz = qdiag(ibdq,jbdq,kbdq,qd_dbz), &
@@ -863,6 +864,7 @@
                                dtp = dt,                     &
                                itimestep = nstep,            &
                               RAIN = rain,                   &
+                              hail = hail,                   &
                               nrain = nrain,                 &
                               prate = prate,                 &
                               dbz = qdiag(ibdq,jbdq,kbdq,qd_dbz), &
@@ -898,6 +900,7 @@
                                dtp = dt,                     &
                                itimestep = nstep,            &
                               RAIN = rain,                   &
+                              hail = hail,                   &
                               nrain = nrain,                 &
                               prate = prate,                 &
                               dbz = qdiag(ibdq,jbdq,kbdq,qd_dbz), &
@@ -1601,7 +1604,7 @@
 !            call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
 !           endif
 !         ENDDO
-          DO i = 1,nqs2
+          DO i = 1,numq ! nqs2
             call pdefq(0.0,asq(i),ruh,rvh,rmh,rho,q3d(ib,jb,kb,i))
           ENDDO
 
