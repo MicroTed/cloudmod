@@ -999,6 +999,8 @@
 
          p3_jloop1: DO j=1,nj
 
+            dum1(:,:,:) = 0.0
+
             do k=1,nk
             do i=1,ni
                p3a(i,k, 1) = th0(i,j,k)+th3d(i,j,k)
@@ -1047,7 +1049,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -1113,7 +1115,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -1190,7 +1192,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -1271,7 +1273,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -1339,6 +1341,13 @@
             do i=1,ni
               ! convert from mm to cm:
               rain(i,j,n) = rain(i,j,n) + 0.1*p3a(i,1,22)
+            enddo
+            enddo
+
+            do n=1,nrain
+            do i=1,ni
+              ! convert from mm to cm:
+               hail(i,j,n) = hail(i,j,n) + 0.1*dum1(i,1,4) !p3a(i,1,22)
             enddo
             enddo
 
@@ -1419,6 +1428,8 @@
 
          p3_jloop2: DO j=1,nj
 
+            dum1(:,:,:) = 0.0
+
             do k=1,nk
             do i=1,ni
                p3a(i,k, 1) = th0(i,j,k)+th3d(i,j,k)         ! th_3d
@@ -1466,7 +1477,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -1515,6 +1526,13 @@
             do i=1,ni
               ! convert from mm to cm:
                rain(i,j,n) = rain(i,j,n) + 0.1*p3a(i,1,22)
+            enddo
+            enddo
+
+            do n=1,nrain
+            do i=1,ni
+              ! convert from mm to cm:
+               hail(i,j,n) = hail(i,j,n) + 0.1*dum1(i,1,4) !p3a(i,1,22)
             enddo
             enddo
 
@@ -1612,6 +1630,8 @@
 
          p3_jloop5: DO j=1,nj
 
+            dum1(:,:,:) = 0.0
+
             do k=1,nk
             do i=1,ni
                p3a(i,k, 1) = th0(i,j,k)+th3d(i,j,k)         ! th_3d
@@ -1664,7 +1684,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -1716,6 +1736,13 @@
             do i=1,ni
               ! convert from mm to cm:
                rain(i,j,n) = rain(i,j,n) + 0.1*p3a(i,1,22)
+            enddo
+            enddo
+
+            do n=1,nrain
+            do i=1,ni
+              ! convert from mm to cm:
+               hail(i,j,n) = hail(i,j,n) + 0.1*dum1(i,1,4) !p3a(i,1,22)
             enddo
             enddo
 
@@ -1818,6 +1845,8 @@
 
          p3_jloop3: DO j=1,nj
 
+            dum1(:,:,:) = 0.0
+
             do k=1,nk
             do i=1,ni
                p3a(i,k, 1) = th0(i,j,k)+th3d(i,j,k)         ! th_3d
@@ -1869,7 +1898,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -1922,6 +1951,13 @@
             do i=1,ni
               ! convert from mm to cm:
                rain(i,j,n) = rain(i,j,n) + 0.1*p3a(i,1,22)
+            enddo
+            enddo
+
+            do n=1,nrain
+            do i=1,ni
+              ! convert from mm to cm:
+               hail(i,j,n) = hail(i,j,n) + 0.1*dum1(i,1,4) !p3a(i,1,22)
             enddo
             enddo
 
@@ -2022,6 +2058,8 @@
 
          p3_jloop4: DO j=1,nj
 
+            dum1(:,:,:) = 0.0
+
             do k=1,nk
             do i=1,ni
                p3a(i,k, 1) = th0(i,j,k)+th3d(i,j,k)         ! th_3d
@@ -2080,7 +2118,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -2144,6 +2182,13 @@
             do i=1,ni
               ! convert from mm to cm:
               rain(i,j,n) = rain(i,j,n) + 0.1*p3a(i,1,22)
+            enddo
+            enddo
+
+            do n=1,nrain
+            do i=1,ni
+              ! convert from mm to cm:
+               hail(i,j,n) = hail(i,j,n) + 0.1*dum1(i,1,4) !p3a(i,1,22)
             enddo
             enddo
 
@@ -2258,6 +2303,8 @@
 
          p3_jloop6: DO j=1,nj
 
+            dum1(:,:,:) = 0.0
+
             do k=1,nk
             do i=1,ni
                p3a(i,k, 1) = th0(i,j,k)+th3d(i,j,k)         ! th
@@ -2322,7 +2369,7 @@
                                rainnc        = p3a(1,1,22),                  &
                                rainncv       = dum1(ib,jb,2),                &
                                sr            = dum1(ib,jb,3),                &
-                               snownc        = dum1(ib,jb,4),                &
+                               snownc        = dum1(1:ni,1:1,4),             &
                                snowncv       = dum1(ib,jb,5),                &
                                ids=1, ide=ni, jds=1, jde=1, kds=1, kde=nk ,  &
                                ims=1, ime=ni, jms=1, jme=1, kms=1, kme=nk ,  &
@@ -2395,6 +2442,13 @@
             do i=1,ni
               ! convert from mm to cm:
                rain(i,j,n) = rain(i,j,n) + 0.1*p3a(i,1,22)
+            enddo
+            enddo
+            
+            do n=1,nrain
+            do i=1,ni
+              ! convert from mm to cm:
+               hail(i,j,n) = hail(i,j,n) + 0.1*dum1(i,1,4) !p3a(i,1,22)
             enddo
             enddo
 
