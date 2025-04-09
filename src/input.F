@@ -48,7 +48,7 @@
 !-----------------------------------------------------------------------
 
       integer :: nodex=0,nodey=0
-      integer nx,ny,nz,ppnode,timeformat,timestats,outunits,      &
+      integer :: nx,ny,nz,ppnode,timeformat,timestats,outunits,      &
               ni,nj,nk,nkp1,ngxy,ngz,                                         &
               ib,ie,jb,je,kb,ke,                                              &
               ibm,iem,jbm,jem,kbm,kem,                                        &
@@ -110,6 +110,7 @@
               output_format,output_filetype,output_interp,                    &
               restart_format,restart_filetype,                                &
               output_rain,output_sws,output_svs,output_sps,output_srs,        &
+              output_hail=1,                                                  &
               output_sgs,output_sus,output_shs,output_coldpool,output_zs,     &
               output_psfc,                                                    &
               output_basestate,output_sfcflx,output_sfcparams,output_sfcdiags,&
@@ -303,7 +304,7 @@
       namelist /wksounding/ z_trop_wk, th_trop_wk,t_trop_wk,th_sfc_wk,prs_sfc_wk,qv_pbl_wk       
       namelist /param9/                                                       &
               output_format,output_filetype,                                  &
-              output_interp,                                                  &
+              output_interp,output_hail,                                      &
               output_rain,output_sws,output_svs,output_sps,output_srs,        &
               output_sgs,output_sus,output_shs,output_coldpool,               &
               output_sfcflx,output_sfcparams,output_sfcdiags,                 &
