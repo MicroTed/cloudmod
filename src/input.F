@@ -170,6 +170,7 @@
       integer :: output_n_as_m3 = 0   ! convert number conc from #/kg to #/m3
       integer :: output_uv_ground = 0  ! output u,v, as ground relative
       integer :: output_temperature = 0 ! output air temperature
+      integer :: output_rh = 0 ! output relative humidity (0-1)
 !-----------------------------------------------------------------------
 
       real dx,dy,dz,dtl,timax,run_time,                                       &
@@ -316,7 +317,7 @@
               output_psfc,output_zs,output_zh,output_basestate,               &
               output_th,output_thpert,output_prs,output_prspert,              &
               output_pi,output_pipert,output_rho,output_rhopert,output_tke,   &
-              output_km,output_kh,output_temperature,                         &
+              output_km,output_kh,output_temperature,output_rh,               &
               output_qv,output_qvpert,output_q,output_dbz,output_buoyancy,    &
               output_u,output_upert,output_uinterp,                           &
               output_v,output_vpert,output_vinterp,output_w,output_winterp,   &

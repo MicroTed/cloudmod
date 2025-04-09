@@ -208,7 +208,7 @@
       integer :: reqs
 #endif
       real, dimension(:), allocatable :: pfoo,tfoo,qfoo
-      real :: zlcl, zlfc, zel , psource , tsource , qvsource
+      real :: zlcl, zlfc, zel , psource , tsource , qvsource, qvs
 
       integer :: hloop
       real :: bri,uavg,vavg,thvflux,tmpprt,thf1,thf2,gamfac,ws
@@ -3249,6 +3249,34 @@
           enddo
           enddo
           enddo
+
+        call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),levs_output(n_out),sigma,zs,zh,dum9)
+    endif
+
+  !.............................................
+
+    if(imoist == 1 .and. output_rh == 1)then
+      n_out = n_out + 1
+      name_output(n_out) = 'rh      '
+      desc_output(n_out) = 'relative humidity'
+      unit_output(n_out) = 'none'
+      grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
+
+          !$omp parallel do default(shared)  &
+          !$omp private(i,j,k)
+
+!$omp parallel do default(shared)  &
+!$omp private(i,j,k,qvs)
+          do k=1,maxk
+          do j=1,nj
+          do i=1,ni
+            qvs=rslf( prs(i,j,k) , (th0(i,j,k)+tha(i,j,k))*(pi0(i,j,k)+ppi(i,j,k)) )
+            dum1(i,j,k)=qa(i,j,k,nqv)*(1.0+qvs*reps)    &
+                       /(qvs*(1.0+qa(i,j,k,nqv)*reps))
+          enddo
+          enddo
+          enddo
+
 
         call   writes(dum1,fnum,srec,nwrite,nloop,dat1,dat2,dat3,reqt,myi1p,myi2p,myj1p,myj2p,ncid,time_index,name_output(n_out),levs_output(n_out),sigma,zs,zh,dum9)
     endif

@@ -2268,7 +2268,7 @@ END subroutine p3_init
 
  log_typeDiags  = .true.
 
- log_hmossopOn  = (nCat.gt.1)      !default: off for nCat=1, off for nCat>1
+ log_hmossopOn  = (nCat.gt.1)      !default: off for nCat=1, on for nCat>1
 !log_hmossopOn  = .true.           !switch to have Hallet-Mossop ON
 !log_hmossopOn  = .false.          !switch to have Hallet-Mossop OFF
 
@@ -2397,26 +2397,29 @@ END subroutine p3_init
     !--- apply mass clipping if dry and mass is sufficiently small
     !    (implying all mass is expected to evaporate/sublimate in one time step)
 
-       if (qc(i,k).lt.qsmall .or. nc(i,k) < nsmall .or. (qc(i,k).lt.1.e-8 .and. sup(i,k).lt.-0.1)) then
+       if (qc(i,k).lt.qsmall .or. (qc(i,k).lt.1.e-8 .and. sup(i,k).lt.-0.1)) then
           qv(i,k) = qv(i,k) + qc(i,k)
           th(i,k) = th(i,k) - invexn(i,k)*qc(i,k)*xxlv(i,k)*inv_cp
           qc(i,k) = 0.
           nc(i,k) = 0.
        else
+          nc(i,k) = Max( nc(i,k), nsmall )
           log_hydrometeorsPresent = .true.    ! updated further down
        endif
 
-       if (qr(i,k).lt.qsmall .or. nr(i,k) < nsmall  .or. (qr(i,k).lt.1.e-8 .and. sup(i,k).lt.-0.1)) then
+       if (qr(i,k).lt.qsmall .or. (qr(i,k).lt.1.e-8 .and. sup(i,k).lt.-0.1)) then
           qv(i,k) = qv(i,k) + qr(i,k)
           th(i,k) = th(i,k) - invexn(i,k)*qr(i,k)*xxlv(i,k)*inv_cp
           qr(i,k) = 0.
           nr(i,k) = 0.
        else
+          nr(i,k) = Max( nr(i,k), nsmall )
           log_hydrometeorsPresent = .true.    ! updated further down
        endif
 
        do iice = 1,nCat
-          if (qitot(i,k,iice).lt.qsmall .or. nitot(i,k,iice).lt.nsmall ) then ! .or. &
+!          if (qitot(i,k,iice).lt.qsmall .or. nitot(i,k,iice).lt.nsmall ) then ! .or. &
+          if (qitot(i,k,iice).lt.qsmall ) then ! .or. &
              !   (qitot(i,k,iice).lt.1.e-8 .and. supi(i,k).lt.-0.1)) then
              qv(i,k) = qv(i,k) + qitot(i,k,iice)
              th(i,k) = th(i,k) - invexn(i,k)*(qitot(i,k,iice)-qiliq(i,k,iice))*xxls(i,k)*inv_cp
@@ -2427,6 +2430,7 @@ END subroutine p3_init
              qiliq(i,k,iice) = 0.
              birim(i,k,iice) = 0.
           else
+             nitot(i,k,iice) = Max (nitot(i,k,iice), nsmall)
              log_hydrometeorsPresent = .true.    ! final update
           endif
 
