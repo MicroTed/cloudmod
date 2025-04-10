@@ -2262,7 +2262,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
                               tt, th, pii, p, w, dn, dz, dtp, itimestep,                &
                               is_theta_or_temp,                                         &
                               ntmul, ntcnt, lastloop,                                   &
-                              RAIN,nrain,prate,                                         &
+                              RAIN,hail,nrain,prate,                                         &
                               tcond,tevac,tevar,train,                                  &
                               ruh,rvh,rmh,rr,                                           &
                               dx, dy,                                                   &
@@ -2371,8 +2371,8 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
 ! COMMAS vars
       integer, intent(in) :: nrain
-      real, dimension(ims:ime, jms:jme,nrain), intent(inout)::                                 &
-                            rain                          ! accumulated precip (NC) and rate (NCV)
+      real, dimension(ims:ime, jms:jme,nrain), intent(inout), optional ::                                 &
+                            rain, hail                          ! accumulated precip (NC) and rate (NCV)
       real, dimension(ims:ime, jms:jme), optional, INTENT(INOUT) :: prate
       real, dimension(ims:ime, jms:jme) ::                                 & ! used as local temp array in 1/COMMAS
                             RAINNC,RAINNCV          ! accumulated precip (NC) and rate (NCV)
@@ -3037,9 +3037,21 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
              GRPLNCV(ix,jy) = GRPLNCV(ix,jy) + dtp*dn1(ix,1,1)*xfall(ix,1,lh)*1000./xdn0(lr)
            ENDIF
          ENDIF
+
+         IF ( present( hail ) ) THEN 
+           IF ( lhl > 1 .and. .not. present( HAILNC) ) THEN ! if no separate hail accum, then add to graupel
+             tmp = dtp*dn1(ix,1,1)*(xfall(ix,1,lh) + xfall(ix,1,lhl)) *1000./xdn0(lr)
+           ELSE
+             tmp =  dtp*dn1(ix,1,1)*xfall(ix,1,lh)*1000./xdn0(lr)
+           ENDIF
+           do n = 1,nrain
+             hail(ix,jy,n) = hail(ix,jy,n) + 0.1*tmp
+           enddo
+         ENDIF
+
          IF ( loopcnt == loopmax ) RAINNC(ix,jy)  = RAINNC(ix,jy) + RAINNCV(ix,jy)
 
-         IF ( loopcnt == loopmax ) THEN
+         IF ( loopcnt == loopmax .and. present(rain) ) THEN
          do n = 1,nrain
            RAIN(ix,jy,n) = RAIN(ix,jy,n) + 0.1*RAINNCV(ix,jy)
          enddo
