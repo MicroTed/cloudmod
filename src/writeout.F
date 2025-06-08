@@ -3293,9 +3293,6 @@
       unit_output(n_out) = 'none'
       grid_output(n_out) = 's'     ! s=scalar pts (3d) ; u=u pts (3d) ; v=v pts (3d) ; w=w pts (3d) ; 2=2d scalar pts
 
-          !$omp parallel do default(shared)  &
-          !$omp private(i,j,k)
-
 !$omp parallel do default(shared)  &
 !$omp private(i,j,k,qvs)
           do k=1,maxk

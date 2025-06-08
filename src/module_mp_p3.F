@@ -2637,7 +2637,7 @@ END subroutine p3_init
        epsi_tot = 0.
        epsiw_tot = 0.
 
-       call impose_max_total_Ni(nitot(i,k,:),max_total_Ni,inv_rho(i,k))
+!       call impose_max_total_Ni(nitot(i,k,:),max_total_Ni,inv_rho(i,k))
 
        iice_loop1: do iice = 1,nCat
 
@@ -4505,7 +4505,7 @@ END subroutine p3_init
        enddo !iice-loop
 
        qv(i,k) = max(0., qv(i,k))
-       call impose_max_total_Ni(nitot(i,k,:),max_total_Ni,inv_rho(i,k))
+!       call impose_max_total_Ni(nitot(i,k,:),max_total_Ni,inv_rho(i,k))
 
 !---------------------------------------------------------------------------------
 
@@ -5687,7 +5687,7 @@ END subroutine p3_init
 
     ! ice:
 
-       call impose_max_total_Ni(nitot(i,k,:),max_total_Ni,inv_rho(i,k))
+!       call impose_max_total_Ni(nitot(i,k,:),max_total_Ni,inv_rho(i,k))
 
        iice_loop_final_diagnostics:  do iice = 1,nCat
 
