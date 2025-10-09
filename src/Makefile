@@ -267,7 +267,9 @@ module_sf_myjsfc.o: module_ra_etc.o
 morrison.o: input.o constants.o
 module_mp_jensen_ishmael.o: input.o module_ra_etc.o
 mp_driver.o: constants.o input.o misclibs.o kessler.o goddard.o thompson.o lfoice.o morrison.o module_mp_nssl_2mom.o module_mp_p3.o module_mp_jensen_ishmael.o mmm_physics_wrapper.o mp_wsm6.o
-param.o: constants.o input.o init_terrain.o bc.o comm.o thompson.o morrison.o module_mp_nssl_2mom.o goddard.o lfoice.o module_mp_p3.o module_mp_jensen_ishmael.o ib_module.o eddy_recycle.o lsnudge.o mp_wsm6.o ccpp_kind_types.o
+param.o: constants.o input.o init_terrain.o bc.o comm.o thompson.o morrison.o module_mp_nssl_2mom.o \
+         goddard.o lfoice.o module_mp_p3.o module_mp_jensen_ishmael.o ib_module.o eddy_recycle.o \
+         lsnudge.o mp_wsm6.o ccpp_kind_types.o wforce.o
 parcel.o: constants.o input.o cm1libs.o bc.o comm.o writeout_nc.o
 pdef.o: input.o bc.o comm.o
 pdcomp.o: constants.o input.o adv.o poiss.o ib_module.o
